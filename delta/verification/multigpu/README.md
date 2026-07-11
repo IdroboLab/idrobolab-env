@@ -31,6 +31,47 @@ So the **overlay venv only carries the abTEM branch** (the container's abTEM
 1.0.9 has no multi-GPU code); it installs cleanly against the container's
 `dask 2026.7` with no version gymnastics.
 
+### Plan B: the RAPIDS-supported downgrade (if the `--no-deps` pairing misbehaves)
+
+The default above pairs dask-cuda 26.6 with `distributed 2026.7`, which RAPIDS
+never tested together. Imports are verified, but if `LocalCUDACluster` construction
+or GPU pinning fails at runtime on a GPU node, fall back to a *supported*
+dask-cuda/dask/distributed combo.
+
+The catch: the dask that the **newest** dask-cuda pins (`2026.1.1`) is exactly the
+release abTEM blacklists — dask 2026.1.0/2026.1.1 shipped a `to_zarr` regression
+(`dask/dask#12205`, fixed in 2026.1.2). **Never pin `dask==2026.1.1`**: you would
+get multi-GPU with broken abTEM result-saving. Only *older* dask-cuda releases pin
+a dask that abTEM permits:
+
+| dask-cuda | pins dask | abTEM allows? |
+|---|---|---|
+| ≤ 25.12.0 | 2025.9.1 (pre-regression) | ✅ |
+| 26.2 – 26.6 | 2026.1.1 | ❌ (to_zarr broken) |
+| 26.8 *(unreleased)* | ~2026.7 | would be ✅ — the real fix |
+
+So Plan B is **dask-cuda 25.12.0**, letting it pull its RAPIDS-matched
+`dask`/`distributed` 2025.9.1. In the `.def`, replace the dask-cuda block with:
+
+```bash
+# Plan B (supported combo): downgrades dask/distributed to 2025.9.1 container-wide.
+pip install "dask-cuda==25.12.0"   # pulls dask==2025.9.1, distributed==2025.9.1,
+                                   # cuda-core==0.3.*, numba-cuda 0.19.x, nvidia-ml-py
+```
+
+Trade-offs, in exchange for a tested pairing:
+
+- **~10-month dask/distributed rollback** for the whole image. abTEM 1.0.9 and the
+  branch both allow 2025.9.1, but other 2026.7-era packages (`xarray 2026.7`, …) run
+  against an older dask — verify the build's `%test` block still passes.
+- **`numba-cuda 0.19.x`** is added and may pull a different `numba` than the
+  container's 0.66.0; watch for a cascading downgrade.
+- Diverges from the dev-env parity that `requirements-delta.txt` tracks.
+
+Prefer Plan A (keep the modern stack, isolate dask-cuda) unless it proves broken;
+the clean end state is RAPIDS ≥ 26.8, after which a plain `pip install dask-cuda`
+resolves against `dask 2026.7`.
+
 ## Run it
 
 ```bash
