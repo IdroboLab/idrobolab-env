@@ -8,7 +8,9 @@ GPU computes routed through a `dask_cuda` cluster, one worker process per GPU).
 |---|---|
 | `verify_multigpu.py` | The verification payload — environment report + cluster/coverage/distribution checks. Portable; runs anywhere with CuPy + dask-cuda. |
 | `setup_env.sh` | Preflight check (no venv): confirms the branch abTEM + container dask-cuda import together via `PYTHONPATH`. |
-| `multigpu_verify.sbatch` | Slurm submission for `gpuA100x4` (8-GPU variant inline). |
+| `multigpu_verify.sbatch` | Slurm submission for the verification (`gpuA100x4`; 8-GPU variant inline). |
+| `benchmark_haadf.py` | Frozen-phonon HAADF benchmark: sweeps 1/2/4/… GPUs, reports scaling, and checks the image is invariant to GPU count. |
+| `benchmark_haadf.sbatch` | Slurm submission for the benchmark (`gpuA100x4`; 8-GPU variant inline). |
 
 ## How the branch abTEM is injected (no venv)
 
@@ -117,6 +119,42 @@ still run; only the abTEM-distribution checks are skipped (they need the branch)
 apptainer exec --nv $SIF python verify_multigpu.py            # cluster + coverage
 apptainer exec --nv $SIF python verify_multigpu.py --no-cluster   # per-GPU only
 ```
+
+## Benchmark (HAADF: scaling + GPU-count invariance)
+
+`benchmark_haadf.py` runs the **same** frozen-phonon HAADF STEM image simulation
+on 1, 2, 4, … GPUs and reports two things:
+
+- **Scaling** — wall-clock, speedup, and parallel efficiency vs 1 GPU.
+- **Invariance** — that the HAADF image is the *same* regardless of GPU count.
+  This is the correctness gate: spreading frozen-phonon configurations / scan
+  positions across GPUs must not change the answer. The dask graph (including the
+  reduction over phonons) is fixed by the problem, not the cluster, so on
+  homogeneous A100s the images should agree to near machine precision — the check
+  reports the actual max relative deviation and PASSes under `--tol` (1e-4).
+
+```bash
+# 4-GPU node, default STO workload; sweeps 1,2,4 GPUs internally:
+SIF=$SIF ABTEM_SRC=$ABTEM_SRC \
+  sbatch --account=<proj>-delta-gpu benchmark_haadf.sbatch
+
+# heavier run (bump --time in the sbatch for large workloads):
+... benchmark_haadf.sbatch --configs 32 --supercell 8,8,30 --sampling 0.04
+```
+
+Knobs (`--help` for all): `--structure {STO,Si}`, `--supercell nx,ny,nz`
+(z = thickness), `--configs`, `--sampling`, `--energy`, `--convergence`,
+`--inner/--outer` (HAADF angles; outer is clamped to the grid's antialiased
+cutoff and reported), `--scan-sampling`, `--gpu-counts 1,2,4,8`,
+`--precision {float32,float64}` (float64 tightens agreement), `--tol`.
+
+Outputs (in `--output`, default `$SCRATCH/bench_haadf_<jobid>`): the structure as
+`.cif` (for VESTA), `haadf_<n>gpu.npy` per GPU count, a reference PNG and
+difference PNGs, and `results.json` (times, speedups, per-count max deviation,
+`invariance_pass`). Exit status is non-zero if the image is not invariant.
+
+The whole sweep runs in **one job** on a multi-GPU node, so the 1/2/4-GPU images
+are produced in the same process and compared directly.
 
 ## What the checks mean
 
