@@ -206,6 +206,15 @@ means `--configs` was below the GPU count (raise it).
 
 ## Troubleshooting
 
+- **`Killed` (SIGKILL) during cluster bring-up, no traceback** — host-memory OOM:
+  the job doesn't have enough RAM for N dask-cuda workers in this (large)
+  container. Most common cause: running the job script with **`bash`**, which
+  ignores the `#SBATCH` directives (including `--mem`). Fixes: submit with
+  **`sbatch`** (dedicated node, `--mem=208G`); or, interactively, give the
+  allocation real memory (`salloc … --mem=64G` or more); or shrink the run
+  (`--gpus 2`, or fewer `--configs`). Section 0 now prints the cgroup/job memory
+  limit — if it's a few GB, that's the problem. The clusters also cap each
+  worker to ~0.85·(job mem)/N so a tight allocation spills instead of OOM-ing.
 - **`cluster.worker_count FAIL` (fewer workers than GPUs)** — check
   `CUDA_VISIBLE_DEVICES` and that Slurm gave the job all requested GPUs
   (`--gpus-per-node`); dask-cuda makes one worker per visible GPU.

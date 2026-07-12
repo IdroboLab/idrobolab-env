@@ -169,6 +169,27 @@ def check_environment(args) -> dict:
         print(f"  {var}={os.environ.get(var, '<unset>')}", flush=True)
     print(f"  python={sys.version.split()[0]}", flush=True)
 
+    # Host memory. A SIGKILL ("Killed") during cluster bring-up is almost always
+    # this being too small for N dask-cuda workers in the container -- watch the
+    # cgroup/job limit, not the node total.
+    try:
+        import psutil
+
+        vm = psutil.virtual_memory()
+        print(
+            f"  host_mem: node_total={vm.total/1e9:.0f}GB available={vm.available/1e9:.0f}GB",
+            flush=True,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from distributed.system import MEMORY_LIMIT
+
+        info["job_mem_bytes"] = int(MEMORY_LIMIT)
+        print(f"  cgroup/job mem limit: {MEMORY_LIMIT/1e9:.0f}GB", flush=True)
+    except Exception:  # noqa: BLE001
+        pass
+
     def _ver(mod):
         try:
             m = importlib.import_module(mod)
@@ -291,6 +312,20 @@ def start_cluster(args, info):
     if args.gpus:
         cluster_kwargs["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(args.gpus))
 
+    # Cap each worker's memory to a share of the cgroup/job limit so a memory-
+    # constrained allocation spills/pauses instead of OOM-killing the job. Without
+    # this, dask-cuda may size workers from the node total and over-commit.
+    mem_per_worker = None
+    if info.get("job_mem_bytes") and n_expected:
+        mem_per_worker = int(0.85 * info["job_mem_bytes"] / n_expected)
+        cluster_kwargs["memory_limit"] = mem_per_worker
+
+    print(
+        f"  starting LocalCUDACluster: {n_expected} workers"
+        + (f", ~{mem_per_worker/1e9:.0f}GB/worker" if mem_per_worker else "")
+        + " (if this SIGKILLs, the job memory is too small -- see README)",
+        flush=True,
+    )
     cluster = LocalCUDACluster(**cluster_kwargs)
     client = Client(cluster)
     # give workers a moment to register
