@@ -208,7 +208,9 @@ def check_environment(args) -> dict:
         import abtem
 
         info["abtem_version"] = getattr(abtem, "__version__", "?")
-        print(f"  abtem={info['abtem_version']}", flush=True)
+        # __file__ confirms whether PYTHONPATH shadowing picked up the branch
+        # checkout rather than the container's installed abTEM.
+        print(f"  abtem={info['abtem_version']}  <- {abtem.__file__}", flush=True)
     except Exception as exc:  # noqa: BLE001
         record("environment.abtem", "FAIL", f"abTEM not importable: {exc}")
         return info

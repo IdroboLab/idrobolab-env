@@ -7,8 +7,20 @@ GPU computes routed through a `dask_cuda` cluster, one worker process per GPU).
 | File | Purpose |
 |---|---|
 | `verify_multigpu.py` | The verification payload — environment report + cluster/coverage/distribution checks. Portable; runs anywhere with CuPy + dask-cuda. |
-| `setup_env.sh` | One-time builder for the overlay venv (just the abTEM branch; dask-cuda is in the container). |
+| `setup_env.sh` | Preflight check (no venv): confirms the branch abTEM + container dask-cuda import together via `PYTHONPATH`. |
 | `multigpu_verify.sbatch` | Slurm submission for `gpuA100x4` (8-GPU variant inline). |
+
+## How the branch abTEM is injected (no venv)
+
+The container ships abTEM **1.0.9**, which has no multi-GPU code. It cannot be
+`pip`-upgraded in place (the image is read-only), and a nested
+`python -m venv --system-site-packages` does **not** work here: the container's
+Python is itself a venv, and `--system-site-packages` inherits only the *base*
+interpreter's packages, not the container venv's — so the venv can't see
+dask-cuda/cupy. Instead the branch checkout is put on **`PYTHONPATH`**
+(`APPTAINERENV_PYTHONPATH=$ABTEM_SRC`), shadowing the container's abTEM while
+dask-cuda/cupy/dask still come from the container. abTEM is pure Python with a
+committed `abtem/_version.py`, so no build or install step is needed.
 
 ## The dask / dask-cuda version knot (handled in the container)
 
@@ -27,9 +39,9 @@ verified to import against `distributed 2026.7`; the runtime cluster is what
 this job checks on a GPU node. When a dask-cuda built for `dask 2026.7` ships
 (RAPIDS ≥ 26.8), the `.def` switches to a normal `pip install dask-cuda`.
 
-So the **overlay venv only carries the abTEM branch** (the container's abTEM
-1.0.9 has no multi-GPU code); it installs cleanly against the container's
-`dask 2026.7` with no version gymnastics.
+The branch abTEM installs/imports cleanly against the container's `dask 2026.7`
+(its `dask!=2026.1.1` pin is satisfied), so injecting it via `PYTHONPATH` needs
+no version gymnastics.
 
 ### Plan B: the RAPIDS-supported downgrade (if the `--no-deps` pairing misbehaves)
 
@@ -75,15 +87,15 @@ resolves against `dask 2026.7`.
 ## Run it
 
 ```bash
-# 0. once (no internet needed with a local checkout):
+# 0. point ABTEM_SRC at your 'multi-gpu-support' checkout and preflight it:
 module reset
 export ABTEM_SRC=$SCRATCH/code/abTEM        # your 'multi-gpu-support' checkout
 git -C "$ABTEM_SRC" switch multi-gpu-support
-./setup_env.sh                              # builds $SCRATCH/venvs/abtem_mgpu
+./setup_env.sh                              # preflight (no venv); prints versions
 
 # 1. edit the --account line in multigpu_verify.sbatch (see `accounts`), then:
-sbatch multigpu_verify.sbatch               # 4 GPUs
-sbatch multigpu_verify.sbatch --timing      # also time 1 vs N GPUs
+ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch          # 4 GPUs
+ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch --timing # also time 1 vs N GPUs
 ```
 
 Options worth knowing (`python verify_multigpu.py --help` for all):
@@ -110,7 +122,7 @@ apptainer exec --nv $SIF python verify_multigpu.py --no-cluster   # per-GPU only
 
 - **0. Environment** — versions + visible GPUs, and whether the running abTEM
   has the multi-GPU code. Container abTEM 1.0.9 always forces the synchronous
-  scheduler on GPU, so it *cannot* distribute — you must use the overlay venv.
+  scheduler on GPU, so it *cannot* distribute — the branch must be on `PYTHONPATH`.
 - **1. Cluster bring-up** — one single-threaded worker per GPU;
   `is_gpu_dask_client(client)` accepts it (a multi-threaded / CPU client would be
   rejected and fall back to synchronous, by design).
@@ -159,8 +171,9 @@ means `--configs` was below the GPU count (raise it).
 - **`cluster.worker_count FAIL` (fewer workers than GPUs)** — check
   `CUDA_VISIBLE_DEVICES` and that Slurm gave the job all requested GPUs
   (`--gpus-per-node`); dask-cuda makes one worker per visible GPU.
-- **`abtem.*.distribution FAIL/WARN`** — raise `--configs`; confirm the venv's
-  abTEM is the branch (`environment.abtem_multigpu_support` should PASS).
+- **`abtem.*.distribution FAIL/WARN`** — raise `--configs`; confirm `PYTHONPATH`
+  points at the branch (`environment.abtem_multigpu_support` should PASS, and
+  `abtem` in section 0 should import from `$ABTEM_SRC`).
 - **`is_gpu_dask_client is False`** — the client's workers are not
   single-threaded; dask-cuda uses one thread per worker by default — don't
   override `threads_per_worker`.

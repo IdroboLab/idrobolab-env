@@ -40,27 +40,27 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 SIF=${SIF:-${SCRATCH:?set SIF, or run where 'module reset' exports SCRATCH}/containers/otherimage_delta.sif}
-# Overlay venv built by setup_env.sh (container Python + dask-cuda + abTEM branch).
-MGPU_VENV=${MGPU_VENV:-$SCRATCH/venvs/abtem_mgpu}
-# abTEM 'multi-gpu-support' checkout, bound into the container so the venv's
-# editable install resolves at run time.
+# abTEM 'multi-gpu-support' checkout. It is injected via PYTHONPATH to shadow the
+# container's abTEM 1.0.9 -- no venv: the container is read-only and its Python is
+# itself a venv, so a nested venv cannot see the container's dask-cuda/cupy.
 ABTEM_SRC=${ABTEM_SRC:-$SCRATCH/code/abTEM}
 
-if [ ! -x "$MGPU_VENV/bin/python" ]; then
-    echo "ERROR: overlay venv missing at $MGPU_VENV" >&2
-    echo "Build it first on a login node:  ABTEM_SRC=$ABTEM_SRC $HERE/setup_env.sh" >&2
+if [ ! -f "$ABTEM_SRC/abtem/__init__.py" ]; then
+    echo "ERROR: abTEM checkout not found at $ABTEM_SRC" >&2
+    echo "Set ABTEM_SRC to your 'multi-gpu-support' checkout." >&2
     exit 1
 fi
 
 BINDS="$HERE"
-for p in /projects /scratch /work "$MGPU_VENV" "$ABTEM_SRC"; do
+for p in /projects /scratch /work "$ABTEM_SRC"; do
     [ -e "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 done
 
 echo "SIF=$SIF"
-echo "venv=$MGPU_VENV  abtem_src=$ABTEM_SRC"
+echo "abtem_src=$ABTEM_SRC (via PYTHONPATH)"
 echo "GPUs requested: ${SLURM_GPUS_ON_NODE:-?}   node=$(hostname)"
 
-# --nv exposes the GPUs; the overlay venv's python shadows the container abTEM.
-time apptainer exec --nv --bind "$BINDS" "$SIF" \
-    "$MGPU_VENV/bin/python" "$HERE/verify_multigpu.py" "$@"
+# --nv exposes the GPUs; PYTHONPATH makes the container Python import the branch
+# abTEM while dask-cuda/cupy/dask come from the container.
+time APPTAINERENV_PYTHONPATH="$ABTEM_SRC" apptainer exec --nv --bind "$BINDS" "$SIF" \
+    python "$HERE/verify_multigpu.py" "$@"
