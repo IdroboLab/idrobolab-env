@@ -23,8 +23,8 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --gpu-bind=closest
 #SBATCH --mem=208G
-#SBATCH --time=00:30:00
-#SBATCH --constraint="scratch"
+#SBATCH --time=00:10:00
+#SBATCH --constraint="scratch&projects"
 #SBATCH --output=%x_%j.out
 #
 # --- 8-GPU variant: comment the four lines above marked (4x) and use ------
