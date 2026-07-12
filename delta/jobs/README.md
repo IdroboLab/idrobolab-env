@@ -37,9 +37,12 @@ is the only supported MPI** — there is no `mpirun` on the host and
 `--mpi=pmi2` is no longer documented. Consequences for this container:
 
 1. **Single node (≤128 ranks)** — `gpaw_cpu_singlenode.sbatch` runs
-   `mpiexec` *inside* the container (hydra + container MPICH). No host
-   integration, no PMI wiring, verified working on the dev machine.
-   Prefer this until multi-node is truly needed.
+   `mpiexec -bootstrap fork` *inside* the container (Hydra + container
+   MPICH). No host integration, no PMI wiring, no outer `srun`. The
+   `-bootstrap fork` is **required**: inside a Slurm allocation Hydra would
+   otherwise auto-detect Slurm and try to launch ranks via `srun`, which is
+   absent in the container (`execvp error on file srun`). Do **not** wrap
+   the payload in `srun`. Prefer this until multi-node is truly needed.
 2. **Multi node** — `gpaw_cpu_multinode.sbatch` uses the Apptainer
    "hybrid"/MPICH-ABI model (as on HPE Cray EX sites): it binds the host
    Cray MPICH ABI libs (`$CRAY_MPICH_DIR/lib-abi-mpich`, both provide
@@ -63,7 +66,8 @@ is the only supported MPI** — there is no `mpirun` on the host and
    `srun --mpi=list` shows the available plugins (try `pmix`/`cray_shasta`).
 
 GPU scripts run a single Python process (no MPI); switch the payload to
-`mpiexec -n <N> python ...` for in-container MPI+GPU hybrids.
+`mpiexec -bootstrap fork -n <N> python ...` for in-container MPI+GPU hybrids
+(the `-bootstrap fork` requirement applies here too).
 
 ## First-run checklist
 
@@ -78,7 +82,7 @@ export APPTAINER_CACHEDIR=$SCRATCH/.apptainer        # keep caches off $HOME (qu
 
 # smoke tests (interactive or short jobs):
 apptainer exec $SIF python -c "import gpaw, otherimage; print(gpaw.__version__)"
-apptainer exec $SIF mpiexec -n 4 python -c "from gpaw.mpi import world; print(world.rank, world.size)"
+apptainer exec $SIF mpiexec -bootstrap fork -n 4 python -c "from gpaw.mpi import world; print(world.rank, world.size)"
 srun --mpi=list                                      # note available PMI plugins
 # on a GPU node:
 apptainer exec --nv $SIF python -c "import torch; print(torch.cuda.get_device_name(0))"

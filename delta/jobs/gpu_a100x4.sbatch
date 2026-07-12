@@ -32,7 +32,9 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 # BINDS="$BINDS,$SCRATCH/code/otherimage:/opt/src/otherimage"
 
 # For 4 MPI ranks x 1 GPU each (instead of one process using 4 GPUs), switch
-# the payload to:  mpiexec -n 4 python "$SCRIPT" "$@"
+# the payload to:  mpiexec -bootstrap fork -n 4 python "$SCRIPT" "$@"
+# (-bootstrap fork is required so Hydra spawns ranks locally instead of via
+#  the host `srun`, which is absent inside the container)
 # and set --ntasks-per-node=1 --cpus-per-task=64 as-is (hydra spawns inside).
 
 echo "SIF=$SIF  binds=$BINDS  CUDA_VISIBLE_DEVICES on node: 0-3"

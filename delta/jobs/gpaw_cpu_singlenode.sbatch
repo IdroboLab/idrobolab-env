@@ -35,6 +35,12 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 
 export OMP_NUM_THREADS=1                # pure MPI; the image defaults to 1 anyway
 
+# NOTE: do NOT wrap this in `srun`. The container's mpiexec (Hydra) launches
+# the ranks itself. `-bootstrap fork` forces LOCAL process spawning: without
+# it, Hydra sees the Slurm allocation ($SLURM_* env) and tries to launch via
+# `srun`, which does not exist inside the container, failing with
+#   HYDU_create_process (...): execvp error on file srun (No such file...)
+# (Verified 2026-07-11 by reproducing the failure under a faked Slurm env.)
 echo "SIF=$SIF  ranks=$SLURM_CPUS_PER_TASK  binds=$BINDS"
 time apptainer exec --bind "$BINDS" "$SIF" \
-    mpiexec -n "$SLURM_CPUS_PER_TASK" python "$SCRIPT" "$@"
+    mpiexec -bootstrap fork -n "$SLURM_CPUS_PER_TASK" python "$SCRIPT" "$@"
