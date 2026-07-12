@@ -1,15 +1,14 @@
 #!/bin/bash
 # Multi-GPU verification for abTEM on Delta's gpuA100x4 partition.
-# Runs verify_multigpu.py inside another image's container (which now ships
-# dask-cuda), using an overlay venv (built once by setup_env.sh) that layers
-# the abTEM 'multi-gpu-support' branch over the container's abTEM 1.0.9.
+# Runs verify_multigpu.py inside another image's container (which ships
+# dask-cuda), with the abTEM 'multi-gpu-support' branch injected via PYTHONPATH
+# to shadow the container's abTEM 1.0.9 (no venv).
 #
 # Usage:
-#   # once (no internet needed with a local abTEM checkout):
-#   ABTEM_SRC=$SCRATCH/code/abTEM ./setup_env.sh
-#   # then:
-#   sbatch multigpu_verify.sbatch                 # 4 GPUs, default checks
-#   sbatch multigpu_verify.sbatch --timing        # add 1-vs-N GPU timing
+#   SIF=/path/otherimage_delta.sif ABTEM_SRC=/path/abTEM \
+#     sbatch multigpu_verify.sbatch            # 4 GPUs, default checks
+#   (add --timing for a 1-vs-N GPU wall-clock comparison)
+#   # optional preflight (no venv):  ABTEM_SRC=/path/abTEM ./setup_env.sh
 #
 # For 8 GPUs switch the partition/resources below to the gpuA100x8 block, or
 # copy this file. Charging: 1 A100-hour = 16 core-hours = 62.5 GB-hours.

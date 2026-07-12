@@ -136,7 +136,7 @@ on 1, 2, 4, … GPUs and reports two things:
 ```bash
 # 4-GPU node, default STO workload; sweeps 1,2,4 GPUs internally:
 SIF=$SIF ABTEM_SRC=$ABTEM_SRC \
-  sbatch --account=<proj>-delta-gpu benchmark_haadf.sbatch
+  sbatch --account=<project>-delta-gpu benchmark_haadf.sbatch
 
 # heavier run (bump --time in the sbatch for large workloads):
 ... benchmark_haadf.sbatch --configs 32 --supercell 8,8,30 --sampling 0.04
