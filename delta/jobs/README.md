@@ -2,7 +2,7 @@
 
 Template job scripts per partition. All take the payload as arguments
 (`sbatch <script>.sbatch my_script.py [args...]`), locate the image via
-`$SIF` (default `$SCRATCH/containers/otherimage_delta.sif`, overridable at
+`$SIF` (default `$PROJECTS_BASE/software/containers/otherimage_delta.sif`, overridable at
 submit time with `SIF=... sbatch ...`), and bind `/projects`, `/scratch`,
 `/work` when present. Before first use, replace `<project>` in the
 `--account` lines — run `accounts` to list your charge accounts
@@ -70,10 +70,10 @@ GPU scripts run a single Python process (no MPI); switch the payload to
 ```bash
 # on Delta, once:
 accounts                                   # find <project>-delta-{cpu,gpu}
-mkdir -p $SCRATCH/containers
+mkdir -p $PROJECTS_BASE/software/containers
 # transfer the image (from the dev machine):
-#   scp otherimage_delta.sif <user>@login.delta.ncsa.illinois.edu:<scratch>/containers/
-sha256sum $SCRATCH/containers/otherimage_delta.sif   # record for provenance
+#   scp otherimage_delta.sif <user>@login.delta.ncsa.illinois.edu:$PROJECTS_BASE/software/containers/
+sha256sum $PROJECTS_BASE/software/containers/otherimage_delta.sif   # record for provenance
 export APPTAINER_CACHEDIR=$SCRATCH/.apptainer        # keep caches off $HOME (quota)
 
 # smoke tests (interactive or short jobs):

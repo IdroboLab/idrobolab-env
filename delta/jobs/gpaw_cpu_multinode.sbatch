@@ -39,7 +39,7 @@ module reset                            # loads cray-mpich (default); sets $WORK
 module load cray-mpich                  # ensure CRAY_MPICH_DIR/MPICH_DIR are set
 set -euo pipefail
 
-SIF=${SIF:-${SCRATCH:?set SIF, or run where 'module reset' exports SCRATCH}/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 SCRIPT=${1:?usage: sbatch gpaw_cpu_multinode.sbatch script.py [args]}
 shift
 

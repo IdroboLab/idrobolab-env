@@ -7,7 +7,7 @@ set -euo pipefail
 
 ACCOUNT=${ACCOUNT:-<project>-delta-gpu}   # <- replace; see `accounts` command
 PARTITION=${1:-gpuA100x4-interactive}
-SIF=${SIF:-/scratch/${ACCOUNT%-delta-*}/${USER}/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 
 BINDS=""
 for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"; done

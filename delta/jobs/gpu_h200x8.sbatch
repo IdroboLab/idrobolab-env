@@ -25,7 +25,7 @@
 module reset   # loads defaults, sets $WORK/$SCRATCH; before set -u (Lmod quirk)
 set -euo pipefail
 
-SIF=${SIF:-${SCRATCH:?set SIF, or run where 'module reset' exports SCRATCH}/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 SCRIPT=${1:?usage: sbatch gpu_h200x8.sbatch script.py [args]}
 shift
 

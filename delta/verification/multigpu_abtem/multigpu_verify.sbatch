@@ -39,7 +39,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-SIF=${SIF:-${SCRATCH:?set SIF, or run where 'module reset' exports SCRATCH}/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 # abTEM 'multi-gpu-support' checkout. It is injected via PYTHONPATH to shadow the
 # container's abTEM 1.0.9 -- no venv: the container is read-only and its Python is
 # itself a venv, so a nested venv cannot see the container's dask-cuda/cupy.

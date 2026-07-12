@@ -16,12 +16,12 @@
 #   ABTEM_SRC=/path/to/abTEM ./setup_env.sh     # login node is fine
 #
 # Env vars:
-#   SIF        container image (default $SCRATCH/containers/otherimage_delta.sif)
+#   SIF        container image (default $PROJECTS_BASE/software/containers/otherimage_delta.sif)
 #   ABTEM_SRC  abTEM checkout on the 'multi-gpu-support' branch (required)
 
 set -euo pipefail
 
-SIF=${SIF:-${SCRATCH:?set SIF, or run where SCRATCH is exported}/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 ABTEM_SRC=${ABTEM_SRC:?export ABTEM_SRC=<path to abTEM 'multi-gpu-support' checkout>}
 
 if [ ! -f "$ABTEM_SRC/abtem/__init__.py" ]; then

@@ -20,7 +20,7 @@
 module reset   # loads defaults (incl. cray-mpich), sets $WORK/$SCRATCH; before set -u (Lmod)
 set -euo pipefail
 
-SIF=${SIF:-${SCRATCH:?set SIF, or run where 'module reset' exports SCRATCH}/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 SCRIPT=${1:?usage: sbatch gpaw_cpu_singlenode.sbatch script.py [args]}
 shift
 
