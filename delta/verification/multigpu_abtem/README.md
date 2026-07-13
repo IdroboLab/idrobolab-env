@@ -33,7 +33,7 @@ The container (`otherimage_delta.sif`) ships `dask 2026.7.0` and `cupy-cuda12x
 dask-cuda` would therefore fail to resolve (or downgrade the whole stack).
 
 The **container build** resolves this once (see
-`containers/otherimage/otherimage_delta.def`): dask-cuda is installed
+`shared/containers/otherimage/otherimage_delta.def`): dask-cuda is installed
 `--no-deps` against the existing `dask 2026.7`, with only its non-dask runtime
 deps added (`nvidia-ml-py`, `cuda-core[cu12]<1.0` — the 1.x line drops the
 `cuda.core.experimental` namespace dask-cuda 26.6 imports). This pairing is

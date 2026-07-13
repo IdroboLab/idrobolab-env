@@ -1,4 +1,4 @@
-# hpcenv_delta
+# Delta (NCSA)
 
 Environment setup for NCSA's Delta HPC system (x86_64; AMD Milan CPUs, with
 Intel Xeon on the H200 nodes; NVIDIA A40/A100/H200 GPUs; Slingshot 11
@@ -8,8 +8,10 @@ interconnect; Slurm + Cray MPICH; containers via Apptainer).
 
 | Path | Purpose |
 |---|---|
-| [containers/otherimage/](containers/otherimage/) | Apptainer build context for another image's GPAW software stack (see its README for build & run instructions) |
+| [../shared/containers/otherimage/](../shared/containers/otherimage/) | The container recipe (shared with Perlmutter) — build & publish instructions in its README |
+| [get-image.sh](get-image.sh) | Materialize the Delta `.sif` from the published registry image |
 | [jobs/](jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper) — see its README for the partition matrix and MPI launch guide |
+| [verification/](verification/) | On-node checks (e.g. multi-GPU abTEM) |
 
 ## Conventions
 

@@ -1,4 +1,4 @@
-# hpcenv_delta — conventions
+# Delta (NCSA) — conventions
 
 Environment setup for NCSA's Delta HPC system (Apptainer container + Slurm job
 templates for another image's GPAW stack).
@@ -18,7 +18,7 @@ as the default.
 
 - **Container images** → `$PROJECTS_BASE/software/containers/` (shared, provenance
   via `sha256sum`; `*.sif` is not tracked — only the build recipes under
-  `containers/`).
+  `shared/containers/`).
 - **Apptainer caches** → `$SCRATCH/.apptainer` (keep off `$HOME`; do not move to
   projects).
 - **Source checkouts and job outputs** → `$SCRATCH` (e.g. `$SCRATCH/code/...`,
