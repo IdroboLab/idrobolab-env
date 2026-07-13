@@ -6,7 +6,7 @@ environment for Perlmutter's GPU nodes, consumed with **podman-hpc**
 supported at NERSC).
 
 This is the same recipe as the Apptainer definition proven for NCSA Delta
-(`hpcenv_delta/containers/otherimage/`), translated to a Dockerfile: same
+(`shared/containers/otherimage/`), translated to a Dockerfile: same
 base image, same versions, same build steps. **Status: the Delta variant is
 built and verified end-to-end (67/67 extra-module tests); this Dockerfile
 translation has not been built yet** — the dev machine has no docker/podman.
@@ -42,7 +42,7 @@ Stage the context on the dev machine, then build either on Perlmutter or on
 any docker/podman host:
 
 ```bash
-cd containers/otherimage
+cd shared/containers/otherimage
 ./prepare_build_context.sh        # regenerates pins + stages ./src
 
 # Option A — on a Perlmutter login node (rsync this directory over first):

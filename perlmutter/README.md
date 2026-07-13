@@ -1,4 +1,4 @@
-# hpcenv_perlmutter
+# Perlmutter (NERSC)
 
 Environment setup for NERSC's Perlmutter HPC system (x86_64, AMD Milan;
 NVIDIA A100 GPUs; Slingshot-11 interconnect; Slurm + Cray MPICH; containers
@@ -8,7 +8,8 @@ via podman-hpc, OCI/Docker images only).
 
 | Path | Purpose |
 |---|---|
-| [containers/otherimage/](containers/otherimage/) | OCI/Dockerfile build context for another image's GPAW software stack (see its README for build & run instructions) |
+| [../shared/containers/otherimage/](../shared/containers/otherimage/) | The container recipe (shared with Delta) — build & publish in its README |
+| [podman-hpc.md](podman-hpc.md) | Perlmutter run notes: `podman-hpc pull`/`run`, MPI, GPU |
 
 ## Conventions
 
