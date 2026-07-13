@@ -9,8 +9,10 @@ GPU computes routed through a `dask_cuda` cluster, one worker process per GPU).
 | `verify_multigpu.py` | The verification payload — environment report + cluster/coverage/distribution checks. Portable; runs anywhere with CuPy + dask-cuda. |
 | `setup_env.sh` | Preflight check (no venv): confirms the branch abTEM + container dask-cuda import together via `PYTHONPATH`. |
 | `multigpu_verify.sbatch` | Slurm submission for the verification (`gpuA100x4`; 8-GPU variant inline). |
-| `benchmark_haadf.py` | Frozen-phonon HAADF benchmark: sweeps 1/2/4/… GPUs, reports scaling, and checks the image is invariant to GPU count. |
+| `benchmark_haadf.py` | Frozen-phonon HAADF benchmark: sweeps 1/2/4/… GPUs, reports scaling, and checks the image is invariant to GPU count. Uses an **explicit** `LocalCUDACluster`. |
 | `benchmark_haadf.sbatch` | Slurm submission for the benchmark (`gpuA100x4`; 8-GPU variant inline). |
+| `benchmark_haadf_auto.py` | Same benchmark via the **automatic** path (`config['dask.multi-gpu']`) — no explicit cluster; sweeps counts as subprocesses. |
+| `benchmark_haadf_auto.sbatch` | Slurm submission for the automatic benchmark. |
 
 ## How the branch abTEM is injected (no venv)
 
@@ -155,6 +157,30 @@ difference PNGs, and `results.json` (times, speedups, per-count max deviation,
 
 The whole sweep runs in **one job** on a multi-GPU node, so the 1/2/4-GPU images
 are produced in the same process and compared directly.
+
+### Explicit vs automatic cluster
+
+`benchmark_haadf.py` creates the `dask_cuda.LocalCUDACluster` **explicitly** (and
+sizes each GPU-count run via `CUDA_VISIBLE_DEVICES` on the cluster) — it tests the
+*bring-your-own-client* path.
+
+`benchmark_haadf_auto.py` instead sets `config['dask.multi-gpu'] = True` and lets
+abTEM start the cluster itself (`ensure_cuda_cluster`) — it tests the *automatic*
+path. Because the automatic path always spans **all visible** GPUs, each count is
+run as a **subprocess** with `CUDA_VISIBLE_DEVICES` restricted, so every child
+exercises the auto-init on its own GPUs. (The `n=1` point has one visible GPU, so
+the auto path correctly declines to build a cluster and runs synchronously — it's
+the single-GPU reference.) Same knobs, same outputs (`auto_<n>gpu.npy`,
+`results.json` with an `auto_cluster_started` flag per count):
+
+```bash
+SIF=$SIF ABTEM_SRC=$ABTEM_SRC \
+  sbatch --account=<project>-delta-gpu benchmark_haadf_auto.sbatch
+```
+
+Either benchmark works against the integrated `multi-gpu-on-269` branch — point
+`ABTEM_SRC` at a checkout on that branch (`git checkout multi-gpu-on-269`) to test
+the multi-GPU work together with the #269 GPU-memory improvements.
 
 ## What the checks mean
 
