@@ -37,7 +37,15 @@
 module reset   # loads defaults, sets $WORK/$SCRATCH; before set -u (Lmod quirk)
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Under `sbatch`, Slurm runs a spool COPY of this script, so BASH_SOURCE points
+# at the spool dir (payload absent). Use the submit dir; fall back to the script
+# dir for `bash` runs. Submit from the directory holding verify_multigpu.py.
+HERE="${SLURM_SUBMIT_DIR:-}"
+[ -n "$HERE" ] || HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -f "$HERE/verify_multigpu.py" ]; then
+    echo "ERROR: verify_multigpu.py not found in $HERE (submit from its directory)" >&2
+    exit 1
+fi
 
 SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 # abTEM 'multi-gpu-support' checkout. It is injected via PYTHONPATH to shadow the
