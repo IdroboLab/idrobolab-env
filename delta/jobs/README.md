@@ -91,3 +91,22 @@ apptainer exec --nv $SIF python -c "import torch; print(torch.cuda.get_device_na
 Note the A100/A40 nodes are AMD Milan while H200 nodes are Intel Xeon —
 both run the image's `x86-64-v3` code; no per-partition images needed
 (A40 sm_86 / A100 sm_80 / H200 sm_90 are all in the shipped fat wheels).
+
+## Gotchas
+
+- **Never name a working directory (or output dir) `gpaw`.** The four dev
+  packages are *editable* installs in the image, so `import gpaw` resolves
+  through a namespace-style finder. A `gpaw/` subdirectory in your current
+  directory shadows the real package: `python -c` puts the CWD on
+  `sys.path`, Python treats `./gpaw` as a namespace package, the real
+  `gpaw/__init__.py` never runs, and you get
+  `ImportError: cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw'
+  (unknown location)`. Same trap for `otherimage`, `gpaw_weaver`, `pyslice`.
+  Fix: rename/move the directory (a branch-override checkout belongs at
+  `$SCRATCH/code/gpaw`, bound to `/opt/src/gpaw` — not in your run dir).
+- **For one-liner `python -c` checks, use `python -P`** (drops the CWD from
+  `sys.path`) so a stray `gpaw/` can't shadow the import. Do **not** add
+  `-P` to `python src/script.py` runs — it also drops the script's own
+  directory and breaks sibling-module imports (`import helper` from `src/`).
+  Normal `python path/to/script.py` runs are unaffected by the trap anyway:
+  `sys.path[0]` is the script's directory, not your CWD.
