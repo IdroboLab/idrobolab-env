@@ -148,6 +148,7 @@ Knobs (`--help` for all): `--structure {STO,Si}`, `--supercell nx,ny,nz`
 (z = thickness), `--configs`, `--sampling`, `--energy`, `--convergence`,
 `--inner/--outer` (HAADF angles; outer is clamped to the grid's antialiased
 cutoff and reported), `--scan-sampling`, `--gpu-counts 1,2,4,8`,
+`--projection {infinite,finite}` (default `infinite`),
 `--precision {float32,float64}` (float64 tightens agreement), `--tol`.
 
 Outputs (in `--output`, default `$SCRATCH/bench_haadf_<jobid>`): the structure as
@@ -181,6 +182,29 @@ SIF=$SIF ABTEM_SRC=$ABTEM_SRC \
 Either benchmark works against the integrated `multi-gpu-on-269` branch — point
 `ABTEM_SRC` at a checkout on that branch (`git checkout multi-gpu-on-269`) to test
 the multi-GPU work together with the #269 GPU-memory improvements.
+
+### Exercising the #269 improvements
+
+`multi-gpu-on-269` carries #269's memory-bounded potential chunking **and** its
+kernel speedups; the dev-based `multi-gpu-support` (PR #331) does **not**. Two
+caveats when using these benchmarks to check #269's claims:
+
+- **Memory chunking** (`potential.slice-chunk-size: "auto"`) is on by default but
+  only matters at large grids — the default STO 6×6×20 @ 0.05 Å (~469²) fits in
+  A100/A40 VRAM without much chunking. Push the grid (`--sampling 0.03
+  --supercell 10,10,40`) to reach the regime #269 targets (and that the dev-based
+  branch would OOM on).
+- **Speedup** is `projection='finite'`, float32 specific (#269's own table:
+  `infinite` ≈ 1.0×, `finite` f32 ≈ 1.9×). The default here is `infinite`, so add
+  **`--projection finite`** to see it. The scaling table shows *multi-GPU*
+  scaling, not #269's per-GPU speedup — for the latter, compare absolute times of
+  the same run on `multi-gpu-support` vs `multi-gpu-on-269` at a fixed GPU count:
+
+```bash
+# finite projection, 1 GPU, no-#269 vs #269 -> absolute-time difference = #269 speedup
+ABTEM_SRC=<checkout: multi-gpu-support> ... benchmark_haadf.sbatch --projection finite --gpu-counts 1
+ABTEM_SRC=<checkout: multi-gpu-on-269>  ... benchmark_haadf.sbatch --projection finite --gpu-counts 1
+```
 
 ## What the checks mean
 
