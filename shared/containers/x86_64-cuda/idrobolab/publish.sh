@@ -1,0 +1,37 @@
+#!/bin/bash
+# Build the idrobolab image on THIS host and push it to a registry (GHCR by
+# default). Delta and Perlmutter both consume the same image.
+#
+# Prerequisites:
+#   1. ./prepare_build_context.sh first (stages ./src from /workspaces/code).
+#   2. docker or podman + a registry login with write access:
+#        echo "$GHCR_PAT" | podman login ghcr.io -u <username> --password-stdin
+#
+# Env overrides: IMAGE, TAG, ENGINE.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+IMAGE=${IMAGE:-ghcr.io/<username>/idrobolab}
+TAG=${TAG:-latest}
+ENGINE=${ENGINE:-$(command -v podman || command -v docker || true)}
+: "${ENGINE:?need podman or docker on PATH}"
+
+if [ ! -d src ]; then
+    echo "ERROR: build context not staged. Run ./prepare_build_context.sh first" >&2
+    exit 1
+fi
+
+echo ">> building ${IMAGE}:${TAG}  (engine: ${ENGINE##*/})"
+"$ENGINE" build -t "${IMAGE}:${TAG}" .
+
+echo ">> pushing ${IMAGE}:${TAG}"
+"$ENGINE" push "${IMAGE}:${TAG}"
+
+cat <<EOF
+>> done. Consume it:
+   Delta:      apptainer build idrobolab.sif docker://${IMAGE}:${TAG}
+   Perlmutter: podman-hpc pull ${IMAGE}:${TAG}
+   nionswift GUI (needs a forwarded display, e.g. ThinLinc/X):
+       apptainer exec --nv idrobolab.sif nionswift
+     headless (no display): apptainer exec idrobolab.sif xvfb-run -a nionswift
+EOF

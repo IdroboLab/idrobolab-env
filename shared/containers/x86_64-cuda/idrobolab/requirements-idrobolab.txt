@@ -1,0 +1,34 @@
+# requirements-idrobolab.txt
+# Curated top-level packages for the idrobolab container. HAND-MAINTAINED
+# (these are not in the ROCm dev venv, so nothing is scraped). Resolved by uv
+# at build time; torch/torchvision/cupy are installed separately from the CUDA
+# index FIRST (see the Dockerfile) so nothing here drags in a different torch.
+#
+# HARD CONSTRAINT: fairchem-core 2.21 pins torch~=2.8, which caps the whole
+# stack at torch 2.8.x — do NOT bump torch to 2.13 while fairchem is present.
+# (fairchem v2 dropped torch-geometric/scatter/sparse, so no data.pyg.org
+#  companion-wheel step is needed.)
+#
+# gpaw, gpaw-weaver, abTEM are installed EDITABLE from /opt/src (not here).
+
+ase>=3.26.0              # satisfies fairchem, orb-models, and pymatgen at once
+gpaw-data==1.0.1         # PAW datasets for GPAW
+
+# ML interatomic potentials
+fairchem-core==2.21.0    # the torch ceiling (torch~=2.8)
+orb-models==0.7.0        # torch<3,>=2.8; pulls nvalchemi-toolkit-ops[torch]
+
+# ptychography / microscopy
+ptyrad==1.0.0            # torch>=2.4
+nionswift==16.18.1       # library imports headlessly; GUI needs the Qt backend
+nionswift-tool           # bundled-Qt launcher for the GUI (alongside PySide6)
+PySide6                  # Qt6 backend for the nionswift GUI (needs a display/xvfb)
+
+# materials / phonons
+pymatgen==2026.5.4
+phonopy==4.3.1
+hiphive==1.5
+
+# workflow / interactive
+dask[distributed]
+jupyterlab

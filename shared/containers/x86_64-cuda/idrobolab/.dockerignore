@@ -1,0 +1,10 @@
+# Keep the build context lean — only the Dockerfile's COPY inputs matter.
+*.sif
+*.img
+*.tar
+*.tar.gz
+build.log
+*.log
+idrobolab.def
+README.md
+# (kept: Dockerfile, requirements-idrobolab.txt, siteconfig.py, src/)
