@@ -41,7 +41,7 @@ ARG SCALAPACK_VERSION=2.2.0
 ARG LIBXC_VERSION=7.0.0
 ARG LIBVDWXC_VERSION=0.5.0
 ARG ELPA_VERSION=2024.05.001
-ARG MAGMA_VERSION=2.8.0
+ARG MAGMA_VERSION=2.7.2
 ARG ARCH_FLAGS="-O3 -march=x86-64-v3"
 
 # --- system packages (build toolchain + Qt6 runtime for the nionswift GUI) ---
