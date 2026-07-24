@@ -151,7 +151,7 @@ RUN set -eux; cd /tmp; \
         SCALAPACK_LDFLAGS="-L${INSTALL_DIR}/scalapack/lib -Wl,-rpath,${INSTALL_DIR}/scalapack/lib -lscalapack -lopenblas" \
         SCALAPACK_FCFLAGS="-L${INSTALL_DIR}/scalapack/lib" \
         --prefix=${INSTALL_DIR}/elpa-${ELPA_VERSION} \
-        --enable-openmp --disable-avx512 \
+        --enable-openmp --disable-avx512 --disable-c-tests \
         --enable-runtime-threading-support-checks \
         --enable-allow-thread-limiting \
         --without-threading-support-check-during-build; \
