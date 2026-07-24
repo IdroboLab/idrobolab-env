@@ -33,13 +33,15 @@ ENV INSTALL_DIR=/opt/software \
     UV_HTTP_TIMEOUT=180 \
     UV_NO_CACHE=1
 ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/usr/local/bin:${PATH} \
-    LD_LIBRARY_PATH=/opt/software/mpich/lib:/opt/software/libxc/lib:/opt/software/libvdwxc/lib:/opt/software/fftw/lib:/opt/software/scalapack/lib
+    LD_LIBRARY_PATH=/opt/software/mpich/lib:/opt/software/libxc/lib:/opt/software/libvdwxc/lib:/opt/software/fftw/lib:/opt/software/scalapack/lib:/opt/software/elpa/lib:/opt/software/magma/lib
 
 ARG MPICH_VERSION=4.3.2
 ARG FFTW_VERSION=3.3.10
 ARG SCALAPACK_VERSION=2.2.0
 ARG LIBXC_VERSION=7.0.0
 ARG LIBVDWXC_VERSION=0.5.0
+ARG ELPA_VERSION=2024.05.001
+ARG MAGMA_VERSION=2.8.0
 ARG ARCH_FLAGS="-O3 -march=x86-64-v3"
 
 # --- system packages (build toolchain + Qt6 runtime for the nionswift GUI) ---
@@ -134,6 +136,44 @@ RUN set -eux; cd /tmp; \
     ln -sfn ${INSTALL_DIR}/libvdwxc-${LIBVDWXC_VERSION} ${INSTALL_DIR}/libvdwxc; \
     cd /; rm -rf /tmp/libvdwxc-${LIBVDWXC_VERSION}*
 
+# --- ELPA (scalable dense eigensolver; GPAW elpa=True) ----------------------
+# CPU build (AVX2 + OpenMP, against our MPICH + OpenBLAS + ScaLAPACK): a
+# better-scaling replacement for the ScaLAPACK dense diagonalisation. Headers
+# install under <prefix>/include/elpa-<version>/; the siteconfig globs for it.
+RUN set -eux; cd /tmp; \
+    wget -q https://elpa.mpcdf.mpg.de/software/tarball-archive/Releases/${ELPA_VERSION}/elpa-${ELPA_VERSION}.tar.gz; \
+    tar xzf elpa-${ELPA_VERSION}.tar.gz; cd elpa-${ELPA_VERSION}; \
+    mkdir build && cd build; \
+    ../configure \
+        CC=mpicc FC=mpifort \
+        CFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -funsafe-math-optimizations -fno-math-errno" \
+        FCFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -funsafe-math-optimizations -fno-math-errno" \
+        SCALAPACK_LDFLAGS="-L${INSTALL_DIR}/scalapack/lib -Wl,-rpath,${INSTALL_DIR}/scalapack/lib -lscalapack -lopenblas" \
+        SCALAPACK_FCFLAGS="-L${INSTALL_DIR}/scalapack/lib" \
+        --prefix=${INSTALL_DIR}/elpa-${ELPA_VERSION} \
+        --enable-openmp --disable-avx512; \
+    make -j "$(nproc)"; make install; \
+    ln -sfn ${INSTALL_DIR}/elpa-${ELPA_VERSION} ${INSTALL_DIR}/elpa; \
+    cd /; rm -rf /tmp/elpa-${ELPA_VERSION}*
+
+# --- MAGMA (GPU dense linear algebra; GPAW magma=True, the GPU eigensolver) --
+# CUDA build for Ampere (A40/A100) + Hopper (H200/GH200). Compiling GPU kernels
+# for multiple arches is a long (~30-40 min) layer; it caches until the version
+# bumps. MAGMA is GPU-only in GPAW (c/gpu/cpp/magma), so it pairs with the
+# GPAW_BUILD_GPU=1 build below.
+RUN set -eux; cd /tmp; \
+    wget -q https://icl.utk.edu/projectsfiles/magma/downloads/magma-${MAGMA_VERSION}.tar.gz; \
+    tar xzf magma-${MAGMA_VERSION}.tar.gz; \
+    cmake -S magma-${MAGMA_VERSION} -B /tmp/magma-build \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}/magma \
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+        -DMAGMA_ENABLE_CUDA=ON -DGPU_TARGET="Ampere Hopper" \
+        -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so \
+        -DLAPACK_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so; \
+    cmake --build /tmp/magma-build -j "$(nproc)"; \
+    cmake --install /tmp/magma-build; \
+    cd /; rm -rf /tmp/magma-build /tmp/magma-${MAGMA_VERSION}*
+
 # --- GPU Python stack: torch 2.8.0 (fairchem ceiling) + cupy ----------------
 RUN set -eux; \
     uv pip install torch==2.8.0 torchvision==0.23.0 \
@@ -149,7 +189,8 @@ COPY siteconfig.py /opt/build/siteconfig.py
 COPY src/gpaw /opt/src/gpaw
 RUN set -eux; cd /opt/src/gpaw; \
     rm -rf build _gpaw*.so gpaw.egg-info; \
-    GPAW_CONFIG=/opt/build/siteconfig.py pip install --no-build-isolation -v -e .; \
+    GPAW_BUILD_GPU=1 GPAW_CONFIG=/opt/build/siteconfig.py \
+        pip install --no-build-isolation -v -e .; \
     cp _gpaw.*.so /opt/venv/lib/python3.12/site-packages/
 
 # --- editable dev packages (bind a cluster checkout over /opt/src/<n>) -------
