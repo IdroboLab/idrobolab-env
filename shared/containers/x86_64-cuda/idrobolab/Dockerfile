@@ -192,6 +192,7 @@ COPY siteconfig.py /opt/build/siteconfig.py
 COPY src/gpaw /opt/src/gpaw
 RUN set -eux; cd /opt/src/gpaw; \
     rm -rf build _gpaw*.so gpaw.egg-info; \
+    pip install pybind11; \
     GPAW_BUILD_GPU=1 GPAW_CONFIG=/opt/build/siteconfig.py \
         pip install --no-build-isolation -v -e .; \
     cp _gpaw.*.so /opt/venv/lib/python3.12/site-packages/
