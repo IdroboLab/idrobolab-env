@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stage the build context for the idrobolab container. Run from this directory,
-# then build with docker/podman (see README) or the .def.
+# then build with docker/podman (see README).
 #
 # Unlike another image's recipe, requirements-idrobolab.txt is HAND-MAINTAINED
 # (its packages — nionswift, ptyrad, hiphive, pymatgen, fairchem, … — are not
