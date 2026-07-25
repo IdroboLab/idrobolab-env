@@ -35,13 +35,13 @@ The container (`otherimage_delta.sif`) ships `dask 2026.7.0` and `cupy-cuda12x
 dask-cuda` would therefore fail to resolve (or downgrade the whole stack).
 
 The **container build** resolves this once (see
-`shared/containers/otherimage/otherimage_delta.def`): dask-cuda is installed
+`shared/containers/otherimage/Dockerfile`): dask-cuda is installed
 `--no-deps` against the existing `dask 2026.7`, with only its non-dask runtime
 deps added (`nvidia-ml-py`, `cuda-core[cu12]<1.0` — the 1.x line drops the
 `cuda.core.experimental` namespace dask-cuda 26.6 imports). This pairing is
 verified to import against `distributed 2026.7`; the runtime cluster is what
 this job checks on a GPU node. When a dask-cuda built for `dask 2026.7` ships
-(RAPIDS ≥ 26.8), the `.def` switches to a normal `pip install dask-cuda`.
+(RAPIDS ≥ 26.8), the `Dockerfile` switches to a normal `pip install dask-cuda`.
 
 The branch abTEM installs/imports cleanly against the container's `dask 2026.7`
 (its `dask!=2026.1.1` pin is satisfied), so injecting it via `PYTHONPATH` needs
@@ -67,7 +67,7 @@ a dask that abTEM permits:
 | 26.8 *(unreleased)* | ~2026.7 | would be ✅ — the real fix |
 
 So Plan B is **dask-cuda 25.12.0**, letting it pull its RAPIDS-matched
-`dask`/`distributed` 2025.9.1. In the `.def`, replace the dask-cuda block with:
+`dask`/`distributed` 2025.9.1. In the `Dockerfile`, replace the dask-cuda block with:
 
 ```bash
 # Plan B (supported combo): downgrades dask/distributed to 2025.9.1 container-wide.
