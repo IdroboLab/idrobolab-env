@@ -19,6 +19,3 @@ echo ">> run: apptainer exec --nv $SIF python script.py   (see jobs/ for Slurm)"
 # --- local OCI build then convert (no registry): ------------------------------
 #   (cd ../shared/containers/otherimage && ./prepare_build_context.sh && podman build -t otherimage:latest .)
 #   apptainer build "$SIF" docker-daemon://otherimage:latest
-# --- in-devcontainer apptainer from the .def (no layer caching): --------------
-#   (cd ../shared/containers/otherimage && ./prepare_build_context.sh \
-#      && APPTAINER_IGNORE_SUBUID=1 apptainer build "$SIF" otherimage_delta.def)
