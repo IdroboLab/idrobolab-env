@@ -264,6 +264,13 @@ ENV PATH=${INSTALL_DIR}/lammps/bin:${PATH} \
     LD_LIBRARY_PATH=${INSTALL_DIR}/lammps/lib:${LD_LIBRARY_PATH} \
     PYTHONPATH=${INSTALL_DIR}/lammps/python:${PYTHONPATH:-}
 
+# Runtime GPU self-test (the GPU paths cannot be exercised at build time): run
+# it inside the container ON A GPU NODE to verify the GPU package + KOKKOS-CUDA
+# backends run and agree with CPU.
+#   apptainer exec --nv idrobolab.sif lammps-gpu-selftest
+COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
+RUN chmod +x /usr/local/bin/lammps-gpu-selftest
+
 # --- build-time sanity (CPU-only; GPU checks need a real node) ---------------
 RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen,phonopy,hiphive,abtem,torch; \
 assert hasattr(_gpaw,'new_blacs_context'),'GPAW built without ScaLAPACK'; \
