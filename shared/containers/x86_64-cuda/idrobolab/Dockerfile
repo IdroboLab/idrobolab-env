@@ -203,6 +203,67 @@ RUN pip install -e /opt/src/gpaw-weaver
 COPY src/abTEM /opt/src/abTEM
 RUN pip install -e /opt/src/abTEM
 
+# --- LAMMPS (stable): GPU (CUDA sm_80) + KOKKOS (CUDA, AMPERE80) + 25 packages
+# GPU package via CUDA and KOKKOS via CUDA (Kokkos_ARCH AMPERE80 — native
+# A40/A100, PTX-JIT on Hopper). H5MD needs HDF5 (apt, serial); FFTW from
+# /opt/software; kim-api auto-downloaded. ML-QUIP downloads and builds the
+# libAtoms/QUIP library (Fortran + GAP, single-threaded; gfortran already
+# present). LONG build (Kokkos-CUDA GPU kernels + GPU package + kim-api + QUIP +
+# 25 packages). ML-IAP core only (no Python coupling; that needs cython). The
+# python module is exposed via PYTHONPATH. PYTHONDONTWRITEBYTECODE keeps the
+# build from scattering .pyc where cmake runs python for NumPy detection.
+#
+# Build-time tests are opt-in: `--build-arg LAMMPS_RUN_TESTS=1` builds a SECOND,
+# CPU-only LAMMPS (KOKKOS-OpenMP) with ENABLE_TESTING and runs the full ctest
+# suite. A separate CPU build is required because the CUDA liblammps cannot be
+# loaded in the GPU-less `docker build` sandbox (no driver libcuda.so.1). This
+# verifies the CPU side of every package in the container's MPICH/FFTW/HDF5
+# toolchain; the GPU-accelerated styles must be verified on a real GPU node.
+# It roughly doubles the LAMMPS build time (a second QUIP build), so keep it 0
+# for production images and set 1 only for verification builds.
+ARG LAMMPS_BRANCH=stable
+ARG LAMMPS_RUN_TESTS=0
+RUN set -eux; \
+    apt-get update; apt-get install -y --no-install-recommends libhdf5-dev; \
+    rm -rf /var/lib/apt/lists/*; \
+    export PYTHONDONTWRITEBYTECODE=1; \
+    git clone --depth 1 -b "${LAMMPS_BRANCH}" https://github.com/lammps/lammps.git /tmp/lammps-src; \
+    cd /tmp/lammps-src; \
+    PKGS="-D PKG_EXTRA-PAIR=on -D PKG_H5MD=on -D PKG_TALLY=on -D PKG_EXTRA-FIX=on \
+        -D PKG_MISC=on -D PKG_SMTBQ=on -D PKG_REAXFF=on -D PKG_KIM=on -D DOWNLOAD_KIM=on \
+        -D PKG_KSPACE=on -D PKG_MANYBODY=on -D PKG_ML-SNAP=on -D PKG_ML-IAP=on \
+        -D PKG_ML-QUIP=on -D DOWNLOAD_QUIP=on -D PKG_MOLECULE=on \
+        -D PKG_PYTHON=on -D PKG_INTERLAYER=on -D PKG_OPENMP=on -D PKG_QTB=on \
+        -D PKG_OPT=on -D PKG_COMPRESS=on -D PKG_PLUGIN=on -D PKG_PHONON=on -D PKG_MEAM=on"; \
+    cmake -S cmake -B build \
+        -C cmake/presets/kokkos-cuda.cmake \
+        -D CMAKE_INSTALL_PREFIX=${INSTALL_DIR}/lammps \
+        -D CMAKE_BUILD_TYPE=Release \
+        -D CMAKE_PREFIX_PATH=${INSTALL_DIR}/fftw \
+        -D BUILD_MPI=on -D BUILD_OMP=on -D BUILD_SHARED_LIBS=on -D LAMMPS_EXCEPTIONS=on \
+        -D Kokkos_ARCH_AMPERE80=on -D FFT=FFTW3 \
+        -D PKG_GPU=on -D GPU_API=cuda -D GPU_ARCH=sm_80 \
+        ${PKGS}; \
+    cmake --build build -j"$(nproc)"; \
+    cmake --install build; \
+    cp -a build/kim_build-prefix/lib/libkim-api.so* ${INSTALL_DIR}/lammps/lib/ 2>/dev/null || true; \
+    mkdir -p ${INSTALL_DIR}/lammps/python; \
+    cp -a python/lammps ${INSTALL_DIR}/lammps/python/lammps; \
+    if [ "${LAMMPS_RUN_TESTS}" = "1" ]; then \
+        cmake -S cmake -B build-test \
+            -C cmake/presets/kokkos-openmp.cmake \
+            -D CMAKE_BUILD_TYPE=Release -D CMAKE_PREFIX_PATH=${INSTALL_DIR}/fftw \
+            -D BUILD_MPI=on -D BUILD_OMP=on -D BUILD_SHARED_LIBS=on -D LAMMPS_EXCEPTIONS=on \
+            -D FFT=FFTW3 -D FFT_KOKKOS=FFTW3 -D ENABLE_TESTING=on ${PKGS}; \
+        cmake --build build-test -j"$(nproc)"; \
+        export LD_LIBRARY_PATH="/tmp/lammps-src/build-test:/tmp/lammps-src/build-test/kim_build-prefix/lib:${INSTALL_DIR}/fftw/lib:${LD_LIBRARY_PATH:-}"; \
+        ctest --test-dir build-test -j4 --output-on-failure --timeout 600; \
+    fi; \
+    cd /; rm -rf /tmp/lammps-src
+ENV PATH=${INSTALL_DIR}/lammps/bin:${PATH} \
+    LD_LIBRARY_PATH=${INSTALL_DIR}/lammps/lib:${LD_LIBRARY_PATH} \
+    PYTHONPATH=${INSTALL_DIR}/lammps/python:${PYTHONPATH:-}
+
 # --- build-time sanity (CPU-only; GPU checks need a real node) ---------------
 RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen,phonopy,hiphive,abtem,torch; \
 assert hasattr(_gpaw,'new_blacs_context'),'GPAW built without ScaLAPACK'; \
