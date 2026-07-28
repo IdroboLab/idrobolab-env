@@ -264,12 +264,16 @@ ENV PATH=${INSTALL_DIR}/lammps/bin:${PATH} \
     LD_LIBRARY_PATH=${INSTALL_DIR}/lammps/lib:${LD_LIBRARY_PATH} \
     PYTHONPATH=${INSTALL_DIR}/lammps/python:${PYTHONPATH:-}
 
-# Runtime GPU self-test (the GPU paths cannot be exercised at build time): run
-# it inside the container ON A GPU NODE to verify the GPU package + KOKKOS-CUDA
-# backends run and agree with CPU.
+# Runtime GPU tests (the GPU paths cannot be exercised at build time): run these
+# inside the container ON A GPU NODE.
+#   lammps-gpu-selftest : quick smoke test — GPU package (-sf gpu) + KOKKOS-CUDA
+#                         (-sf kk) run an LJ melt and match the CPU energy.
+#   lammps-gpu-ctest    : builds the force-style unit tests with the GPU package
+#                         and runs ctest, so PairStyle.gpu runs on the device.
 #   apptainer exec --nv idrobolab.sif lammps-gpu-selftest
 COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
-RUN chmod +x /usr/local/bin/lammps-gpu-selftest
+COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
+RUN chmod +x /usr/local/bin/lammps-gpu-selftest /usr/local/bin/lammps-gpu-ctest
 
 # --- build-time sanity (CPU-only; GPU checks need a real node) ---------------
 RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen,phonopy,hiphive,abtem,torch; \
