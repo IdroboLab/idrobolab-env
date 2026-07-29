@@ -212,6 +212,9 @@ RUN pip install -e /opt/src/abTEM
 # 25 packages). ML-IAP core only (no Python coupling; that needs cython). The
 # python module is exposed via PYTHONPATH. PYTHONDONTWRITEBYTECODE keeps the
 # build from scattering .pyc where cmake runs python for NumPy detection.
+# The GPU package links the CUDA driver API (libcuda.so.1), absent in the
+# GPU-less build sandbox, so we symlink the CUDA toolkit's stub (SONAME
+# libcuda.so.1) onto the link path; the real driver is injected at runtime (--nv).
 #
 # Build-time tests are opt-in: `--build-arg LAMMPS_RUN_TESTS=1` builds a SECOND,
 # CPU-only LAMMPS (KOKKOS-OpenMP) with ENABLE_TESTING and runs the full ctest
@@ -224,11 +227,14 @@ RUN pip install -e /opt/src/abTEM
 ARG LAMMPS_BRANCH=stable
 ARG LAMMPS_RUN_TESTS=0
 RUN set -eux; \
-    apt-get update; apt-get install -y --no-install-recommends libhdf5-dev; \
+    apt-get update; apt-get install -y --no-install-recommends libhdf5-dev libzstd-dev ffmpeg; \
     rm -rf /var/lib/apt/lists/*; \
     export PYTHONDONTWRITEBYTECODE=1; \
     git clone --depth 1 -b "${LAMMPS_BRANCH}" https://github.com/lammps/lammps.git /tmp/lammps-src; \
     cd /tmp/lammps-src; \
+    STUBS=/usr/local/cuda/lib64/stubs; \
+    [ -e "$STUBS/libcuda.so" ] || STUBS="$(dirname "$(find /usr/local -name libcuda.so -path '*stubs*' 2>/dev/null | head -1)")"; \
+    ln -sf "$STUBS/libcuda.so" "$STUBS/libcuda.so.1"; export LIBRARY_PATH="${LIBRARY_PATH:-}:$STUBS"; \
     PKGS="-D PKG_EXTRA-PAIR=on -D PKG_H5MD=on -D PKG_TALLY=on -D PKG_EXTRA-FIX=on \
         -D PKG_MISC=on -D PKG_SMTBQ=on -D PKG_REAXFF=on -D PKG_KIM=on -D DOWNLOAD_KIM=on \
         -D PKG_KSPACE=on -D PKG_MANYBODY=on -D PKG_ML-SNAP=on -D PKG_ML-IAP=on \

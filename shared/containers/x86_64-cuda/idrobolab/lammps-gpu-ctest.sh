@@ -48,6 +48,15 @@ trap 'rm -rf "$(dirname "$SRC")"' EXIT
 git clone --depth 1 -b "$BR" https://github.com/lammps/lammps.git "$SRC"
 cd "$SRC"
 
+# The GPU package links the CUDA driver API (libcuda.so.1). --nv exposes the real
+# driver on the *runtime* path, but the linker needs it on the *link* path, so
+# make the CUDA toolkit stub (SONAME libcuda.so.1) findable there as a fallback.
+STUBS=/usr/local/cuda/lib64/stubs
+if [ -e "$STUBS/libcuda.so" ]; then
+    ln -sf "$STUBS/libcuda.so" "$STUBS/libcuda.so.1" 2>/dev/null || true
+    export LIBRARY_PATH="${LIBRARY_PATH:-}:$STUBS"
+fi
+
 # GPU package + the pair-style packages that carry /gpu variants; ENABLE_TESTING
 # fetches googletest and builds the force-style test binaries. No KOKKOS-CUDA
 # (no device unit test), no ML-QUIP/KIM (no /gpu pair style, and slow), so the
