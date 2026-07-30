@@ -66,6 +66,7 @@ cmake -S cmake -B build \
     -D BUILD_MPI=on -D BUILD_OMP=on -D BUILD_SHARED_LIBS=on -D LAMMPS_EXCEPTIONS=on \
     -D FFT=FFTW3 -D ENABLE_TESTING=on \
     -D PKG_GPU=on -D GPU_API=cuda -D GPU_ARCH="$SM" \
+    -D CMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link,$STUBS" \
     -D PKG_EXTRA-PAIR=on -D PKG_MANYBODY=on -D PKG_MOLECULE=on -D PKG_KSPACE=on \
     -D PKG_EXTRA-FIX=on -D PKG_MISC=on -D PKG_REAXFF=on -D PKG_ML-SNAP=on \
     -D PKG_ML-IAP=on -D PKG_INTERLAYER=on -D PKG_MEAM=on -D PKG_OPENMP=on \

@@ -213,8 +213,10 @@ RUN pip install -e /opt/src/abTEM
 # python module is exposed via PYTHONPATH. PYTHONDONTWRITEBYTECODE keeps the
 # build from scattering .pyc where cmake runs python for NumPy detection.
 # The GPU package links the CUDA driver API (libcuda.so.1), absent in the
-# GPU-less build sandbox, so we symlink the CUDA toolkit's stub (SONAME
-# libcuda.so.1) onto the link path; the real driver is injected at runtime (--nv).
+# GPU-less build sandbox: liblammps.so links against the toolkit's stub, but the
+# lmp exe must then resolve that INDIRECT dep. Symlink the stub to the versioned
+# name and point ld at it with -Wl,-rpath-link (-L/LIBRARY_PATH is NOT consulted
+# for indirect deps); the real driver is injected at runtime (--nv).
 #
 # Build-time tests are opt-in: `--build-arg LAMMPS_RUN_TESTS=1` builds a SECOND,
 # CPU-only LAMMPS (KOKKOS-OpenMP) with ENABLE_TESTING and runs the full ctest
@@ -249,6 +251,7 @@ RUN set -eux; \
         -D BUILD_MPI=on -D BUILD_OMP=on -D BUILD_SHARED_LIBS=on -D LAMMPS_EXCEPTIONS=on \
         -D Kokkos_ARCH_AMPERE80=on -D FFT=FFTW3 \
         -D PKG_GPU=on -D GPU_API=cuda -D GPU_ARCH=sm_80 \
+        -D CMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link,$STUBS" \
         ${PKGS}; \
     cmake --build build -j"$(nproc)"; \
     cmake --install build; \
