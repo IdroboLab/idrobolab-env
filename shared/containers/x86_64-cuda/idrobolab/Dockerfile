@@ -34,11 +34,11 @@ ARG QE_GPU_ARCHS
 COPY install-qe-gpu.sh /tmp/install-qe-gpu.sh
 RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" bash /tmp/install-qe-gpu.sh
 
-# ===== idrobolab final image ================================================
-FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
-
-LABEL org.opencontainers.image.authors="IdroboLab (https://github.com/IdroboLab)"
-LABEL purpose="idrobolab — DFT/multislice/ptychography/ML-potentials/EM-analysis"
+# ===== builder stage (full -devel toolchain; discarded after the split) ======
+# Compiles the whole stack; nothing here ships — the slim -runtime final stage
+# below COPY --from=s only the built artifacts, dropping the nvcc/headers/static
+# CUDA libs + the apt build toolchain.
+FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
@@ -286,29 +286,54 @@ RUN set -eux; \
         ctest --test-dir build-test -j4 --output-on-failure --timeout 600; \
     fi; \
     cd /; rm -rf /tmp/lammps-src
-ENV PATH=${INSTALL_DIR}/lammps/bin:${PATH} \
-    LD_LIBRARY_PATH=${INSTALL_DIR}/lammps/lib:${LD_LIBRARY_PATH} \
-    PYTHONPATH=${INSTALL_DIR}/lammps/python:${PYTHONPATH:-}
+# (LAMMPS runtime env is set in the final stage below, not here.)
 
-# Runtime GPU tests (the GPU paths cannot be exercised at build time): run these
-# inside the container ON A GPU NODE.
-#   lammps-gpu-selftest : quick smoke test — GPU package (-sf gpu) + KOKKOS-CUDA
-#                         (-sf kk) run an LJ melt and match the CPU energy.
-#   lammps-gpu-ctest    : builds the force-style unit tests with the GPU package
-#                         and runs ctest, so PairStyle.gpu runs on the device.
-#   apptainer exec --nv idrobolab.sif lammps-gpu-selftest
+# ============================================================================
+# ===== idrobolab final image — slim runtime =================================
+# -cudnn-runtime base + COPY --from=builder the artifacts + runtime libs only.
+# GPAW's _gpaw.so, MAGMA and LAMMPS link the CUDA runtime libs in this base;
+# torch/cupy bundle their own nvidia-* in the venv; libcuda.so.1 comes from --nv.
+# ============================================================================
+FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
+
+LABEL org.opencontainers.image.authors="IdroboLab (https://github.com/IdroboLab)"
+LABEL purpose="idrobolab — DFT/multislice/ptychography/ML-potentials/EM-analysis"
+
+ENV INSTALL_DIR=/opt/software \
+    VIRTUAL_ENV=/opt/venv \
+    MPLCONFIGDIR=/tmp/matplotlib
+ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/opt/software/lammps/bin:/opt/software/qe/bin:/usr/local/bin:${PATH} \
+    LD_LIBRARY_PATH=/opt/software/mpich/lib:/opt/software/libxc/lib:/opt/software/libvdwxc/lib:/opt/software/fftw/lib:/opt/software/scalapack/lib:/opt/software/elpa/lib:/opt/software/magma/lib:/opt/software/lammps/lib \
+    PYTHONPATH=/opt/software/lammps/python
+
+# Runtime shared libs only (no -dev/compilers). Includes a Qt/X11/GL runtime
+# group for nionswift/ptyrad (QT_QPA_PLATFORM=xcb). Best-effort noble names; the
+# sanity + ldd gate below fail the build and name any missing .so.
+RUN set -eux; \
+    export DEBIAN_FRONTEND=noninteractive; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        python3.12 python3.12-venv ca-certificates \
+        libgfortran5 libquadmath0 libgomp1 \
+        libopenblas0-pthread \
+        libhwloc15 libevent-2.1-7 libfabric1 \
+        libssl3 libcurl4t64 \
+        libhdf5-103-1t64 libzstd1 ffmpeg \
+        libgl1 libglib2.0-0 libx11-6 libxcb1 libxkbcommon0 libdbus-1-3 fontconfig; \
+    apt-get clean; rm -rf /var/lib/apt/lists/*
+
+# --- built artifacts from the builder stage ---------------------------------
+COPY --from=builder /opt/software /opt/software
+COPY --from=builder /opt/venv     /opt/venv
+COPY --from=builder /opt/src      /opt/src
+COPY --from=builder /usr/local/bin/bader /usr/local/bin/bader
+COPY --from=qe-builder /opt/qe-dist ${INSTALL_DIR}/qe
+
 COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
 COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
 RUN chmod +x /usr/local/bin/lammps-gpu-selftest /usr/local/bin/lammps-gpu-ctest
 
-# --- Quantum ESPRESSO (GPU) from the qe-builder stage -----------------------
-# Ship only the QE install + its staged, rpath'd runtime .so files (the NVHPC
-# SDK stays behind in the builder stage). GPU runs need a real node; the driver
-# libcuda.so.1 is injected at runtime via --nv.
-COPY --from=qe-builder /opt/qe-dist ${INSTALL_DIR}/qe
-ENV PATH=${INSTALL_DIR}/qe/bin:${PATH}
-
-# --- build-time sanity (CPU-only; GPU checks need a real node) ---------------
+# --- build-time sanity: the slim image must still import the full stack ------
 RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen,phonopy,hiphive,abtem,torch; \
 assert hasattr(_gpaw,'new_blacs_context'),'GPAW built without ScaLAPACK'; \
 assert hasattr(_gpaw,'FFTWPlan'),'GPAW built without FFTW'; \
@@ -316,6 +341,14 @@ print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version_
  && python -c "import fairchem.core, orb_models, ptyrad; print('ML/ptycho stack ok')" \
  && python -c "import nion.data; print('nionswift (headless data) ok')" \
  && mpichversion | head -1
+
+# --- runtime lib-closure gate for the CUDA binaries (libcuda.so.1 excepted) --
+RUN set -eu; for so in /opt/software/lammps/lib/liblammps.so /opt/software/qe/bin/pw.x; do \
+      [ -e "$so" ] || { echo "missing artifact $so"; exit 1; }; \
+      miss="$(ldd "$so" 2>/dev/null | awk '/not found/ && !/libcuda/{print $1}')"; \
+      if [ -n "$miss" ]; then echo "UNRESOLVED runtime libs for $so:"; echo "$miss"; exit 1; fi; \
+      echo "$so: runtime libs resolved (libcuda.so.1 expected at --nv runtime)"; \
+    done
 
 # --- runtime environment ----------------------------------------------------
 ENV OMP_NUM_THREADS=1 \
