@@ -18,6 +18,23 @@
 # editable source trees are copied late so a pin/source change rebuilds only
 # from there.
 # ============================================================================
+# ===== Quantum ESPRESSO GPU builder stage (NVIDIA HPC SDK / nvfortran) =======
+# QE's GPU path needs nvfortran, which lives only in the multi-GB NVHPC SDK.
+# Build QE in the SDK image here; the final stage COPY --from=s only the QE
+# install + its runtime .so files (install-qe-gpu.sh), so the SDK never reaches
+# the shipped image. UNVERIFIED — built blind (no nvfortran/GPU/docker in the dev
+# env); the NVHPC image tag, MPI/lib paths and runtime-lib collection will likely
+# need iteration on a real build host. Override the tag: --build-arg NVHPC_IMAGE=.
+ARG NVHPC_IMAGE=nvcr.io/nvidia/nvhpc:25.1-devel-cuda12.6-ubuntu24.04
+ARG QE_VERSION=qe-7.6
+ARG QE_GPU_ARCHS=sm_80
+FROM ${NVHPC_IMAGE} AS qe-builder
+ARG QE_VERSION
+ARG QE_GPU_ARCHS
+COPY install-qe-gpu.sh /tmp/install-qe-gpu.sh
+RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" bash /tmp/install-qe-gpu.sh
+
+# ===== idrobolab final image ================================================
 FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
 
 LABEL org.opencontainers.image.authors="IdroboLab (https://github.com/IdroboLab)"
@@ -283,6 +300,13 @@ ENV PATH=${INSTALL_DIR}/lammps/bin:${PATH} \
 COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
 COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
 RUN chmod +x /usr/local/bin/lammps-gpu-selftest /usr/local/bin/lammps-gpu-ctest
+
+# --- Quantum ESPRESSO (GPU) from the qe-builder stage -----------------------
+# Ship only the QE install + its staged, rpath'd runtime .so files (the NVHPC
+# SDK stays behind in the builder stage). GPU runs need a real node; the driver
+# libcuda.so.1 is injected at runtime via --nv.
+COPY --from=qe-builder /opt/qe-dist ${INSTALL_DIR}/qe
+ENV PATH=${INSTALL_DIR}/qe/bin:${PATH}
 
 # --- build-time sanity (CPU-only; GPU checks need a real node) ---------------
 RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen,phonopy,hiphive,abtem,torch; \
