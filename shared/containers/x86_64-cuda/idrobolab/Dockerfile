@@ -78,6 +78,10 @@ RUN set -eux; \
         libxcb-randr0 libxcb-render-util0 libxcb-shape0; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
+# --- Bader charge analysis (Henkelman) — precompiled static binary ----------
+RUN curl -fsSL https://theory.cm.utexas.edu/henkelman/code/bader/download/bader_lnx_64.tar.gz \
+    | tar xz -C /usr/local/bin && chmod +x /usr/local/bin/bader
+
 # --- MPICH (ch4:ofi; MPICH ABI libmpi.so.12) --------------------------------
 RUN set -eux; cd /tmp; \
     wget -q https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz; \
