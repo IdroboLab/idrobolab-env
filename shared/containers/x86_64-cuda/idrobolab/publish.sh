@@ -24,6 +24,13 @@ fi
 echo ">> building ${IMAGE}:${TAG}  (engine: ${ENGINE##*/})"
 "$ENGINE" build -t "${IMAGE}:${TAG}" .
 
+# An unauthenticated push to GHCR fails as "Requesting bearer token: 403
+# Forbidden" (not 401), which reads like a permissions problem rather than a
+# missing login. Log in explicitly, as otherimage/publish.sh does.
+: "${GITHUB_PACKAGE_TOKEN:?set GITHUB_PACKAGE_TOKEN to a PAT with write:packages}"
+echo ">> logging in to ghcr.io  (engine: ${ENGINE##*/})"
+echo "$GITHUB_PACKAGE_TOKEN" | "$ENGINE" login ghcr.io -u <username> --password-stdin
+
 echo ">> pushing ${IMAGE}:${TAG}"
 "$ENGINE" push "${IMAGE}:${TAG}"
 
