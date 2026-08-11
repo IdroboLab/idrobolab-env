@@ -313,11 +313,16 @@ ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/opt/software/lammps/bin:/opt/sof
 # Runtime shared libs only (no -dev/compilers). Includes a Qt/X11/GL runtime
 # group for nionswift/ptyrad (QT_QPA_PLATFORM=xcb). Best-effort noble names; the
 # sanity + ldd gate below fail the build and name any missing .so.
+# libpython3.12t64 is the SHARED libpython, which liblammps.so needs because
+# LAMMPS is built with PKG_PYTHON=on. It is a separate package on noble: the
+# python3.12 interpreter does not link libpython, so the interpreter runs fine
+# without it and only the ldd closure catches the gap.
 RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         python3.12 python3.12-venv ca-certificates \
+        libpython3.12t64 \
         libgfortran5 libquadmath0 libgomp1 \
         libopenblas0-pthread \
         libhwloc15 libevent-2.1-7 libfabric1 \
@@ -353,12 +358,14 @@ print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version_
  && mpichversion | head -1
 
 # --- runtime lib-closure gate for the CUDA binaries (libcuda.so.1 excepted) --
-RUN set -eu; for so in /opt/software/lammps/lib/liblammps.so /opt/software/qe/bin/pw.x; do \
-      [ -e "$so" ] || { echo "missing artifact $so"; exit 1; }; \
+# Checks every binary before failing, so one build names ALL the gaps rather
+# than only the first — each rebuild here is expensive.
+RUN set -eu; rc=0; for so in /opt/software/lammps/lib/liblammps.so /opt/software/qe/bin/pw.x; do \
+      [ -e "$so" ] || { echo "missing artifact $so"; rc=1; continue; }; \
       miss="$(ldd "$so" 2>/dev/null | awk '/not found/ && !/libcuda/{print $1}')"; \
-      if [ -n "$miss" ]; then echo "UNRESOLVED runtime libs for $so:"; echo "$miss"; exit 1; fi; \
-      echo "$so: runtime libs resolved (libcuda.so.1 expected at --nv runtime)"; \
-    done
+      if [ -n "$miss" ]; then echo "UNRESOLVED runtime libs for $so:"; echo "$miss"; rc=1; \
+      else echo "$so: runtime libs resolved (libcuda.so.1 expected at --nv runtime)"; fi; \
+    done; exit $rc
 
 # --- runtime environment ----------------------------------------------------
 ENV OMP_NUM_THREADS=1 \
