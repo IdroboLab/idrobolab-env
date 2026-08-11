@@ -338,10 +338,16 @@ COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
 RUN chmod +x /usr/local/bin/lammps-gpu-selftest /usr/local/bin/lammps-gpu-ctest
 
 # --- build-time sanity: the slim image must still import the full stack ------
-RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen,phonopy,hiphive,abtem,torch; \
+# pymatgen 2026.x is an umbrella namespace dist (Requires-Dist: pymatgen-core)
+# with no pymatgen/__init__.py, so it has no __version__ and a bare
+# `import pymatgen` would succeed on an empty namespace dir. Import
+# pymatgen.core (the dist that carries Structure/Lattice) and read the version
+# from the installed metadata instead.
+RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen.core,phonopy,hiphive,abtem,torch; \
+from importlib.metadata import version; \
 assert hasattr(_gpaw,'new_blacs_context'),'GPAW built without ScaLAPACK'; \
 assert hasattr(_gpaw,'FFTWPlan'),'GPAW built without FFTW'; \
-print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version__,'| pymatgen',pymatgen.__version__)" \
+print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version__,'| pymatgen',version('pymatgen'))" \
  && python -c "import fairchem.core, orb_models, ptyrad; print('ML/ptycho stack ok')" \
  && python -c "import nion.data; print('nionswift (headless data) ok')" \
  && mpichversion | head -1
