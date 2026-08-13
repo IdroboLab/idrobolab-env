@@ -36,6 +36,10 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 # (-bootstrap fork is required so Hydra spawns ranks locally instead of via
 #  the host `srun`, which is absent inside the container)
 # and set --ntasks-per-node=1 --cpus-per-task=64 as-is (hydra spawns inside).
+# That payload ALSO needs `export GPAW_MPI_BACKEND=cgpaw` if the script uses
+# GPAW: 26.7.0+ aborts at import under an MPI launcher otherwise (see
+# gpaw_cpu_singlenode.sbatch). Not needed for the single-process form below —
+# without a launcher no PMI_SIZE is exported and the check stays quiet.
 
 echo "SIF=$SIF  binds=$BINDS  CUDA_VISIBLE_DEVICES on node: 0-3"
 time apptainer exec --nv --bind "$BINDS" "$SIF" \

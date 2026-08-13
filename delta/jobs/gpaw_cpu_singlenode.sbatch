@@ -35,6 +35,17 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 
 export OMP_NUM_THREADS=1                # pure MPI; the image defaults to 1 anyway
 
+# REQUIRED for the GPAW in this image (26.7.1b1). Since 26.7.0 GPAW refuses to
+# import when it detects an MPI launcher (mpiexec/Hydra exports PMI_SIZE) but
+# the MPI backend is still the default 'serial', aborting with
+#   RuntimeError: GPAW appears to be running inside MPI launcher,
+#                 but MPI parallelism is disabled.
+# `gpaw python` sets this itself, but it swallows script arguments, so the
+# projects use plain `python` and must export the variable. Apptainer passes
+# the host environment into the container by default, so a plain export here
+# reaches the ranks Hydra spawns inside.
+export GPAW_MPI_BACKEND=cgpaw
+
 # NOTE: do NOT wrap this in `srun`. The container's mpiexec (Hydra) launches
 # the ranks itself. `-bootstrap fork` forces LOCAL process spawning: without
 # it, Hydra sees the Slurm allocation ($SLURM_* env) and tries to launch via

@@ -81,8 +81,9 @@ sha256sum $PROJECTS_BASE/software/containers/otherimage_delta.sif   # record for
 export APPTAINER_CACHEDIR=$SCRATCH/.apptainer        # keep caches off $HOME (quota)
 
 # smoke tests (interactive or short jobs):
-apptainer exec $SIF python -c "import gpaw, otherimage; print(gpaw.__version__)"
-apptainer exec $SIF mpiexec -bootstrap fork -n 4 python -c "from gpaw.mpi import world; print(world.rank, world.size)"
+apptainer exec $SIF python -P -c "import gpaw, otherimage; print(gpaw.__version__)"
+APPTAINERENV_GPAW_MPI_BACKEND=cgpaw apptainer exec $SIF \
+    mpiexec -bootstrap fork -n 4 python -P -c "from gpaw.mpi import world; print(world.rank, world.size)"
 srun --mpi=list                                      # note available PMI plugins
 # on a GPU node:
 apptainer exec --nv $SIF python -c "import torch; print(torch.cuda.get_device_name(0))"
@@ -94,6 +95,19 @@ both run the image's `x86-64-v3` code; no per-partition images needed
 
 ## Gotchas
 
+- **`GPAW_MPI_BACKEND=cgpaw` is mandatory under any MPI launcher.** The image
+  ships GPAW 26.7.1b1, and since 26.7.0 GPAW raises at import — *"GPAW appears
+  to be running inside MPI launcher, but MPI parallelism is disabled"* —
+  whenever it sees launcher environment (`PMI_SIZE`, `PMIX_RANK`,
+  `OMPI_COMM_WORLD_SIZE`, `I_MPI_MPIRUN`) with the default `serial` backend.
+  Both `mpiexec` (Hydra) and `srun --mpi=pmi2` export `PMI_SIZE`, so both CPU
+  scripts export the variable; `interactive_gpu.sh` sets it too so in-shell
+  `mpiexec` works. `gpaw python` would set it automatically but swallows
+  script arguments, which is why the projects use plain `python`.
+  The GPU scripts do **not** need it: they run `apptainer exec ... python`
+  straight from the batch step with no launcher, and Slurm's `SLURM_*`
+  variables alone do not trip the check. Add it if you switch one of them to
+  the commented `mpiexec` payload.
 - **Never name a working directory (or output dir) `gpaw`.** The four dev
   packages are *editable* installs in the image, so `import gpaw` resolves
   through a namespace-style finder. A `gpaw/` subdirectory in your current

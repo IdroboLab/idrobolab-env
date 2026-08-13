@@ -82,6 +82,17 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="$BINDS,$p"; done
 
 export OMP_NUM_THREADS=1                # pure MPI
 
+# REQUIRED for the GPAW in this image (26.7.1b1) — see the single-node script
+# for the full explanation. `srun --mpi=pmi2` exports PMI_SIZE, which GPAW
+# 26.7.0+ reads as "inside an MPI launcher"; without this it raises
+# RuntimeError at import instead of running.
+export GPAW_MPI_BACKEND=cgpaw
+# If the cgpaw backend cannot resolve MPI symbols once the Cray ABI libs are
+# bound over the container's MPICH (the lib-abi-mpich dir may ship only
+# libmpi.so.12, no bare libmpi.so symlink), name the soname explicitly —
+# GPAW ctypes-preloads $GPAW_MPI with RTLD_GLOBAL before initialising:
+# export GPAW_MPI=libmpi.so.12
+
 echo "SIF=$SIF  ranks=$((SLURM_JOB_NUM_NODES * ${SLURM_NTASKS_PER_NODE:-0}))"
 echo "Cray ABI: $CRAY_ABI  libfabric: $LIBFABRIC_LIB"
 time srun --mpi=pmi2 apptainer exec --bind "$BINDS" "$SIF" \
