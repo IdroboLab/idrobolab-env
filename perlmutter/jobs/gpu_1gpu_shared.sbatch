@@ -1,0 +1,52 @@
+#!/bin/bash
+# Single A100 on a SHARED GPU node — the cheapest way to run GPU work on
+# Perlmutter and the right default for development, single-GPU abTEM
+# multislice, orb-models relaxations, and anything that fits in 40 GB.
+#
+# NERSC policy: jobs needing only 1 or 2 GPUs SHOULD use the shared QOS.
+# A shared job is charged only for the fraction of the node it holds:
+#   1 GPU -> 16 physical cores + 64 GB -> 0.25 node-hour per wallclock hour
+#   2 GPU -> 32 physical cores + 128 GB -> 0.5  node-hour per wallclock hour
+# Max walltime 48 h, max half a node.
+#
+# Usage:  sbatch gpu_1gpu_shared.sbatch my_gpu_script.py [args...]
+#
+#SBATCH --job-name=eels_1gpu
+#SBATCH --account=<project>_g          # <- replace; GPU account = _g suffix
+#SBATCH --constraint=gpu
+#SBATCH --qos=shared
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32             # 32 logical = 16 physical cores
+#SBATCH --gpus=1
+#SBATCH --mem=64G
+#SBATCH --time=04:00:00
+#SBATCH --output=%x_%j.out
+
+set -euo pipefail
+
+IMAGE=${IMAGE:-ghcr.io/<username>/otherimage:latest}
+SCRIPT=${1:?usage: sbatch gpu_1gpu_shared.sbatch script.py [args]}
+shift
+
+MOUNTS=""
+for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}"; do
+    [ -n "$p" ] && [ -d "$p" ] && MOUNTS="$MOUNTS -v $p:$p"
+done
+
+# Run a cluster checkout instead of the baked-in code:
+# MOUNTS="$MOUNTS -v $SCRATCH/code/otherimage:/opt/src/otherimage"
+
+# Single process, no MPI launcher -> GPAW_MPI_BACKEND is not needed here.
+# Give the one process the threads it paid for (16 physical cores).
+THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
+
+echo "IMAGE=$IMAGE  gpus=1  mounts=$MOUNTS"
+time srun --cpu-bind=cores \
+    podman-hpc run --rm --gpu \
+        $MOUNTS --workdir "$SLURM_SUBMIT_DIR" \
+        $THREAD_ENV \
+        "$IMAGE" python "$SCRIPT" "$@"
+
+# For 2 GPUs in the same QOS: --gpus=2 --cpus-per-task=64 --mem=128G
+# (still one process; let the code see both devices).

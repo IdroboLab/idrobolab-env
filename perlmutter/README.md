@@ -10,6 +10,7 @@ via podman-hpc, OCI/Docker images only).
 |---|---|
 | [../shared/containers/otherimage/](../shared/containers/otherimage/) | The container recipe (shared with Delta) — build & publish in its README |
 | [podman-hpc.md](podman-hpc.md) | Perlmutter run notes: `podman-hpc pull`/`run`, MPI, GPU |
+| [jobs/](jobs/) | Slurm templates per node type and QOS (CPU 1/N-node, GPU shared/full-node/hbm80g/multi-node, debug, interactive) + node specs, QOS limits, charging |
 
 ## Conventions
 
