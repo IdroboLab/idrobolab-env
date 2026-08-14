@@ -47,6 +47,48 @@ apptainer build idrobolab.sif docker://ghcr.io/<username>/idrobolab:latest   # D
 podman-hpc pull ghcr.io/<username>/idrobolab:latest                          # Perlmutter
 ```
 
+### Registry access
+
+GHCR packages are **private on first push** and stay that way until the
+visibility is changed by hand. `ghcr.io/<username>/otherimage` is public;
+`ghcr.io/<username>/idrobolab` is **not**, so an unauthenticated pull fails with
+
+```
+unable to retrieve auth token: invalid username/password: unauthorized
+```
+
+which reads like a credential problem but is really "this package is not
+readable anonymously". Either flip the package to public at
+`github.com/users/<username>/packages/container/idrobolab/settings`, or log in
+on the cluster first with a PAT carrying `read:packages`:
+
+```bash
+# Perlmutter (login node — pulled images are auto-squashed and visible to
+# compute nodes, so no `podman-hpc migrate` is needed):
+podman-hpc login ghcr.io -u <username>          # paste the PAT at the prompt
+
+# Delta:
+export APPTAINER_DOCKER_USERNAME=<username>
+export APPTAINER_DOCKER_PASSWORD=$GITHUB_PACKAGE_TOKEN
+apptainer build idrobolab.sif docker://ghcr.io/<username>/idrobolab:latest
+```
+
+Check whether the package exists and your PAT can read it, from anywhere:
+
+```bash
+TOKEN=$(curl -s -u <username>:$GITHUB_PACKAGE_TOKEN \
+    "https://ghcr.io/token?service=ghcr.io&scope=repository:<username>/idrobolab:pull" \
+    | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+curl -s -H "Authorization: Bearer $TOKEN" https://ghcr.io/v2/<username>/idrobolab/tags/list
+```
+
+podman-hpc stores the login under `$XDG_RUNTIME_DIR/containers/auth.json`,
+which does not survive a logout; add
+`--authfile $HOME/.config/containers/auth.json` to `login` and `pull` to keep
+it. If the image needs to stay private long-term, NERSC's own Harbor registry
+(`registry.nersc.gov`, project-scoped, request access via help.nersc.gov) is
+the better home than a private GHCR package.
+
 Common uses:
 ```bash
 apptainer exec --nv idrobolab.sif python script.py        # GPU compute
