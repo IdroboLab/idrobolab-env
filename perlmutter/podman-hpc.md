@@ -56,6 +56,61 @@ docker push <registry>/<user>/otherimage:latest
 podman-hpc pull <registry>/<user>/otherimage:latest
 ```
 
+## Image storage
+
+podman-hpc keeps **two** stores, which is what makes `migrate` necessary:
+
+| Store | Contents | Visible to compute nodes |
+|---|---|---|
+| local (graphroot) | ordinary podman layer store — what `build` and `pull` write first | no, login-node-local |
+| squash store | each image flattened to one squashfs file | **yes** — this is the one jobs read |
+
+`pull` populates both automatically; `build` populates only the local store,
+hence `podman-hpc migrate <tag>`. `podman-hpc images` lists both copies, the
+squashed one flagged read-only.
+
+Upstream defaults are `graph_root=/tmp/{uid}_hpc/storage` and
+`run_root=/tmp/{uid}_hpc`; NERSC overrides them site-wide. Print the values
+actually in force rather than trusting either:
+
+```bash
+podman-hpc --help | grep -A2 squash-dir     # resolved squash-dir default
+podman-hpc info | grep -iE "graphroot|runroot"
+```
+
+Both are customisable. The flag is per-invocation and goes **before** the
+subcommand; everything else is an env var named after the config key,
+uppercased and prefixed (`graph_root` -> `PODMANHPC_GRAPH_ROOT`):
+
+```bash
+podman-hpc --squash-dir /global/cfs/cdirs/<project>/shared_images pull <image>
+
+export PODMANHPC_GRAPH_ROOT=$SCRATCH/podman/storage
+export PODMANHPC_RUN_ROOT=$SCRATCH/podman/run
+export PODMANHPC_ADDITIONAL_STORES=/global/cfs/cdirs/<project>/shared_images
+```
+
+Precedence, lowest to highest: built-in defaults, config-file template, env
+template, `podman_hpc.conf`, environment variables.
+
+Three things that bite in practice:
+
+- **`$SCRATCH` is purged after 8 weeks without access — squashed images
+  included.** If the site squash dir sits under `$SCRATCH` (it does by
+  default), an image pulled for a long campaign can vanish between runs and
+  the failure shows up at job time, not pull time. Put campaign images on CFS
+  with `--squash-dir` and record the digest alongside the results.
+- **Read a CFS squash dir through the DVS read-only mount** — point
+  `PODMANHPC_ADDITIONAL_STORES` at `/dvs_ro/...` rather than
+  `/global/cfs/...` for faster container startup on compute nodes.
+- **Watch `$HOME` if the local store lives there.** `~/.local/share/containers`
+  against the 40 GB home quota fills quickly with a CUDA image this size, and
+  there is no purge policy on the local build store — it only grows.
+
+Cleanup: `podman-hpc rmi <image>` drops both copies of one image; deleting
+`$SCRATCH/storage` and `~/.local/share/containers` is NERSC's reset for a
+wedged store.
+
 ## Run on Perlmutter
 
 ```bash
