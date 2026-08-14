@@ -17,8 +17,8 @@ set -euo pipefail
 
 # Defaults match env.sh; sourcing that file first parameterises this script
 # (PODMAN_STORE / PODMAN_STORE_RO), and STORE / STORE_RO still win if set.
-STORE=${STORE:-${PODMAN_STORE:-/global/cfs/cdirs/<project>/podman-hpc}}
-STORE_RO=${STORE_RO:-${PODMAN_STORE_RO:-/dvs_ro/cfs/cdirs/<project>/podman-hpc}}
+STORE=${STORE:-${PODMAN_STORE:-/global/cfs/cdirs/<project>/podman-hpc/images}}
+STORE_RO=${STORE_RO:-${PODMAN_STORE_RO:-/dvs_ro/cfs/cdirs/<project>/podman-hpc/images}}
 
 NAME=${1:-idrobolab}
 IMAGE=${IMAGE:-ghcr.io/<username>/$NAME}

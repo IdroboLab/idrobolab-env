@@ -23,8 +23,8 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     #   PODMAN_STORE_RO  /dvs_ro read-only mirror — read from this in jobs
     # DVS caches reads for ~30 s, which is ideal for immutable squashed images
     # and the reason compute-node startup is faster through it.
-    export PODMAN_STORE="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc"
-    export PODMAN_STORE_RO="/dvs_ro/cfs/cdirs/${NERSC_PROJECT}/podman-hpc"
+    export PODMAN_STORE="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc/images"
+    export PODMAN_STORE_RO="/dvs_ro/cfs/cdirs/${NERSC_PROJECT}/podman-hpc/images"
 
     # Where podman-hpc looks for images beyond its own store.
     #
@@ -56,8 +56,8 @@ fi
 # it makes previously built local images invisible until rebuilt or migrated,
 # so flip it deliberately, not by default.
 #
-#   export PODMANHPC_GRAPH_ROOT="$SCRATCH/podman/storage"
-#   export PODMANHPC_RUN_ROOT="$SCRATCH/podman/run"
+export PODMANHPC_GRAPH_ROOT="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc/storage"
+export PODMANHPC_RUN_ROOT="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc/run"
 #
 # Default Slurm account, so `sbatch`/`salloc` need no -A. Left off because
 # the two allocations differ by suffix and picking one silently mischarges
