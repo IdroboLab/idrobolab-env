@@ -49,18 +49,23 @@ podman-hpc pull ghcr.io/<username>/idrobolab:latest                          # P
 
 ### Registry access
 
-GHCR packages are **private on first push** and stay that way until the
-visibility is changed by hand. `ghcr.io/<username>/otherimage` is public;
-`ghcr.io/<username>/idrobolab` is **not**, so an unauthenticated pull fails with
+Both `ghcr.io/<username>/idrobolab` and `ghcr.io/<username>/otherimage` are
+**public** as of 2026-08-14, so `podman-hpc pull` needs no credentials.
+
+GHCR packages are private on first push, though, and stay that way until the
+visibility is changed by hand — idrobolab was, until it was flipped. An
+unauthenticated pull of a private package fails with
 
 ```
 unable to retrieve auth token: invalid username/password: unauthorized
 ```
 
-which reads like a credential problem but is really "this package is not
-readable anonymously". Either flip the package to public at
+which reads like a credential problem but really means "not readable
+anonymously": the client sent no credentials and GHCR refused to issue even
+an anonymous token. If that reappears (a new package, or visibility reset),
+either flip it public at
 `github.com/users/<username>/packages/container/idrobolab/settings`, or log in
-on the cluster first with a PAT carrying `read:packages`:
+on the cluster with a PAT carrying `read:packages`:
 
 ```bash
 # Perlmutter (login node — pulled images are auto-squashed and visible to
@@ -73,7 +78,11 @@ export APPTAINER_DOCKER_PASSWORD=$GITHUB_PACKAGE_TOKEN
 apptainer build idrobolab.sif docker://ghcr.io/<username>/idrobolab:latest
 ```
 
-Check whether the package exists and your PAT can read it, from anywhere:
+Check whether the package exists and your PAT can read it, from anywhere. The
+tags list is the real test: the token endpoint answers `200` either way (with
+an `errors` array instead of a token when it refuses), and an unauthenticated
+manifest request answers `401` even for a public package, so neither status
+on its own tells you anything.
 
 ```bash
 TOKEN=$(curl -s -u <username>:$GITHUB_PACKAGE_TOKEN \
