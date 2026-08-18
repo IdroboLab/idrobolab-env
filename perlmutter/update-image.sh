@@ -123,6 +123,36 @@ case "$IMAGE" in
         fi ;;
 esac
 
+# --- clear truncated squash stubs ------------------------------------------
+# podman-hpc's migrate skips whenever the target .squash already exists
+# (migrate2scratch.py: `tgt = ...; if os.path.exists(tgt): return True`), and
+# mksquashfs writes straight to that final path with no temp file and no rename.
+# A squash that dies part-way therefore leaves a stub which turns every later
+# migrate into a SILENT no-op -- the skip is logged at INFO, and podman-hpc
+# never configures Python logging (its --log-level is forwarded only to the
+# podman binary), so nothing prints and the exit status is 0. Observed in the
+# wild: a 106-byte stub that survived a re-pull and three migrates.
+#
+# Only stubs that are BOTH implausibly small AND untouched for a while are
+# removed, so a squash genuinely in progress in someone else's shell is safe.
+# We also hold the store lock here.
+if [ -d "$STORE/overlay/l" ]; then
+    stubs=()
+    while IFS= read -r line; do
+        [ -n "$line" ] && stubs+=("$line")
+    done < <(find "$STORE/overlay/l" -maxdepth 1 -name '*.squash' \
+                  -size -1048576c -mmin +30 2>/dev/null || true)
+    # NB: -size in BYTES (c). GNU find rounds -size -1M up to whole 1 MiB
+    # units, so a 106-byte stub counts as 1 and never matches -1M.
+    if [ "${#stubs[@]}" -gt 0 ]; then
+        echo ">> removing truncated squash stub(s) that would silently block migrate:"
+        for f in "${stubs[@]}"; do
+            echo "   $(du -h "$f" 2>/dev/null | cut -f1)  $f"
+        done
+        rm -f -- "${stubs[@]}"
+    fi
+fi
+
 # --- pull -----------------------------------------------------------------
 if [ "${REFRESH:-0}" = "1" ]; then
     # `podman-hpc rmi` is a passthrough to plain `podman rmi`: it removes the
@@ -268,7 +298,10 @@ if probe_root=$(mktemp -d 2>/dev/null); then
         echo "       when its migrate fails ('ERROR:root:Squash Failed' in the log)," >&2
         echo "       which is why this check exists." >&2
         echo >&2
-        echo "       Re-squash without re-downloading 20 GB:" >&2
+        echo "       Re-squash without re-downloading 20 GB. rmsqi FIRST: a" >&2
+        echo "       part-written .squash blocks migrate silently, so migrate on" >&2
+        echo "       its own returns 0 instantly and does nothing." >&2
+        echo "         podman-hpc --squash-dir $STORE rmsqi $REF" >&2
         echo "         podman-hpc --squash-dir $STORE migrate $REF" >&2
         echo >&2
         if [ -n "$graph_root" ]; then
