@@ -23,8 +23,33 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     #   PODMAN_STORE_RO  /dvs_ro read-only mirror — read from this in jobs
     # DVS caches reads for ~30 s, which is ideal for immutable squashed images
     # and the reason compute-node startup is faster through it.
-    export PODMAN_STORE="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc"
-    export PODMAN_STORE_RO="/dvs_ro/cfs/cdirs/${NERSC_PROJECT}/podman-hpc"
+    # The squashed images sit in an `images` subdirectory — that is the path
+    # update-image.sh passes to --squash-dir and the one podman-hpc migrates
+    # into. Derive the read path from the writable one instead of writing the
+    # tail out twice: maintained separately they drifted, PODMAN_STORE_RO kept
+    # pointing a level too high, and a job sourcing this file could not resolve
+    # the image at all.
+    export PODMAN_STORE="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc/images"
+    export PODMAN_STORE_RO="/dvs_ro/cfs/${PODMAN_STORE#/global/cfs/}"
+
+    # Keep podman's LOCAL staging store off CFS. It holds a full second copy of
+    # every image (20 GB for idrobolab) plus a sqlite database and lock files,
+    # none of which belong on a shared filesystem. $SCRATCH is per-user, which
+    # removes the multi-user hazard.
+    #
+    # The node-local default (/tmp/{uid}_hpc/storage) is better still: $SCRATCH
+    # is a network filesystem reachable from every node, and a job that runs
+    # one container per rank puts every rank's podman on the same store. Unset
+    # both to go back to it. Note also that $SCRATCH is purged after 8 weeks
+    # without access, which can eat part of the store and leave it wedged —
+    # `podman-hpc rmi` and re-pull rather than letting purge do it piecemeal.
+    #
+    # Guarded: unset $SCRATCH would expand these to /podman-hpc/storage at the
+    # filesystem root.
+    if [ -n "${SCRATCH:-}" ]; then
+        export PODMANHPC_GRAPH_ROOT="${SCRATCH}/podman-hpc/storage"
+        export PODMANHPC_RUN_ROOT="${SCRATCH}/podman-hpc/run"
+    fi
 
     # Where podman-hpc looks for images beyond its own store.
     #
@@ -49,15 +74,6 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
 fi
 
 # --- optional, deliberately left commented --------------------------------
-#
-# Move podman-hpc's LOCAL build store off $HOME. Worth doing if `podman-hpc
-# info` shows a graphRoot under ~/.local/share/containers: that store has no
-# purge policy and a CUDA image will eat into the 40 GB home quota. Enabling
-# it makes previously built local images invisible until rebuilt or migrated,
-# so flip it deliberately, not by default.
-#
-export PODMANHPC_GRAPH_ROOT="${SCRATCH}/podman-hpc/storage"
-export PODMANHPC_RUN_ROOT="${SCRATCH}/podman-hpc/run"
 #
 # Default Slurm account, so `sbatch`/`salloc` need no -A. Left off because
 # the two allocations differ by suffix and picking one silently mischarges
