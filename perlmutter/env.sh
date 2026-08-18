@@ -53,23 +53,48 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
 
     # Where podman-hpc looks for images beyond its own store.
     #
-    # Set only when unset, so re-sourcing is a no-op and an existing value you
-    # set deliberately wins. Deliberately does NOT append: the separator for
-    # listing several stores in this variable is not documented by NERSC and
-    # the single-store case is the one that is actually exercised. If you need
-    # more than one, set the variable yourself after sourcing this file.
-    if [ -z "${PODMANHPC_ADDITIONAL_STORES:-}" ]; then
+    # Adopt the derived value when the variable is unset, when it still holds
+    # what an earlier source of this file derived, or when it holds a path
+    # recognisably one of ours from a previous revision. The store path has
+    # already changed more than once; without this a long-lived shell keeps
+    # exporting a stale path for its whole life while every new shell gets the
+    # right one — which is precisely how a job ends up unable to find an image
+    # that `podman-hpc images` shows on the login node. A value set by hand to
+    # something unrelated is left alone.
+    #
+    # Multi-store use is still not supported here: NERSC does not document the
+    # separator, so set the variable yourself after sourcing if you need two.
+    _hpcenvs_cur=${PODMANHPC_ADDITIONAL_STORES:-}
+    _hpcenvs_adopt=0
+    if [ -z "$_hpcenvs_cur" ]; then
+        _hpcenvs_adopt=1
+    elif [ "$_hpcenvs_cur" = "${HPCENVS_DERIVED_STORE_RO:-}" ]; then
+        _hpcenvs_adopt=1
+    else
+        case "$_hpcenvs_cur" in
+            /dvs_ro/cfs/cdirs/*/podman-hpc|/dvs_ro/cfs/cdirs/*/podman-hpc/images)
+                _hpcenvs_adopt=1 ;;
+        esac
+    fi
+    if [ "$_hpcenvs_adopt" = 1 ]; then
         export PODMANHPC_ADDITIONAL_STORES="$PODMAN_STORE_RO"
     fi
+    export HPCENVS_DERIVED_STORE_RO="$PODMAN_STORE_RO"
+    unset _hpcenvs_cur _hpcenvs_adopt
 
     # Convenience refs so job scripts and one-liners can stay short.
     export IDROBOLAB_IMAGE="${IDROBOLAB_IMAGE:-ghcr.io/<username>/idrobolab:latest}"
     export OTHERIMAGE_IMAGE="${OTHERIMAGE_IMAGE:-ghcr.io/<username>/otherimage:latest}"
 
-    if [ "${HPCENVS_ENV_VERBOSE:-0}" = "1" ]; then
-        echo "hpcenvs/perlmutter: project=$NERSC_PROJECT"
-        echo "  PODMAN_STORE               $PODMAN_STORE"
-        echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES"
+    # Diagnostics go to stderr, and only in an interactive shell. ~/.bashrc is
+    # also sourced for the remote end of scp/rsync/`ssh host cmd`; anything
+    # written to stdout there corrupts the protocol stream and the transfer
+    # fails with a confusing "protocol error".
+    if [ "${HPCENVS_ENV_VERBOSE:-0}" = "1" ] && [ -n "${PS1:-}" ]; then
+        echo "hpcenvs/perlmutter: project=$NERSC_PROJECT" >&2
+        echo "  PODMAN_STORE                $PODMAN_STORE" >&2
+        echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES" >&2
+        echo "  PODMANHPC_GRAPH_ROOT        ${PODMANHPC_GRAPH_ROOT:-<unset: node-local default>}" >&2
     fi
 fi
 
