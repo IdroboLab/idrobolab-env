@@ -37,7 +37,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # none of which belong on a shared filesystem. $SCRATCH is per-user, which
     # removes the multi-user hazard.
     #
-    # The node-local default (/tmp/{uid}_hpc/storage) is better still: $SCRATCH
+    # The node-local default is better still: $SCRATCH
     # is a network filesystem reachable from every node, and a job that runs
     # one container per rank puts every rank's podman on the same store. Unset
     # both to go back to it. Note also that $SCRATCH is purged after 8 weeks
@@ -67,7 +67,9 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # (migrate2scratch.py: mksq_options), so `-no-xattrs` cannot be passed.
     #
     # Leave both unset for podman-hpc's node-local default
-    # (/tmp/{uid}_hpc/storage), which is what NERSC ships and what works. The
+    # (observed on a login node: /images/<uid>_hpc/storage -- NERSC provisions
+    # /images as node-local space for exactly this; upstream's default is
+    # /tmp/{uid}_hpc/storage). That is what NERSC ships and what works. The
     # squash STORE stays on CFS -- that part is fine and is what jobs read.
     # $SCRATCH is no better than CFS here; both are network filesystems.
     #

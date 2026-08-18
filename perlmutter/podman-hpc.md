@@ -70,7 +70,11 @@ hence `podman-hpc migrate <tag>`. `podman-hpc images` lists both copies, the
 squashed one flagged read-only.
 
 Upstream defaults are `graph_root=/tmp/{uid}_hpc/storage` and
-`run_root=/tmp/{uid}_hpc`; NERSC overrides them site-wide. Print the values
+`run_root=/tmp/{uid}_hpc`; NERSC overrides them site-wide — a Perlmutter login
+node was observed using `/images/<uid>_hpc/storage`, node-local space that NERSC
+provisions for this. **Leave both unset.** Pointing the graph root at `$SCRATCH`
+or CFS lets the pull succeed and the squash fail every time (see the block in
+`env.sh`). Print the values
 actually in force rather than trusting either:
 
 ```bash
