@@ -38,7 +38,7 @@
 #     IMAGE=idrobolab sbatch ...                 # short name -> ghcr.io/<username>/idrobolab:latest
 #     IMAGE=idrobolab TAG=v3 sbatch ...          # short name, explicit tag
 #     IMAGE=ghcr.io/other/img:tag sbatch ...     # full reference, used verbatim
-#   Default is otherimage; the short name matches `update-image.sh <name>`.
+#   Default is idrobolab; the short name matches `update-image.sh <name>`.
 #   git -C "$ABTEM_SRC" switch multi-gpu-support
 #   sbatch multigpu_verify.sbatch                # 4 GPUs, default checks
 #   sbatch multigpu_verify.sbatch --timing       # + 1-GPU vs N-GPU wall clock
@@ -52,7 +52,7 @@
 #
 # Login-node preflight (no GPU needed; proves the injection works before you
 # spend an allocation on it) -- ./setup_env.sh does this with more reporting:
-#   podman-hpc run --rm -v "$ABTEM_SRC:$ABTEM_SRC" -e PYTHONPATH="$ABTEM_SRC" \
+#   podman-hpc run --rm -v "$ABTEM_SRC:$ABTEM_SRC" $PYPATH_FLAG \
 #       ghcr.io/<username>/otherimage:latest \
 #       python -P -c "import abtem; print(abtem.__version__, abtem.__file__)"
 #   # abtem.__file__ MUST be under $ABTEM_SRC. If it is /opt/src/abTEM the
@@ -131,7 +131,7 @@ fi
 # owner update-image.sh uses, so `./update-image.sh idrobolab` and
 # `IMAGE=idrobolab sbatch ...` always name the same image. TAG applies only to
 # the short-name form; a full reference carries its own.
-IMAGE=${IMAGE:-${OTHERIMAGE_IMAGE:-otherimage}}
+IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;                       # already a full reference, use verbatim
     *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
@@ -144,16 +144,40 @@ esac
 # a committed abtem/_version.py, so there is no build or install step.
 # ${SCRATCH:-$HOME} only so `set -u` cannot abort with a confusing message on a
 # shell where SCRATCH is unset; on Perlmutter it is /pscratch/sd/<initial>/<user>.
-ABTEM_SRC=${ABTEM_SRC:-${SCRATCH:-$HOME}/code/abTEM}
+if [ -n "${ABTEM_SRC+x}" ]; then ABTEM_SRC_GIVEN=1; else ABTEM_SRC_GIVEN=0; fi
+ABTEM_SRC=${ABTEM_SRC-${SCRATCH:-$HOME}/code/abTEM}
 
-if [ ! -d "$ABTEM_SRC" ] || [ ! -f "$ABTEM_SRC/abtem/__init__.py" ]; then
-    echo "ERROR: abTEM checkout not found at $ABTEM_SRC" >&2
-    echo "  git clone <abTEM> \$SCRATCH/code/abTEM" >&2
-    echo "  git -C \$SCRATCH/code/abTEM switch multi-gpu-support" >&2
-    echo "  ABTEM_SRC=\$SCRATCH/code/abTEM sbatch multigpu_verify.sbatch" >&2
+# Which abTEM gets tested. ABTEM_SRC names a checkout to inject over the
+# container's own copy. Leaving it out is legitimate: the image installs abTEM
+# editable from a staged checkout that may already carry the multi-GPU work, and
+# testing that copy is a real thing to want.
+#
+#   ABTEM_SRC unset    the default path if it exists, else the container's abTEM
+#   ABTEM_SRC=/path    must exist -- a typo must not silently downgrade to the
+#                      container copy and quietly test something else
+#   ABTEM_SRC=         (empty) force the container's own abTEM
+if [ "$ABTEM_SRC_GIVEN" = 1 ] && [ -z "$ABTEM_SRC" ]; then
+    ABTEM_MODE=container
+elif [ -n "$ABTEM_SRC" ] && [ -f "$ABTEM_SRC/abtem/__init__.py" ]; then
+    ABTEM_MODE=branch
+elif [ "$ABTEM_SRC_GIVEN" = 1 ]; then
+    echo "ERROR: no abtem/__init__.py under ABTEM_SRC=$ABTEM_SRC" >&2
+    echo "  Point it at a checkout, or pass ABTEM_SRC= (empty) to test the" >&2
+    echo "  container's own abTEM instead." >&2
     exit 1
+else
+    ABTEM_MODE=container
+    echo ">> no abTEM checkout at ${ABTEM_SRC:-<none>} -- testing the container's own abTEM"
+    echo "   (export ABTEM_SRC=/path/to/abTEM to inject a branch instead)"
 fi
-ABTEM_SRC=$(cd "$ABTEM_SRC" && pwd)
+if [ "$ABTEM_MODE" != branch ]; then ABTEM_SRC=""; fi
+
+# Only set when injecting. An EMPTY PYTHONPATH would be worse than none: Python
+# reads an empty entry as the current directory, reviving the ./abtem shadowing
+# trap. Unquoted at the use site, same pre-split-flags idiom as $MOUNTS.
+PYPATH_FLAG=""
+if [ "$ABTEM_MODE" = branch ]; then PYPATH_FLAG="-e PYTHONPATH=$ABTEM_SRC"; fi
+if [ "$ABTEM_MODE" = branch ]; then ABTEM_SRC=$(cd "$ABTEM_SRC" && pwd); fi
 
 # --- mounts ---------------------------------------------------------------
 # podman-hpc mounts nothing by default. Each path is mounted at its own host
@@ -244,8 +268,8 @@ echo "mounts:$MOUNTS"
 # on the same thing, and this probe needs no GPU. `tail -n 1` because only the
 # last stdout line is ours. $MOUNTS is unquoted on purpose (pre-split flags).
 if ! ABTEM_PROBE=$(podman-hpc run --rm $MOUNTS \
-        -e PYTHONPATH="$ABTEM_SRC" "$IMAGE" \
-        python -P -c 'import abtem; print(abtem.__file__ + "|" + abtem.__version__)' \
+        $PYPATH_FLAG "$IMAGE" \
+        python -P -c 'import abtem\ntry:\n    from abtem.core.backend import ensure_cuda_cluster, is_gpu_dask_client\n    mg = "yes"\nexcept ImportError:\n    mg = "no"\nprint(abtem.__file__ + "|" + abtem.__version__ + "|" + mg)' \
         | tail -n 1); then
     echo "ERROR: could not import abtem inside $IMAGE." >&2
     echo "  This is NOT (yet) the injection failing: the container did not run," >&2
@@ -256,21 +280,40 @@ if ! ABTEM_PROBE=$(podman-hpc run --rm $MOUNTS \
     exit 1
 fi
 ABTEM_FILE=${ABTEM_PROBE%%|*}
-ABTEM_VER=${ABTEM_PROBE##*|}
-case "$ABTEM_FILE" in
-    "$ABTEM_SRC"/*)
-        echo "abtem in use: $ABTEM_VER  <- $ABTEM_FILE" ;;
-    *)
-        echo "ERROR: the branch abTEM is not the one being imported." >&2
-        echo "  imported: $ABTEM_FILE ($ABTEM_VER)" >&2
-        echo "  expected: somewhere under $ABTEM_SRC" >&2
-        echo "  The container's own abTEM won (editable install, /opt/src/abTEM)." >&2
-        echo "  It has no multi-GPU code, so every check below would be testing" >&2
-        echo "  nothing -- and the VERSION STRING alone would not have shown it," >&2
-        echo "  since the image stages an abTEM-main checkout of its own." >&2
-        echo "  Check that BOTH  -v \$ABTEM_SRC:\$ABTEM_SRC  and  -e PYTHONPATH=\$ABTEM_SRC" >&2
-        echo "  are present (podman-hpc mounts nothing by default)." >&2
-        exit 1 ;;
+_abtem_rest=${ABTEM_PROBE#*|}
+ABTEM_VER=${_abtem_rest%%|*}
+ABTEM_MG=${ABTEM_PROBE##*|}
+case "$ABTEM_MODE" in
+    branch)
+        case "$ABTEM_FILE" in
+            "$ABTEM_SRC"/*)
+                echo "abtem in use: $ABTEM_VER  <- $ABTEM_FILE  (injected)" ;;
+            *)
+                echo "ERROR: the branch abTEM is not the one being imported." >&2
+                echo "  imported: $ABTEM_FILE ($ABTEM_VER)" >&2
+                echo "  expected: somewhere under $ABTEM_SRC" >&2
+                echo "  The container's own abTEM won (editable, /opt/src/abTEM)." >&2
+                echo "  The VERSION alone would not have shown this: the image" >&2
+                echo "  stages its own abTEM checkout and may report the same one." >&2
+                echo "  Check that BOTH -v \$ABTEM_SRC:\$ABTEM_SRC and" >&2
+                echo "  -e PYTHONPATH=\$ABTEM_SRC are on the run line." >&2
+                exit 1 ;;
+        esac ;;
+    container)
+        # No injection was asked for, so any path is fine -- but the container's
+        # abTEM must actually be able to do multi-GPU, or every check below
+        # would be testing nothing and still reporting success.
+        if [ "$ABTEM_MG" = yes ]; then
+            echo "abtem in use: $ABTEM_VER  <- $ABTEM_FILE  (container's own, multi-GPU capable)"
+        else
+            echo "ERROR: the container's abTEM has no multi-GPU support." >&2
+            echo "  imported: $ABTEM_FILE ($ABTEM_VER)" >&2
+            echo "  ensure_cuda_cluster / is_gpu_dask_client are absent, so the" >&2
+            echo "  checks below would test nothing while still passing." >&2
+            echo "  Inject a checkout that has them, ABTEM_SRC=/path/to/abTEM," >&2
+            echo "  or rebuild the image from one." >&2
+            exit 1
+        fi ;;
 esac
 
 # --- run ------------------------------------------------------------------
@@ -289,7 +332,7 @@ esac
 time srun --cpu-bind=none \
     podman-hpc run --rm --gpu \
         $MOUNTS --workdir "$HERE" \
-        -e PYTHONPATH="$ABTEM_SRC" \
+        $PYPATH_FLAG \
         $THREAD_ENV $SLURM_ENV \
         "$IMAGE" python "$PAYLOAD_DIR/verify_multigpu.py" "$@"
 

@@ -44,11 +44,12 @@
 #   ABTEM_SRC=$SCRATCH/code/abTEM ./setup_env.sh
 #
 # Env vars:
-#   ABTEM_SRC  abTEM checkout on the 'multi-gpu-support' branch (required)
+#   ABTEM_SRC  abTEM checkout to inject (optional). Unset/empty checks the
+#              container's own abTEM instead.
 #   IMAGE      container image: a bare name (IMAGE=idrobolab -> the same image
 #              `update-image.sh idrobolab` pulls) or a full reference
 #              (ghcr.io/other/img:tag), used verbatim. Default:
-#              $OTHERIMAGE_IMAGE from env.sh, else another image
+#              $IDROBOLAB_IMAGE from env.sh, else idrobolab
 #   TAG        tag for the short-name form only (default latest)
 #   IMAGE_OWNER  registry owner for the short-name form (default <username>)
 
@@ -66,12 +67,16 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # owner update-image.sh uses, so `./update-image.sh idrobolab` and
 # `IMAGE=idrobolab sbatch ...` always name the same image. TAG applies only to
 # the short-name form; a full reference carries its own.
-IMAGE=${IMAGE:-${OTHERIMAGE_IMAGE:-otherimage}}
+IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;                       # already a full reference, use verbatim
     *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
 esac
-ABTEM_SRC=${ABTEM_SRC:?export ABTEM_SRC=<path to abTEM 'multi-gpu-support' checkout>}
+# Optional. Unset (or empty) means "check the container's own abTEM", which
+# is a real thing to want: the image installs abTEM editable from a staged
+# checkout that may already carry the multi-GPU work.
+if [ -n "${ABTEM_SRC+x}" ]; then ABTEM_SRC_GIVEN=1; else ABTEM_SRC_GIVEN=0; fi
+ABTEM_SRC=${ABTEM_SRC-}
 
 # --- guards ---------------------------------------------------------------
 
@@ -82,18 +87,24 @@ command -v podman-hpc >/dev/null 2>&1 || {
     exit 1
 }
 
-if [ ! -f "$ABTEM_SRC/abtem/__init__.py" ]; then
-    echo "ERROR: abTEM checkout not found at $ABTEM_SRC" >&2
-    echo "       Expected \$ABTEM_SRC/abtem/__init__.py. Clone abTEM and" >&2
-    echo "       'git switch multi-gpu-support', e.g. under \$SCRATCH/code/abTEM." >&2
+if [ "$ABTEM_SRC_GIVEN" = 1 ] && [ -z "$ABTEM_SRC" ]; then
+    ABTEM_MODE=container
+elif [ -n "$ABTEM_SRC" ] && [ -f "$ABTEM_SRC/abtem/__init__.py" ]; then
+    ABTEM_MODE=branch
+elif [ -n "$ABTEM_SRC" ]; then
+    echo "ERROR: no abtem/__init__.py under ABTEM_SRC=$ABTEM_SRC" >&2
+    echo "       Point it at a checkout, or leave ABTEM_SRC unset to check" >&2
+    echo "       the container's own abTEM." >&2
     exit 1
+else
+    ABTEM_MODE=container
 fi
 
 # Resolve symlinks NOW, on the host. podman mounts the physical directory, and
 # the in-container assertion compares realpath(abtem.__file__) against this
 # string -- if the two disagree only by a symlink hop the assertion would fail
 # for the wrong reason. `pwd -P` removes that whole class of confusion.
-ABTEM_SRC=$(cd "$ABTEM_SRC" && pwd -P)
+if [ "$ABTEM_MODE" = branch ]; then ABTEM_SRC=$(cd "$ABTEM_SRC" && pwd -P); fi
 
 # The launchers resolve the shared payloads relative to themselves; check the
 # same path here so a missing/moved payload surfaces before you queue a job.
@@ -133,7 +144,11 @@ if ! grep -qF -- "$IMAGE_REPO" <<<"$IMAGE_LIST"; then
 fi
 
 echo "image     : $IMAGE"
-echo "abtem src : $ABTEM_SRC (injected via PYTHONPATH -- no venv)"
+if [ "$ABTEM_MODE" = branch ]; then
+    echo "abtem src : $ABTEM_SRC (injected via PYTHONPATH -- no venv)"
+else
+    echo "abtem src : <none> -- checking the container's own abTEM"
+fi
 echo "payloads  : $PAYLOAD_DIR"
 echo
 
@@ -158,15 +173,18 @@ echo
 # pass the exact same flag -- so preflight and job stay identical, which is the
 # point. If a payload ever does need the image's entries, prepend inside the
 # container instead of widening this line, and change the launchers too.
-podman-hpc run --rm -i \
-    -v "$ABTEM_SRC:$ABTEM_SRC" \
-    -e PYTHONPATH="$ABTEM_SRC" \
+INJECT_FLAGS=""
+if [ "$ABTEM_MODE" = branch ]; then
+    INJECT_FLAGS="-v $ABTEM_SRC:$ABTEM_SRC -e PYTHONPATH=$ABTEM_SRC"
+fi
+podman-hpc run --rm -i $INJECT_FLAGS \
     -e ABTEM_SRC_EXPECTED="$ABTEM_SRC" \
     "$IMAGE" python -P - <<'PY'
 import os
 import sys
 
-expect = os.path.realpath(os.environ["ABTEM_SRC_EXPECTED"])
+_expect_raw = os.environ.get("ABTEM_SRC_EXPECTED", "")
+expect = os.path.realpath(_expect_raw) if _expect_raw else ""
 problems = []
 
 # --- 1. did the branch abTEM actually shadow the container's copy? --------
@@ -175,7 +193,7 @@ problems = []
 import abtem
 where = os.path.realpath(abtem.__file__)
 print("abtem      ", getattr(abtem, "__version__", "?"), "<-", where)
-if not (where == expect or where.startswith(expect + os.sep)):
+if expect and not (where == expect or where.startswith(expect + os.sep)):
     problems.append(
         "abtem imported from {}\n"
         "        instead of the checkout under {}.\n"
