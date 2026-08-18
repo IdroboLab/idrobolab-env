@@ -14,7 +14,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gpus-per-node=1
 #SBATCH --gpu-bind=closest
-#SBATCH --mem=50G                       # NCSA's 1-A40 sample value
+#SBATCH --mem=50G                      # NCSA's 1-A40 sample value
 #SBATCH --time=02:00:00
 #SBATCH --constraint="scratch"
 #SBATCH --output=%x_%j.out

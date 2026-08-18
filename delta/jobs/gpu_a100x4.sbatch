@@ -13,7 +13,7 @@
 #SBATCH --cpus-per-task=64
 #SBATCH --gpus-per-node=4
 #SBATCH --gpu-bind=closest              # cpu close to gpu on pci bus topology
-#SBATCH --mem=208G                      # NCSA's full-node sample value
+#SBATCH --mem=220G                     # full 256 GB A100 node
 #SBATCH --time=02:00:00
 #SBATCH --constraint="scratch"
 #SBATCH --output=%x_%j.out

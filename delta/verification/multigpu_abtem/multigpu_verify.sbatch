@@ -24,7 +24,7 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --gpu-bind=closest
 #SBATCH --exclusive
-#SBATCH --mem=0
+#SBATCH --mem=220G                     # full 256 GB A100 node
 #SBATCH --time=00:10:00
 #SBATCH --constraint="scratch&projects"
 #SBATCH --output=%x_%j.out

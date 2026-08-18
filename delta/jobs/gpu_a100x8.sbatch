@@ -14,7 +14,7 @@
 #SBATCH --gpus-per-node=8
 #SBATCH --gpu-bind=closest
 #SBATCH --exclusive
-#SBATCH --mem=0                         # all usable node memory (~1.9 TB)
+#SBATCH --mem=1760G                    # 8x A100 node, ~2 TB (~86% as with 220G/256G)
 #SBATCH --time=02:00:00
 #SBATCH --constraint="scratch"
 #SBATCH --output=%x_%j.out

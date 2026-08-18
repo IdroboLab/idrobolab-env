@@ -30,7 +30,7 @@
 #SBATCH --ntasks-per-node=128           # 1 rank/core, full nodes
 #SBATCH --cpus-per-task=1
 #SBATCH --exclusive
-#SBATCH --mem=0                         # all node memory
+#SBATCH --mem=220G                     # full 256 GB CPU node
 #SBATCH --time=02:00:00
 #SBATCH --constraint="scratch"
 #SBATCH --output=%x_%j.out

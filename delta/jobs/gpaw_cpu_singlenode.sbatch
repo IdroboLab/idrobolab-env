@@ -12,7 +12,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1             # one apptainer launch; MPI ranks live inside
 #SBATCH --cpus-per-task=64              # = MPI ranks used below (max 128/node)
-#SBATCH --mem=124G                      # ~2 GB/rank; full node: --exclusive --mem=0
+#SBATCH --mem=124G                     # ~2 GB/rank; full node: --exclusive --mem=0
 #SBATCH --time=02:00:00
 #SBATCH --constraint="scratch"          # filesystem dependency (NCSA-requested)
 #SBATCH --output=%x_%j.out
