@@ -33,6 +33,12 @@
 #                                      # script pulls idrobolab, a different
 #                                      # (and much larger) image
 #   export ABTEM_SRC=$SCRATCH/code/abTEM         # 'multi-gpu-support' checkout
+#
+#   Image selection (any of these):
+#     IMAGE=idrobolab sbatch ...                 # short name -> ghcr.io/<username>/idrobolab:latest
+#     IMAGE=idrobolab TAG=v3 sbatch ...          # short name, explicit tag
+#     IMAGE=ghcr.io/other/img:tag sbatch ...     # full reference, used verbatim
+#   Default is otherimage; the short name matches `update-image.sh <name>`.
 #   git -C "$ABTEM_SRC" switch multi-gpu-support
 #   sbatch multigpu_verify.sbatch                # 4 GPUs, default checks
 #   sbatch multigpu_verify.sbatch --timing       # + 1-GPU vs N-GPU wall clock
@@ -119,7 +125,17 @@ fi
 
 # OTHERIMAGE_IMAGE is exported by ../../env.sh; the literal is the fallback for
 # a shell that never sourced it.
-IMAGE=${IMAGE:-${OTHERIMAGE_IMAGE:-ghcr.io/<username>/otherimage:latest}}
+# Image selection. Accepts either a bare name -- `IMAGE=idrobolab` -- or a full
+# reference (`ghcr.io/user/img:tag`, or one pinned by @sha256:...). A value with
+# no "/" is treated as a short name and expanded against the same registry and
+# owner update-image.sh uses, so `./update-image.sh idrobolab` and
+# `IMAGE=idrobolab sbatch ...` always name the same image. TAG applies only to
+# the short-name form; a full reference carries its own.
+IMAGE=${IMAGE:-${OTHERIMAGE_IMAGE:-otherimage}}
+case "$IMAGE" in
+    */*) : ;;                       # already a full reference, use verbatim
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+esac
 
 # abTEM 'multi-gpu-support' checkout. It is injected via PYTHONPATH to shadow the
 # container's own abTEM -- no venv: the container's Python is itself a venv, so

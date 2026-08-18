@@ -45,8 +45,12 @@
 #
 # Env vars:
 #   ABTEM_SRC  abTEM checkout on the 'multi-gpu-support' branch (required)
-#   IMAGE      container image (default: $OTHERIMAGE_IMAGE from env.sh, else
-#              ghcr.io/<username>/otherimage:latest)
+#   IMAGE      container image: a bare name (IMAGE=idrobolab -> the same image
+#              `update-image.sh idrobolab` pulls) or a full reference
+#              (ghcr.io/other/img:tag), used verbatim. Default:
+#              $OTHERIMAGE_IMAGE from env.sh, else another image
+#   TAG        tag for the short-name form only (default latest)
+#   IMAGE_OWNER  registry owner for the short-name form (default <username>)
 
 set -euo pipefail
 
@@ -56,7 +60,17 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # env.sh exports OTHERIMAGE_IMAGE (and the CFS image store); honour it when the
 # user sourced it, but stay usable when they did not.
-IMAGE=${IMAGE:-${OTHERIMAGE_IMAGE:-ghcr.io/<username>/otherimage:latest}}
+# Image selection. Accepts either a bare name -- `IMAGE=idrobolab` -- or a full
+# reference (`ghcr.io/user/img:tag`, or one pinned by @sha256:...). A value with
+# no "/" is treated as a short name and expanded against the same registry and
+# owner update-image.sh uses, so `./update-image.sh idrobolab` and
+# `IMAGE=idrobolab sbatch ...` always name the same image. TAG applies only to
+# the short-name form; a full reference carries its own.
+IMAGE=${IMAGE:-${OTHERIMAGE_IMAGE:-otherimage}}
+case "$IMAGE" in
+    */*) : ;;                       # already a full reference, use verbatim
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+esac
 ABTEM_SRC=${ABTEM_SRC:?export ABTEM_SRC=<path to abTEM 'multi-gpu-support' checkout>}
 
 # --- guards ---------------------------------------------------------------
