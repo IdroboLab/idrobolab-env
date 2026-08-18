@@ -69,6 +69,7 @@
 #                                      # dask-cuda does the per-worker pinning
 #SBATCH --exclusive                    # 4 dask-cuda workers + a CUDA container
 #                                      # want the node's full 256 GB
+#SBATCH --mem=220G                     # full 256 GB GPU node
 #SBATCH --time=00:10:00
 #SBATCH --output=%x_%j.out
 #

@@ -16,6 +16,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=32
 #SBATCH --gpus-per-node=1
+#SBATCH --mem=220G                     # whole node in debug QOS
 #SBATCH --time=00:20:00                # debug hard limit is 00:30:00
 #SBATCH --output=%x_%j.out
 

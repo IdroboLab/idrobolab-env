@@ -21,6 +21,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=128          # 1 rank per physical core
 #SBATCH --cpus-per-task=2              # 2 x floor(128/tasks_per_node) logical CPUs
+#SBATCH --mem=440G                     # 512 GB CPU node (~86% as with 220G/256G)
 #SBATCH --time=02:00:00
 #SBATCH --output=%x_%j.out
 

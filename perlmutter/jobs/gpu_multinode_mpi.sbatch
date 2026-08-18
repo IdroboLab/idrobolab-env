@@ -24,6 +24,7 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --gpu-bind=none                # see the binding note below
 #SBATCH --exclusive
+#SBATCH --mem=220G                     # full 256 GB GPU node
 #SBATCH --time=02:00:00
 #SBATCH --output=%x_%j.out
 

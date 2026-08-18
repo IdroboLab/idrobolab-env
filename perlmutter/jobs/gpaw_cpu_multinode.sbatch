@@ -18,6 +18,7 @@
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=128          # 512 ranks total
 #SBATCH --cpus-per-task=2
+#SBATCH --mem=440G                     # 512 GB CPU node (~86% as with 220G/256G)
 #SBATCH --time=04:00:00
 #SBATCH --output=%x_%j.out
 
