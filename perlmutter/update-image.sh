@@ -58,8 +58,38 @@ case "$STORE" in
         exit 1 ;;
 esac
 
+# This store is advertised as readable by the whole project, and nothing else
+# makes that true: mkdir and every file podman writes inherit the caller's
+# umask, which is 022 at NERSC, so a collaborator gets ACCES on files they are
+# supposed to share. Set a group-friendly umask for the whole run and setgid
+# the directory so new entries inherit the project group.
+umask "${HPCENVS_UMASK:-0002}"
 mkdir -p "$STORE"
 [ -w "$STORE" ] || { echo "ERROR: $STORE is not writable by $WHOAMI" >&2; exit 1; }
+chmod g+rxs "$STORE" 2>/dev/null || true
+
+# The squash step writes into the shared store over several minutes and is not
+# atomic, and podman-hpc itself takes no lock (its migrate step only creates
+# empty .lock placeholders that nothing acquires). Two concurrent runs can
+# therefore interleave and corrupt the store, so serialise here.
+#
+# Caveat worth knowing: flock semantics on a parallel filesystem are weaker
+# than on a local one. This is a guard against the ordinary accident of two
+# people pulling at once, not a hard guarantee.
+if command -v flock >/dev/null 2>&1; then
+    exec 9>"$STORE/.update-image.lock" || true
+    if ! flock -w "${LOCK_WAIT:-1800}" 9; then
+        echo "ERROR: another update-image.sh holds the store lock" >&2
+        echo "       ($(cat "$STORE/.update-image.holder" 2>/dev/null || echo 'holder unknown'))." >&2
+        echo "       Wait for it, or raise LOCK_WAIT (currently ${LOCK_WAIT:-1800}s)." >&2
+        exit 1
+    fi
+    printf '%s on %s since %s\n' "$WHOAMI" "${HOSTNAME:-unknown}" \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$STORE/.update-image.holder" 2>/dev/null || true
+    trap 'rm -f "$STORE/.update-image.holder" 2>/dev/null || true' EXIT
+else
+    echo ">> note: flock unavailable — not serialising against concurrent pulls"
+fi
 
 # --- registry preflight ---------------------------------------------------
 # GHCR packages are private until made public by hand, and an anonymous pull
@@ -71,8 +101,11 @@ case "$IMAGE" in
     ghcr.io/*)
         if command -v curl >/dev/null 2>&1; then
             repo=${IMAGE#ghcr.io/}
-            # The token endpoint answers 200 even for a private package (with
-            # an errors array instead of a token), and an unauthenticated
+            # GHCR's token endpoint answers 200 + {"token":...} when the repo
+            # is anonymously readable, and 403 + {"errors":[{"code":"DENIED"}]}
+            # when it is private OR does not exist — it deliberately does not
+            # distinguish those two, so the message below must not either. An
+            # unauthenticated
             # manifest request answers 401 even for a public one — neither
             # status alone tells you anything. Fetch an anonymous token, then
             # try to actually use it.
@@ -92,8 +125,18 @@ esac
 
 # --- pull -----------------------------------------------------------------
 if [ "${REFRESH:-0}" = "1" ]; then
-    echo ">> removing the existing squashed copy of $REF"
-    podman-hpc --squash-dir "$STORE" rmi "$REF" || true
+    # `podman-hpc rmi` is a passthrough to plain `podman rmi`: it removes the
+    # GRAPH-ROOT copy only. podman-hpc does not even pass --squash-dir to it,
+    # so the squashed copy in the shared store survives untouched. `rmsqi` is
+    # the one that drops the squashed image. Do both, and report failures
+    # rather than swallowing them — a REFRESH that silently no-ops is worse
+    # than one that errors.
+    echo ">> REFRESH: dropping the squashed copy of $REF from $STORE"
+    podman-hpc --squash-dir "$STORE" rmsqi "$REF" \
+        || echo "   note: rmsqi found nothing to remove (or failed)"
+    echo ">> REFRESH: dropping the local graph-root copy of $REF"
+    podman-hpc rmi "$REF" \
+        || echo "   note: rmi found nothing to remove (or failed)"
 fi
 
 # podman-hpc's trace log runs to several hundred lines per pull. It earned its
@@ -112,6 +155,18 @@ fi
 # images are disabled". Retry rather than making the caller notice and rerun.
 attempts=${RETRIES:-3}
 backoff=${RETRY_WAIT:-30}
+# A non-integer here would make `[ "$n" -ge "$attempts" ]` exit 2 on the parse
+# error; `if` reads that as false, `set -e` is suppressed inside a condition,
+# and the give-up branch becomes unreachable — an unbounded retry loop on a
+# login node. RETRIES=no/false/off are the natural ways someone tries to turn
+# retrying OFF, and each would invert into "retry forever". Validate instead.
+case $attempts in
+    ''|*[!0-9]*)
+        echo "ERROR: RETRIES must be a non-negative integer (got: '$attempts')." >&2
+        echo "       To attempt the pull exactly once, use RETRIES=1." >&2
+        exit 1 ;;
+esac
+[ "$attempts" -ge 1 ] || attempts=1
 started=$SECONDS
 n=1
 while : ; do
@@ -141,10 +196,23 @@ podman-hpc --squash-dir "$STORE" images --digests | grep -E "REPOSITORY|${IMAGE}
 
 digest=$(podman-hpc --squash-dir "$STORE" inspect --format '{{index .RepoDigests 0}}' \
              "$REF" 2>/dev/null || echo "unknown")
+# One log file per user rather than one shared file. A single file is created
+# with the first puller's ownership and 0644, so every later collaborator's
+# append fails with EACCES; per-user files also remove the interleave race
+# between concurrent appends.
+#
+# The redirection is grouped deliberately: bash applies a simple command's
+# redirections left to right, so a trailing 2>/dev/null is not yet in effect
+# when the >> open fails and the shell's "Permission denied" still reaches
+# the terminal. Wrapping in { } makes the suppression cover the open.
 stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-if printf '%s\t%s\t%s\t%s\n' "$stamp" "$WHOAMI" "$REF" "$digest" \
-        >> "$STORE/pull-history.log" 2>/dev/null; then
-    echo ">> logged to $STORE/pull-history.log"
+histdir="$STORE/pull-history.d"
+histfile="$histdir/${WHOAMI}.log"
+if { mkdir -p "$histdir" && printf '%s\t%s\t%s\t%s\n' \
+        "$stamp" "$WHOAMI" "$REF" "$digest" >> "$histfile"; } 2>/dev/null; then
+    echo ">> logged to $histfile"
+else
+    echo ">> note: could not write $histfile (check group permissions on $STORE)"
 fi
 
 # --- footprint ------------------------------------------------------------
@@ -172,14 +240,48 @@ if [ "${FOOTPRINT:-1}" = "1" ]; then
     esac
 fi
 
+# --- verify the shared store, not this node's view -------------------------
+# `podman-hpc images` here also sees the graph-root copy that `podman pull`
+# just wrote, so it answers "present" even when the migrate step produced
+# nothing usable — the check this script used to merely PRINT could not fail.
+# Point podman at a throwaway graph root so only the shared squash store can
+# satisfy the lookup, which is what a compute node actually gets.
+#
+# Prefer the /dvs_ro mirror, but fall back to the writable path: login nodes do
+# not always have the DVS mount.
+probe_store=$STORE
+[ -d "$STORE_RO" ] && probe_store=$STORE_RO
+if probe_root=$(mktemp -d 2>/dev/null); then
+    if PODMANHPC_GRAPH_ROOT="$probe_root/storage" \
+       PODMANHPC_RUN_ROOT="$probe_root/run" \
+       PODMANHPC_ADDITIONAL_STORES="$probe_store" \
+       podman-hpc images 2>/dev/null | grep -qF "$IMAGE"; then
+        echo ">> verified: $REF resolves from $probe_store with an empty graph root"
+    else
+        echo "WARNING: $REF is NOT visible through $probe_store when the graph" >&2
+        echo "         root is empty — the migrate step may not have completed," >&2
+        echo "         in which case jobs will not find the image. An interrupted" >&2
+        echo "         squash leaves a truncated file at its final path, so retry" >&2
+        echo "         with REFRESH=1 rather than a plain re-run." >&2
+    fi
+    rm -rf "$probe_root"
+fi
+
 cat <<EOF
 >> done. Use it from a job:
 
    export PODMANHPC_ADDITIONAL_STORES=$STORE_RO     # or: source env.sh
    srun ... podman-hpc run --rm --gpu \\
-       -v \$SCRATCH:\$SCRATCH -v \$CFS:\$CFS --workdir "\$SLURM_SUBMIT_DIR" \\
+       -v \$SCRATCH:\$SCRATCH -v \$CFS:\$CFS -v \$HOME:\$HOME \\
+       --workdir "\$SLURM_SUBMIT_DIR" \\
        $REF python script.py
 
-   Check it resolves before submitting:
-       PODMANHPC_ADDITIONAL_STORES=$STORE_RO podman-hpc images | grep ${NAME}
+   \$HOME is mounted because podman-hpc bind-mounts nothing by default and
+   --workdir is often under it; see perlmutter/jobs/*.sbatch for the full
+   pattern.
+
+   Re-check from a compute node (this node's graph-root copy would mask a
+   broken store):
+       srun -A <project>_g -C gpu -q debug -N1 -t5 \\
+           podman-hpc run --rm $REF python -P -c "print('ok')"
 EOF
