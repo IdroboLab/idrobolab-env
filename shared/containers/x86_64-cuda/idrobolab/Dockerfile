@@ -208,6 +208,56 @@ RUN set -eux; \
 COPY requirements-idrobolab.txt /opt/build/requirements-idrobolab.txt
 RUN uv pip install -r /opt/build/requirements-idrobolab.txt
 
+# --- dask-cuda for multi-GPU abTEM (deliberate --no-deps pairing) -----------
+# The staged abTEM checkout already carries the multi-GPU code paths
+# (ensure_cuda_cluster / is_gpu_dask_client); only the runtime was missing, so
+# without this abTEM raises "The dask-cuda package is required to distribute
+# computations across multiple GPUs" the moment dask.multi-gpu is enabled.
+# Same pairing as another image -- see
+# delta/verification/multigpu_abtem/README.md for the full analysis.
+#
+# --no-deps is NOT optional. dask-cuda 26.6.0 requires
+# rapids-dask-dependency==26.6.*, which pins dask==2026.1.1 -- one of the exact
+# releases abTEM excludes (pyproject: !=2025.12.*,!=2026.1.0,!=2026.1.1, for the
+# to_zarr regression dask/dask#12205, fixed in 2026.1.2). Resolving normally
+# would either fail outright or silently
+# downgrade this image's dask into a state where abTEM computes correct results
+# and then saves them wrongly. So install dask-cuda alone and add only its
+# non-dask runtime deps: nvidia-ml-py, and cuda-core pinned <1.0 because the
+# 1.x line drops the cuda.core.experimental namespace dask-cuda 26.6 imports.
+# When RAPIDS >= 26.8 ships a dask-cuda built against dask 2026.7, this whole
+# block collapses to a plain `pip install dask-cuda`.
+#
+# --no-deps means the rest of dask-cuda's requirements must already be here.
+# Audited against its 26.6.0 metadata (checked 2026-08-18) -- do NOT assume the
+# Another image pairing transfers, the two images have different package sets:
+#   click>=8.1     <- dask (requires click>=8.1)
+#   cuda-core      <- installed above
+#   numpy          <- ase, torch
+#   nvidia-ml-py   <- installed above
+#   pandas>=1.3    <- pymatgen-core (pandas>=2) and hiphive
+#   zict>=2.0.0    <- distributed (zict>=3.0.0)
+#   rapids-dask-dependency==26.6.*  <- SKIPPED on purpose; it is the dask pin
+# If any of those top-level packages ever leaves requirements-idrobolab.txt,
+# re-check this list: the import test below catches a missing module, but a
+# too-old one may only surface when a cluster is constructed on a GPU node.
+#
+# The torch guard is load-bearing: fairchem-core 2.21 pins torch~=2.8 and caps
+# this entire image (see requirements-idrobolab.txt). A dependency cascade that
+# moved torch would be a silent, expensive regression, so fail the build loudly
+# instead.
+RUN set -eux; \
+    torch_before="$(python -c 'import torch; print(torch.__version__)')"; \
+    pip install nvidia-ml-py "cuda-core[cu12]>=0.3.2,<1.0"; \
+    pip install --no-deps dask-cuda==26.6.0; \
+    python -c "from dask_cuda import LocalCUDACluster; import cuda.core.experimental; print('dask-cuda import OK')"; \
+    torch_after="$(python -c 'import torch; print(torch.__version__)')"; \
+    if [ "$torch_before" != "$torch_after" ]; then \
+        echo "ERROR: dask-cuda install moved torch $torch_before -> $torch_after;" >&2; \
+        echo "       fairchem-core 2.21 pins torch~=2.8 -- refusing to build." >&2; \
+        exit 1; \
+    fi
+
 # --- GPAW (editable; C ext built in-place, a copy stashed for bound clones) --
 COPY siteconfig.py /opt/build/siteconfig.py
 COPY src/gpaw /opt/src/gpaw
@@ -354,6 +404,8 @@ assert hasattr(_gpaw,'new_blacs_context'),'GPAW built without ScaLAPACK'; \
 assert hasattr(_gpaw,'FFTWPlan'),'GPAW built without FFTW'; \
 print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version__,'| pymatgen',version('pymatgen'))" \
  && python -c "import fairchem.core, orb_models, ptyrad; print('ML/ptycho stack ok')" \
+ && python -c "from dask_cuda import LocalCUDACluster; import dask, distributed; \
+print('dask-cuda ok | dask',dask.__version__,'| distributed',distributed.__version__)" \
  && python -c "import nion.data; print('nionswift (headless data) ok')" \
  && mpichversion | head -1
 

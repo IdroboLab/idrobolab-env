@@ -30,6 +30,23 @@ there is **no** `data.pyg.org` companion-wheel step. If you ever need torch
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/` |
 | `publish.sh` | Build + push to `ghcr.io/<username>/idrobolab` |
 
+### Multi-GPU abTEM (dask-cuda)
+
+The staged abTEM checkout carries the multi-GPU code paths, so the image also
+installs **dask-cuda 26.6.0** with `--no-deps`, matching another image. Without it
+`ensure_cuda_cluster()` raises *"The dask-cuda package is required to distribute
+computations across multiple GPUs"* as soon as `dask.multi-gpu` is enabled —
+loudly, not as a silent fall back to one GPU.
+
+`--no-deps` is mandatory: dask-cuda 26.6.0 requires `rapids-dask-dependency`
+`==26.6.*`, which pins `dask==2026.1.1` — one of the releases abTEM excludes for
+the `to_zarr` regression. `requirements-idrobolab.txt` therefore also carries
+abTEM's exclusion set so the resolve lands correctly the first time. The full
+analysis, including the Plan B downgrade, is in
+[`delta/verification/multigpu_abtem/README.md`](../../../delta/verification/multigpu_abtem/README.md).
+The Dockerfile block lists which package supplies each skipped dependency; the
+build fails loudly if the install moves `torch` off the fairchem 2.8 ceiling.
+
 **Editable** installs from `/opt/src` (bind a cluster checkout over
 `/opt/src/<name>` to run any branch, as in another image): **gpaw** (<username> fork,
 a branch), **gpaw-weaver**, **abTEM**. Everything else comes from the pinned
