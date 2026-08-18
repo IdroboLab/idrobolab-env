@@ -87,7 +87,7 @@ if [ "${REFRESH:-0}" = "1" ]; then
 fi
 
 echo ">> pulling $REF into $STORE"
-podman-hpc --squash-dir "$STORE" pull "$REF"
+podman-hpc --log-level "trace" --squash-dir "$STORE" pull "$REF"
 
 # --- provenance -----------------------------------------------------------
 # The digest is what identifies the image in a campaign record; :latest moves.
