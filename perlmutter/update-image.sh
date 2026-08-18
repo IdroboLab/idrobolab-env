@@ -220,8 +220,11 @@ fi
 # one it migrated to. Only the squashed copy is needed to run a job — that is
 # how a collaborator who never pulled can use the store — so a graph root on a
 # shared filesystem doubles usage and slows every pull for no benefit.
+# Resolved unconditionally: the verification block below uses it to diagnose a
+# failed squash, and that must work with FOOTPRINT=0 too.
+graph_root=$(podman-hpc info --format '{{.Store.GraphRoot}}' 2>/dev/null) || graph_root=""
+
 if [ "${FOOTPRINT:-1}" = "1" ]; then
-    graph_root=$(podman-hpc info --format '{{.Store.GraphRoot}}' 2>/dev/null) || graph_root=""
     echo ">> footprint (du on a network filesystem is slow; FOOTPRINT=0 skips it):"
     if [ -n "$graph_root" ] && [ -d "$graph_root" ]; then
         echo "   graph root, not needed by jobs  $(du -sh "$graph_root" 2>/dev/null | cut -f1)  $graph_root"
@@ -258,11 +261,32 @@ if probe_root=$(mktemp -d 2>/dev/null); then
        podman-hpc images 2>/dev/null | grep -qF "$IMAGE"; then
         echo ">> verified: $REF resolves from $probe_store with an empty graph root"
     else
-        echo "WARNING: $REF is NOT visible through $probe_store when the graph" >&2
-        echo "         root is empty — the migrate step may not have completed," >&2
-        echo "         in which case jobs will not find the image. An interrupted" >&2
-        echo "         squash leaves a truncated file at its final path, so retry" >&2
-        echo "         with REFRESH=1 rather than a plain re-run." >&2
+        rm -rf "$probe_root"
+        echo "ERROR: $REF is NOT visible through $probe_store with an empty graph" >&2
+        echo "       root. The pull succeeded but the squash/migrate step did not," >&2
+        echo "       so JOBS WILL NOT FIND THIS IMAGE. Note podman-hpc exits 0 even" >&2
+        echo "       when its migrate fails ('ERROR:root:Squash Failed' in the log)," >&2
+        echo "       which is why this check exists." >&2
+        echo >&2
+        echo "       Re-squash without re-downloading 20 GB:" >&2
+        echo "         podman-hpc --squash-dir $STORE migrate $REF" >&2
+        echo >&2
+        if [ -n "$graph_root" ]; then
+            case "$graph_root" in
+                /pscratch/*|/global/cfs/*|/dvs_ro/*|/global/homes/*)
+                    echo "       LIKELY CAUSE: the graph root is on a network filesystem" >&2
+                    echo "         $graph_root" >&2
+                    echo "       mksquashfs reads the layers through fuse-overlayfs there and" >&2
+                    echo "       can fail on extended attributes ('Unrecognised xattr prefix')." >&2
+                    echo "       podman warns about it too ('Network file system detected as" >&2
+                    echo "       backing store'). Unset PODMANHPC_GRAPH_ROOT and" >&2
+                    echo "       PODMANHPC_RUN_ROOT for the node-local default, then re-pull:" >&2
+                    echo "         env -u PODMANHPC_GRAPH_ROOT -u PODMANHPC_RUN_ROOT \\" >&2
+                    echo "             ./update-image.sh ${NAME}" >&2 ;;
+            esac
+        fi
+        echo "       Also check the project CFS quota; a full quota fails the same way." >&2
+        exit 1
     fi
     rm -rf "$probe_root"
 fi
