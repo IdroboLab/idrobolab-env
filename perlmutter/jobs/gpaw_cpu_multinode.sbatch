@@ -24,7 +24,15 @@
 
 set -euo pipefail
 
-IMAGE=${IMAGE:-ghcr.io/<username>/otherimage:latest}
+# Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
+# (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
+# verification launchers and `update-image.sh <name>`. A value containing "/"
+# is used verbatim; TAG and IMAGE_OWNER apply only to the short form.
+IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
+case "$IMAGE" in
+    */*) : ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+esac
 SCRIPT=${1:?usage: sbatch gpaw_cpu_multinode.sbatch script.py [args]}
 shift
 

@@ -22,7 +22,15 @@
 
 set -euo pipefail
 
-IMAGE=${IMAGE:-ghcr.io/<username>/otherimage:latest}
+# Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
+# (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
+# verification launchers and `update-image.sh <name>`. A value containing "/"
+# is used verbatim; TAG and IMAGE_OWNER apply only to the short form.
+IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
+case "$IMAGE" in
+    */*) : ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+esac
 
 MOUNTS=""
 for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}"; do
@@ -41,13 +49,21 @@ fi
 # `python -P` drops the CWD from sys.path so a stray ./gpaw directory cannot
 # shadow the editable install (see README gotchas).
 echo "== image identity =="
-podman-hpc images --digests | grep -E "REPOSITORY|otherimage" || true
+podman-hpc images --digests | grep -E "REPOSITORY|${IMAGE%%:*}" || true
 
 echo "== imports and versions =="
 srun podman-hpc run --rm --gpu $MOUNTS "$IMAGE" python -P -c "
-import gpaw, otherimage, torch, cupy
+import gpaw, torch, cupy
 print('gpaw       ', gpaw.__version__)
-print('otherimage ', getattr(otherimage, '__version__', 'n/a'))
+# The other image's package ships in that image only; idrobolab carries gpaw
+# (a fork branch, so its extra module is present), gpaw-weaver and abTEM instead. Report
+# what is there rather than failing the smoke test on the wrong image.
+for _name in ('otherimage', 'abtem', 'gpaw_weaver', 'pyslice'):
+    try:
+        _m = __import__(_name)
+        print(f'{_name:11s}', getattr(_m, '__version__', 'present'))
+    except ImportError:
+        print(f'{_name:11s}', '-- not in this image')
 print('torch      ', torch.__version__, 'cuda', torch.cuda.is_available())
 print('device     ', torch.cuda.get_device_name(0))
 print('cupy       ', cupy.__version__)

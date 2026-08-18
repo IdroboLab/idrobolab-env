@@ -18,7 +18,15 @@ CONSTRAINT=${CONSTRAINT:-gpu}
 NODES=${NODES:-1}
 GPUS=${GPUS:-4}
 TIME=${TIME:-01:00:00}
-IMAGE=${IMAGE:-ghcr.io/<username>/otherimage:latest}
+# Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
+# (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
+# verification launchers and `update-image.sh <name>`. A value containing "/"
+# is used verbatim; TAG and IMAGE_OWNER apply only to the short form.
+IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
+case "$IMAGE" in
+    */*) : ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+esac
 
 MOUNTS=""
 for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}"; do
