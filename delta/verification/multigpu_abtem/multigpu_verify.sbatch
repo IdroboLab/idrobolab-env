@@ -79,6 +79,53 @@ echo "SIF=$SIF"
 echo "abtem_src=$ABTEM_SRC (via PYTHONPATH)"
 echo "GPUs requested: ${SLURM_GPUS_ON_NODE:-?}   node=$(hostname)"
 
+# --- injection precheck ----------------------------------------------------
+# Cheap (seconds) and it fails loudly instead of producing a green-looking run
+# of the WRONG abTEM. This matters more than it looks: the image installs abTEM
+# editable from a staged checkout, so the container's own abTEM reports the same
+# version as the branch and may itself expose is_gpu_dask_client -- neither the
+# version string nor a symbol import can tell them apart. Only the resolved
+# PATH can. And verify_multigpu.py records a non-multi-GPU abTEM as WARN, not
+# FAIL, then returns `1 if counts["FAIL"] else 0`, so without this gate a failed
+# injection exits 0 and looks fine.
+#
+# The probe PRINTS the path and bash compares it, rather than exiting nonzero
+# inside the container: "abtem did not import at all" and "the wrong abtem
+# imported" are different problems with different fixes, and collapsing them
+# into one status sends the reader to the wrong place.
+#
+# `python -P` drops the CWD from sys.path so a stray ./abtem directory cannot
+# shadow the import; PYTHONPATH is still honoured. `tail -n 1` because only the
+# last stdout line is ours.
+ABTEM_SRC=${ABTEM_SRC%/}          # a trailing slash would break the match below
+if ! ABTEM_PROBE=$(APPTAINERENV_PYTHONPATH="$ABTEM_SRC" \
+        apptainer exec --nv --bind "$BINDS" "$SIF" \
+        python -P -c 'import abtem; print(abtem.__file__ + "|" + abtem.__version__)' \
+        | tail -n 1); then
+    echo "ERROR: could not import abtem inside $SIF." >&2
+    echo "  This is NOT (yet) the injection failing -- the container did not" >&2
+    echo "  run, or abtem did not import at all. Check \$SIF exists and that" >&2
+    echo "  the bind list covers it: $BINDS" >&2
+    exit 1
+fi
+ABTEM_FILE=${ABTEM_PROBE%%|*}
+ABTEM_VER=${ABTEM_PROBE##*|}
+case "$ABTEM_FILE" in
+    "$ABTEM_SRC"/*)
+        echo "abtem in use: $ABTEM_VER  <- $ABTEM_FILE" ;;
+    *)
+        echo "ERROR: the branch abTEM is not the one being imported." >&2
+        echo "  imported: $ABTEM_FILE ($ABTEM_VER)" >&2
+        echo "  expected: somewhere under $ABTEM_SRC" >&2
+        echo "  The container's own abTEM won (editable, /opt/src/abTEM). If it" >&2
+        echo "  was built from a checkout without the multi-GPU work, every check" >&2
+        echo "  below would be testing nothing; if it was built from one WITH it," >&2
+        echo "  the run would pass while telling you nothing about your branch." >&2
+        echo "  The version string would not have revealed either case." >&2
+        echo "  Check APPTAINERENV_PYTHONPATH and that \$ABTEM_SRC is in --bind." >&2
+        exit 1 ;;
+esac
+
 # --nv exposes the GPUs; PYTHONPATH makes the container Python import the branch
 # abTEM while dask-cuda/cupy/dask come from the container.
 time APPTAINERENV_PYTHONPATH="$ABTEM_SRC" apptainer exec --nv --bind "$BINDS" "$SIF" \

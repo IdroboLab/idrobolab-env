@@ -40,9 +40,11 @@ The launchers resolve the payload dir relative to themselves (`PAYLOAD_DIR` over
 >   check *passes* on the container's own abTEM, and the whole suite can validate
 >   the container instead of the branch without saying so.
 >
-> The Perlmutter launchers guard this by comparing the imported `abtem.__file__`
-> against `$ABTEM_SRC` before the payload runs and exiting 1 on a mismatch. The
-> Delta launchers below do **not** yet have that precheck — worth adding.
+> Both clusters' launchers now guard this: they compare the imported
+> `abtem.__file__` against `$ABTEM_SRC` before the payload runs and exit 1 on a
+> mismatch, and `setup_env.sh` asserts the same thing (its old check —
+> `'/abtem/' in abtem.__file__` — passed for the container's own editable abTEM
+> too, so it proved nothing).
 
 The container ships abTEM **1.0.9**, which has no multi-GPU code. It cannot be
 `pip`-upgraded in place (the image is read-only), and a nested

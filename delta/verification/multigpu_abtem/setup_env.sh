@@ -38,7 +38,7 @@ for p in /projects /scratch /work "$ABTEM_SRC"; do
     [ -e "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 done
 
-APPTAINERENV_PYTHONPATH="$ABTEM_SRC" \
+APPTAINERENV_PYTHONPATH="$ABTEM_SRC" APPTAINERENV_ABTEM_SRC="$ABTEM_SRC" \
 apptainer exec --bind "$BINDS" "$SIF" python - <<'PY'
 import abtem, dask, distributed, dask_cuda
 from abtem.core.backend import is_gpu_dask_client  # multi-gpu branch present
@@ -51,7 +51,14 @@ try:
     print('cupy       ', cupy.__version__)
 except Exception as e:  # cupy import can need a GPU node in some builds
     print('cupy       ', 'import deferred:', type(e).__name__)
-assert '/abtem/' in abtem.__file__ or abtem.__file__.rstrip('/').endswith('abtem/__init__.py')
+# The old check here ('/abtem/' in abtem.__file__) passed for the CONTAINER's
+# own editable abTEM as well, so it proved nothing. Assert the resolved path is
+# actually under the checkout -- that is the only thing that distinguishes them,
+# since both report the same version.
+import os
+src = os.environ['ABTEM_SRC'].rstrip('/')
+assert os.path.realpath(abtem.__file__).startswith(os.path.realpath(src) + os.sep), \
+    f'abTEM resolved to {abtem.__file__}, not under {src} -- the container won'
 print('preflight OK: branch abTEM shadows the container, dask-cuda available')
 PY
 
