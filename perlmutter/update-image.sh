@@ -18,7 +18,17 @@ set -euo pipefail
 # Defaults match env.sh; sourcing that file first parameterises this script
 # (PODMAN_STORE / PODMAN_STORE_RO), and STORE / STORE_RO still win if set.
 STORE=${STORE:-${PODMAN_STORE:-/global/cfs/cdirs/<project>/podman-hpc/images}}
-STORE_RO=${STORE_RO:-${PODMAN_STORE_RO:-/dvs_ro/cfs/cdirs/<project>/podman-hpc/images}}
+
+# Derive the read path FROM $STORE instead of defaulting it separately. As two
+# independent literals they drift — and a stale STORE_RO is invisible here,
+# surfacing only as a job that cannot resolve the image. /dvs_ro/cfs mirrors
+# /global/cfs, so the tail is identical. An explicit STORE_RO still wins.
+if [ -z "${STORE_RO:-}" ]; then
+    case "$STORE" in
+        /global/cfs/*) STORE_RO="/dvs_ro/cfs/${STORE#/global/cfs/}" ;;
+        *)             STORE_RO="$STORE" ;;
+    esac
+fi
 
 NAME=${1:-idrobolab}
 IMAGE=${IMAGE:-ghcr.io/<username>/$NAME}
@@ -86,8 +96,43 @@ if [ "${REFRESH:-0}" = "1" ]; then
     podman-hpc --squash-dir "$STORE" rmi "$REF" || true
 fi
 
-echo ">> pulling $REF into $STORE"
-podman-hpc --log-level "trace" --squash-dir "$STORE" pull "$REF"
+# podman-hpc's trace log runs to several hundred lines per pull. It earned its
+# keep once — it is how the graph root was spotted sitting on CFS — but it is
+# noise by default, so it is opt-in: LOG_LEVEL=trace ./update-image.sh
+LOG_LEVEL=${LOG_LEVEL:-}
+pull_args=(--squash-dir "$STORE")
+if [ -n "$LOG_LEVEL" ]; then
+    pull_args=(--log-level "$LOG_LEVEL" "${pull_args[@]}")
+fi
+
+# A 20 GB image over a network backing store is a long copy with a real
+# failure rate. Blobs that fully landed are reused on a repeat pull ("Checking
+# if we can reuse blob"), so a retry is cheaper than starting over — though a
+# blob interrupted mid-transfer does restart, since podman reports "partial
+# images are disabled". Retry rather than making the caller notice and rerun.
+attempts=${RETRIES:-3}
+backoff=${RETRY_WAIT:-30}
+started=$SECONDS
+n=1
+while : ; do
+    echo ">> pulling $REF into $STORE  (attempt $n/$attempts)"
+    if podman-hpc "${pull_args[@]}" pull "$REF"; then
+        break
+    fi
+    if [ "$n" -ge "$attempts" ]; then
+        echo "ERROR: pull failed $attempts times — giving up." >&2
+        echo "       Fully-fetched blobs are kept, so rerunning resumes." >&2
+        echo "       Re-run with LOG_LEVEL=trace to see why, and check the" >&2
+        echo "       project CFS quota and whether the graph root sits on a" >&2
+        echo "       network filesystem:" >&2
+        echo "         podman-hpc info --format '{{.Store.GraphRoot}}'" >&2
+        exit 1
+    fi
+    echo ">> attempt $n failed; retrying in ${backoff}s"
+    sleep "$backoff"
+    n=$((n + 1))
+done
+echo ">> pull completed in $((SECONDS - started))s"
 
 # --- provenance -----------------------------------------------------------
 # The digest is what identifies the image in a campaign record; :latest moves.
@@ -100,6 +145,31 @@ stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 if printf '%s\t%s\t%s\t%s\n' "$stamp" "$WHOAMI" "$REF" "$digest" \
         >> "$STORE/pull-history.log" 2>/dev/null; then
     echo ">> logged to $STORE/pull-history.log"
+fi
+
+# --- footprint ------------------------------------------------------------
+# podman keeps TWO copies: the graph-root one it pulled into, and the squashed
+# one it migrated to. Only the squashed copy is needed to run a job — that is
+# how a collaborator who never pulled can use the store — so a graph root on a
+# shared filesystem doubles usage and slows every pull for no benefit.
+if [ "${FOOTPRINT:-1}" = "1" ]; then
+    graph_root=$(podman-hpc info --format '{{.Store.GraphRoot}}' 2>/dev/null) || graph_root=""
+    echo ">> footprint (du on a network filesystem is slow; FOOTPRINT=0 skips it):"
+    if [ -n "$graph_root" ] && [ -d "$graph_root" ]; then
+        echo "   graph root, not needed by jobs  $(du -sh "$graph_root" 2>/dev/null | cut -f1)  $graph_root"
+    fi
+    if [ -d "$STORE" ]; then
+        echo "   squash store, read by jobs      $(du -sh "$STORE" 2>/dev/null | cut -f1)  $STORE"
+    fi
+    case "$graph_root" in
+        /global/cfs/*|/dvs_ro/*|/global/homes/*)
+            echo "   WARNING: the graph root is on a SHARED filesystem. Podman keeps a"
+            echo "   sqlite database and lock files there, so concurrent access from"
+            echo "   several nodes or users risks contention and a corrupted store, and"
+            echo "   it doubles the project's usage. Point PODMANHPC_GRAPH_ROOT and"
+            echo "   PODMANHPC_RUN_ROOT at \$SCRATCH, or unset both for the node-local"
+            echo "   default, and keep only --squash-dir on CFS." ;;
+    esac
 fi
 
 cat <<EOF
