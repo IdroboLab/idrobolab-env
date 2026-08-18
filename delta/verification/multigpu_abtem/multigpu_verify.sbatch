@@ -2,7 +2,9 @@
 # Multi-GPU verification for abTEM on Delta's gpuA100x4 partition.
 # Runs verify_multigpu.py inside another image's container (which ships
 # dask-cuda), with the abTEM 'multi-gpu-support' branch injected via PYTHONPATH
-# to shadow the container's abTEM 1.0.9 (no venv).
+# to shadow the container's own abTEM (no venv). NB: the image installs abTEM
+# editable from a staged checkout, so its version is NOT a reliable way to tell
+# container from branch -- both currently report 1.1.0. Only abtem.__file__ is.
 #
 # Usage:
 #   SIF=/path/otherimage_delta.sif ABTEM_SRC=/path/abTEM \
@@ -42,14 +44,23 @@ set -euo pipefail
 # dir for `bash` runs. Submit from the directory holding verify_multigpu.py.
 HERE="${SLURM_SUBMIT_DIR:-}"
 [ -n "$HERE" ] || HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ ! -f "$HERE/verify_multigpu.py" ]; then
-    echo "ERROR: verify_multigpu.py not found in $HERE (submit from its directory)" >&2
+
+# The Python payloads are shared with Perlmutter and live in
+# shared/verification/multigpu_abtem/; only the launchers are per-cluster, so
+# the two clusters cannot drift. Resolved relative to this directory; override
+# with PAYLOAD_DIR if you keep the payloads elsewhere.
+PAYLOAD_DIR=${PAYLOAD_DIR:-$HERE/../../../shared/verification/multigpu_abtem}
+if [ -d "$PAYLOAD_DIR" ]; then
+    PAYLOAD_DIR=$(cd "$PAYLOAD_DIR" && pwd)
+fi
+if [ ! -f "$PAYLOAD_DIR/verify_multigpu.py" ]; then
+    echo "ERROR: verify_multigpu.py not found in $PAYLOAD_DIR" >&2
     exit 1
 fi
 
 SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
 # abTEM 'multi-gpu-support' checkout. It is injected via PYTHONPATH to shadow the
-# container's abTEM 1.0.9 -- no venv: the container is read-only and its Python is
+# container's own abTEM -- no venv: the container is read-only and its Python is
 # itself a venv, so a nested venv cannot see the container's dask-cuda/cupy.
 ABTEM_SRC=${ABTEM_SRC:-$SCRATCH/code/abTEM}
 
@@ -59,7 +70,7 @@ if [ ! -f "$ABTEM_SRC/abtem/__init__.py" ]; then
     exit 1
 fi
 
-BINDS="$HERE"
+BINDS="$HERE,$PAYLOAD_DIR"
 for p in /projects /scratch /work "$ABTEM_SRC"; do
     [ -e "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 done
@@ -71,4 +82,4 @@ echo "GPUs requested: ${SLURM_GPUS_ON_NODE:-?}   node=$(hostname)"
 # --nv exposes the GPUs; PYTHONPATH makes the container Python import the branch
 # abTEM while dask-cuda/cupy/dask come from the container.
 time APPTAINERENV_PYTHONPATH="$ABTEM_SRC" apptainer exec --nv --bind "$BINDS" "$SIF" \
-    python "$HERE/verify_multigpu.py" "$@"
+    python "$PAYLOAD_DIR/verify_multigpu.py" "$@"

@@ -4,9 +4,15 @@ Confirms that abTEM actually distributes a GPU simulation across **every GPU on 
 node**, using the multi-GPU support on the abTEM `multi-gpu-support` branch (lazy
 GPU computes routed through a `dask_cuda` cluster, one worker process per GPU).
 
+The three Python payloads are **shared with Perlmutter** and live in
+[`shared/verification/multigpu_abtem/`](../../../shared/verification/multigpu_abtem/);
+only the launchers below are Delta-specific. Both clusters therefore run byte-identical
+simulation code, so their numbers are directly comparable — and a fix lands once.
+The launchers resolve the payload dir relative to themselves (`PAYLOAD_DIR` overrides it).
+
 | File | Purpose |
 |---|---|
-| `verify_multigpu.py` | The verification payload — environment report + cluster/coverage/distribution checks. Portable; runs anywhere with CuPy + dask-cuda. |
+| `../../../shared/verification/multigpu_abtem/verify_multigpu.py` | The verification payload — environment report + cluster/coverage/distribution checks. Portable; runs anywhere with CuPy + dask-cuda. |
 | `setup_env.sh` | Preflight check (no venv): confirms the branch abTEM + container dask-cuda import together via `PYTHONPATH`. |
 | `multigpu_verify.sbatch` | Slurm submission for the verification (`gpuA100x4`; 8-GPU variant inline). |
 | `benchmark_haadf.py` | Frozen-phonon HAADF benchmark: sweeps 1/2/4/… GPUs, reports scaling, and checks the image is invariant to GPU count. Uses an **explicit** `LocalCUDACluster`. |
@@ -15,6 +21,28 @@ GPU computes routed through a `dask_cuda` cluster, one worker process per GPU).
 | `benchmark_haadf_auto.sbatch` | Slurm submission for the automatic benchmark. |
 
 ## How the branch abTEM is injected (no venv)
+
+> **Correction (verified 2026-08-18).** The claim below that the container ships
+> abTEM 1.0.9 is **wrong**, and the error matters. The `Dockerfile` installs abTEM
+> *editable from a staged dev checkout* (`COPY src/abTEM /opt/src/abTEM` +
+> `pip install -e`), so which abTEM the image holds depends on what was staged at
+> build time. The current build context stages the dev box's checkout on branch
+> `dev`, which reports `__version__ = "1.1.0"` and **already contains**
+> `ensure_cuda_cluster` and `is_gpu_dask_client`. Two consequences:
+>
+> - **Version cannot tell you which abTEM you imported** — the `multi-gpu-support`
+>   branch also reports 1.1.0. Only `abtem.__file__` discriminates. Check the
+>   path, never the version.
+> - **A failed injection is not loud.** `verify_multigpu.py` records a
+>   non-multi-GPU abTEM as `WARN` (not `FAIL`), skips the abTEM distribution
+>   checks, and `main()` returns `1 if counts["FAIL"] else 0` — so the job exits 0
+>   and looks green. Worse, against an image built from `dev` the environment
+>   check *passes* on the container's own abTEM, and the whole suite can validate
+>   the container instead of the branch without saying so.
+>
+> The Perlmutter launchers guard this by comparing the imported `abtem.__file__`
+> against `$ABTEM_SRC` before the payload runs and exiting 1 on a mismatch. The
+> Delta launchers below do **not** yet have that precheck — worth adding.
 
 The container ships abTEM **1.0.9**, which has no multi-GPU code. It cannot be
 `pip`-upgraded in place (the image is read-only), and a nested
@@ -30,7 +58,7 @@ committed `abtem/_version.py`, so no build or install step is needed.
 
 The container (`otherimage_delta.sif`) ships `dask 2026.7.0` and `cupy-cuda12x
 13.5.1`. The newest released `dask-cuda` (26.6.0) hard-pins
-`rapids-dask-dependency==26.6.*` → `dask==2026.1.1`, and both abTEM 1.0.9 and the
+`rapids-dask-dependency==26.6.*` → `dask==2026.1.1`, and both the container's abTEM and the
 `multi-gpu-support` branch *exclude* `dask 2026.1.*`. A plain `pip install
 dask-cuda` would therefore fail to resolve (or downgrade the whole stack).
 
@@ -77,7 +105,7 @@ pip install "dask-cuda==25.12.0"   # pulls dask==2025.9.1, distributed==2025.9.1
 
 Trade-offs, in exchange for a tested pairing:
 
-- **~10-month dask/distributed rollback** for the whole image. abTEM 1.0.9 and the
+- **~10-month dask/distributed rollback** for the whole image. The container's abTEM and the
   branch both allow 2025.9.1, but other 2026.7-era packages (`xarray 2026.7`, …) run
   against an older dask — verify the build's `%test` block still passes.
 - **`numba-cuda 0.19.x`** is added and may pull a different `numba` than the
@@ -112,7 +140,7 @@ Options worth knowing (`python verify_multigpu.py --help` for all):
 - `--timing` — add a 1-GPU vs N-GPU wall-clock comparison.
 - `--no-cluster` — skip the cluster; just smoke-test each GPU independently.
 
-Quick interactive smoke test (no overlay venv, container abTEM 1.0.9). Because
+Quick interactive smoke test (no overlay venv, container abTEM). Because
 dask-cuda ships in the container, the cluster bring-up and GPU-coverage checks
 still run; only the abTEM-distribution checks are skipped (they need the branch):
 
@@ -209,7 +237,7 @@ ABTEM_SRC=<checkout: multi-gpu-on-269>  ... benchmark_haadf.sbatch --projection 
 ## What the checks mean
 
 - **0. Environment** — versions + visible GPUs, and whether the running abTEM
-  has the multi-GPU code. Container abTEM 1.0.9 always forces the synchronous
+  has the multi-GPU code. An abTEM without multi-GPU support forces the synchronous
   scheduler on GPU, so it *cannot* distribute — the branch must be on `PYTHONPATH`.
 - **1. Cluster bring-up** — one single-threaded worker per GPU;
   `is_gpu_dask_client(client)` accepts it (a multi-threaded / CPU client would be

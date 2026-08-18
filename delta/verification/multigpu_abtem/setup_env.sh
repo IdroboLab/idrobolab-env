@@ -5,7 +5,8 @@
 # `python -m venv --system-site-packages` cannot see the container's
 # dask-cuda/cupy (it inherits only the *base* interpreter's site-packages, not
 # the container venv's). Instead, the abTEM 'multi-gpu-support' branch is
-# injected at run time via PYTHONPATH, shadowing the container's abTEM 1.0.9;
+# injected at run time via PYTHONPATH, shadowing the container's own abTEM
+# (whatever was staged at build time -- the version does not discriminate);
 # everything else (dask-cuda, cupy, dask) comes from the container.
 #
 # abTEM is pure Python with a committed abtem/_version.py, so no build/install
