@@ -141,7 +141,9 @@ if [ -d "$STORE/overlay/l" ]; then
     while IFS= read -r line; do
         [ -n "$line" ] && stubs+=("$line")
     done < <(find "$STORE/overlay/l" -maxdepth 1 -name '*.squash' \
-                  -size -1048576c -mmin +30 2>/dev/null || true)
+                  -size -1048576c -mmin "+${STUB_MAX_AGE_MIN:-30}" 2>/dev/null || true)
+    # STUB_MAX_AGE_MIN=0 clears a stub you just created yourself -- the default
+    # 30 exists only to protect a squash in progress in someone else's shell.
     # NB: -size in BYTES (c). GNU find rounds -size -1M up to whole 1 MiB
     # units, so a 106-byte stub counts as 1 and never matches -1M.
     if [ "${#stubs[@]}" -gt 0 ]; then
