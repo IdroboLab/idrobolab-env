@@ -46,10 +46,35 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     #
     # Guarded: unset $SCRATCH would expand these to /podman-hpc/storage at the
     # filesystem root.
-    if [ -n "${SCRATCH:-}" ]; then
-        export PODMANHPC_GRAPH_ROOT="${SCRATCH}/podman-hpc/storage"
-        export PODMANHPC_RUN_ROOT="${SCRATCH}/podman-hpc/run"
-    fi
+    # DISABLED 2026-08-18 after this broke image migration outright. Pointing
+    # the graph root at $SCRATCH (Lustre) let `podman-hpc pull` download all
+    # 19 GB and then fail to squash, every time:
+    #
+    #     ERROR:root:Squash Failed
+    #     Creating 4.0 filesystem on /sqout/<link>.squash ...
+    #     [/                              ] 0/2   0%
+    #     "/" is not a shared mount, this could cause issues or missing mounts
+    #     Network file system detected as backing store. Enforcing overlay
+    #       option `force_mask="700"`
+    #     Unrecognised xattr prefix (null)      (x8)
+    #
+    # `0/2` is the giveaway: mksquashfs was handed a rootfs with two entries in
+    # it. The squash step runs `podman run --root <graph_root> ... <img> /`, and
+    # a fuse-overlayfs graph root on Lustre -- with force_mask enforced and
+    # non-shared mount propagation for rootless podman -- never assembles into a
+    # usable rootfs. The xattr errors are a symptom of the same thing. There is
+    # no way around it: podman-hpc hardcodes its mksquashfs options
+    # (migrate2scratch.py: mksq_options), so `-no-xattrs` cannot be passed.
+    #
+    # Leave both unset for podman-hpc's node-local default
+    # (/tmp/{uid}_hpc/storage), which is what NERSC ships and what works. The
+    # squash STORE stays on CFS -- that part is fine and is what jobs read.
+    # $SCRATCH is no better than CFS here; both are network filesystems.
+    #
+    # if [ -n "${SCRATCH:-}" ]; then
+    #     export PODMANHPC_GRAPH_ROOT="${SCRATCH}/podman-hpc/storage"
+    #     export PODMANHPC_RUN_ROOT="${SCRATCH}/podman-hpc/run"
+    # fi
 
     # Where podman-hpc looks for images beyond its own store.
     #
