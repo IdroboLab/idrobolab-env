@@ -18,11 +18,29 @@
 #
 # Env vars:
 #   SIF        container image (default $PROJECTS_BASE/software/containers/otherimage_delta.sif)
-#   ABTEM_SRC  abTEM checkout on the 'multi-gpu-support' branch (required)
+#   ABTEM_SRC  abTEM checkout on the 'multi-gpu-support' branch (required)#
+#   Image selection: SIF is the .sif path; IMAGE=<name> resolves to
+#   $PROJECTS_BASE/software/containers/<name>_delta.sif (default another image),
+#   matching the short-name form used by the Perlmutter launchers.
+
 
 set -euo pipefail
 
-SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
+# Image selection. SIF is the .sif path and always wins when set. IMAGE gives
+# the short-name form used elsewhere in the repo -- `IMAGE=idrobolab` resolves
+# to <containers>/idrobolab_delta.sif -- and an absolute path in IMAGE is taken
+# as-is, so either variable can carry a path.
+IMAGE=${IMAGE:-otherimage}
+case "$IMAGE" in
+    /*) SIF=${SIF:-$IMAGE} ;;
+    *)  SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/${IMAGE}_delta.sif} ;;
+esac
+if [ ! -f "$SIF" ]; then
+    echo "ERROR: container image not found: $SIF" >&2
+    echo "  Set SIF=/path/to/image.sif, or IMAGE=<name> for" >&2
+    echo "  \$PROJECTS_BASE/software/containers/<name>_delta.sif" >&2
+    exit 1
+fi
 ABTEM_SRC=${ABTEM_SRC:?export ABTEM_SRC=<path to abTEM 'multi-gpu-support' checkout>}
 
 if [ ! -f "$ABTEM_SRC/abtem/__init__.py" ]; then
