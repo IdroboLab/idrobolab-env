@@ -18,7 +18,8 @@
 #
 # Env vars:
 #   SIF        container image (default $PROJECTS_BASE/software/containers/otherimage_delta.sif)
-#   ABTEM_SRC  abTEM checkout on the 'multi-gpu-support' branch (required)#
+#   ABTEM_SRC  abTEM checkout to inject (optional). Unset/empty checks the
+#              container's own abTEM instead.#
 #   Image selection: SIF is the .sif path; IMAGE=<name> resolves to
 #   $PROJECTS_BASE/software/containers/<name>_delta.sif (default another image),
 #   matching the short-name form used by the Perlmutter launchers.
@@ -41,22 +42,39 @@ if [ ! -f "$SIF" ]; then
     echo "  \$PROJECTS_BASE/software/containers/<name>_delta.sif" >&2
     exit 1
 fi
-ABTEM_SRC=${ABTEM_SRC:?export ABTEM_SRC=<path to abTEM 'multi-gpu-support' checkout>}
+# Optional: unset (or empty) checks the container's own abTEM, which the image
+# installs editable from a staged checkout that may already carry multi-GPU.
+if [ -n "${ABTEM_SRC+x}" ]; then ABTEM_SRC_GIVEN=1; else ABTEM_SRC_GIVEN=0; fi
+ABTEM_SRC=${ABTEM_SRC-}
+ABTEM_SRC=${ABTEM_SRC%/}
 
-if [ ! -f "$ABTEM_SRC/abtem/__init__.py" ]; then
-    echo "ERROR: abTEM checkout not found at $ABTEM_SRC" >&2
+if [ "$ABTEM_SRC_GIVEN" = 1 ] && [ -z "$ABTEM_SRC" ]; then
+    ABTEM_MODE=container
+elif [ -n "$ABTEM_SRC" ] && [ -f "$ABTEM_SRC/abtem/__init__.py" ]; then
+    ABTEM_MODE=branch
+elif [ -n "$ABTEM_SRC" ]; then
+    echo "ERROR: no abtem/__init__.py under ABTEM_SRC=$ABTEM_SRC" >&2
+    echo "       Point it at a checkout, or leave ABTEM_SRC unset to check" >&2
+    echo "       the container's own abTEM." >&2
     exit 1
+else
+    ABTEM_MODE=container
 fi
 
 echo "container : $SIF"
-echo "abtem src : $ABTEM_SRC (injected via PYTHONPATH -- no venv)"
+if [ "$ABTEM_MODE" = branch ]; then
+    echo "abtem src : $ABTEM_SRC (injected via PYTHONPATH -- no venv)"
+else
+    echo "abtem src : <none> -- checking the container's own abTEM"
+fi
 
 BINDS=""
 for p in /projects /scratch /work "$ABTEM_SRC"; do
     [ -e "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 done
 
-APPTAINERENV_PYTHONPATH="$ABTEM_SRC" APPTAINERENV_ABTEM_SRC="$ABTEM_SRC" \
+if [ "$ABTEM_MODE" = branch ]; then export APPTAINERENV_PYTHONPATH="$ABTEM_SRC"; fi
+APPTAINERENV_ABTEM_SRC="$ABTEM_SRC" \
 apptainer exec --bind "$BINDS" "$SIF" python - <<'PY'
 import abtem, dask, distributed, dask_cuda
 from abtem.core.backend import is_gpu_dask_client  # multi-gpu branch present
@@ -74,8 +92,8 @@ except Exception as e:  # cupy import can need a GPU node in some builds
 # actually under the checkout -- that is the only thing that distinguishes them,
 # since both report the same version.
 import os
-src = os.environ['ABTEM_SRC'].rstrip('/')
-assert os.path.realpath(abtem.__file__).startswith(os.path.realpath(src) + os.sep), \
+src = os.environ.get('ABTEM_SRC', '').rstrip('/')
+assert not src or os.path.realpath(abtem.__file__).startswith(os.path.realpath(src) + os.sep), \
     f'abTEM resolved to {abtem.__file__}, not under {src} -- the container won'
 print('preflight OK: branch abTEM shadows the container, dask-cuda available')
 PY
