@@ -111,6 +111,37 @@ Three things that bite in practice:
   against the 40 GB home quota fills quickly with a CUDA image this size, and
   there is no purge policy on the local build store — it only grows.
 
+### Sharing a store: permissions
+
+A store on CFS is only usable by the project if its files are group-readable,
+and `umask` does not achieve that on its own. containers/storage sets explicit
+modes on some metadata — the per-image directory and its `manifest` above all —
+so those land `0700` regardless, while everything around them is `0775`/`0664`.
+A collaborator then reads `images.json`, learns the image ID, and hits
+
+```
+Error: locating item named "manifest" for image with ID <id>
+       (consider removing the image to resolve the issue): file does not exist
+```
+
+which looks like a corrupt store but is a permission problem; podman responds by
+re-downloading the image. **Do not follow the "consider removing the image"
+advice** — it deletes a good multi-GB image to work around a `chmod`.
+
+A default ACL cannot prevent this: a POSIX default ACL masks the mode a process
+*requests* at creation and cannot grant more than was asked for, so a process
+that explicitly creates `0700` still gets `0700`. The permissions have to be
+re-applied after whatever wrote the store:
+
+```bash
+./fix-store-perms.sh                 # fix $PODMAN_STORE and verify
+./fix-store-perms.sh --check         # report only; exit 1 if broken (cron-safe)
+```
+
+`update-image.sh` calls it after every pull, so the normal workflow stays
+correct on its own. Run it by hand after a direct `podman-hpc pull --squash-dir`,
+or when a collaborator has pulled into the shared store themselves.
+
 Cleanup: `podman-hpc rmi <image>` drops both copies of one image; deleting
 `$SCRATCH/storage` and `~/.local/share/containers` is NERSC's reset for a
 wedged store.

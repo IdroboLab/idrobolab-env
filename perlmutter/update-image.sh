@@ -222,31 +222,17 @@ done
 echo ">> pull completed in $((SECONDS - started))s"
 
 # --- shared-store permissions ----------------------------------------------
-# umask alone is NOT enough. containers/storage sets explicit modes on some
-# metadata -- the per-image directory and its `manifest` in particular -- so a
-# collaborator reads images.json, learns the image ID, and then hits
-#
-#   Error: locating item named "manifest" for image with ID <id>
-#          (consider removing the image to resolve the issue): file does not exist
-#
-# which reads as a corrupt store but is really mode 0700 on our side. podman
-# then falls back to re-pulling. Fix the tree and verify it, rather than leaving
-# it for whoever next tries to run a job.
-#
-# g+rX (capital X) adds execute only where something already has it, i.e. to
-# directories, never to data files. setgid on directories makes anything created
-# later inherit the project group.
+# Delegated to the sibling script so there is ONE copy of this logic; keeping a
+# second inline copy is how the store paths drifted earlier in this repo. See
+# fix-store-perms.sh for why umask is not sufficient and why a default ACL
+# cannot replace re-applying the modes after each write.
 if [ "${FIX_PERMS:-1}" = "1" ]; then
-    chmod -R g+rX "$STORE" 2>/dev/null || true
-    find "$STORE" -type d -exec chmod g+s {} + 2>/dev/null || true
-    notgroup=$(find "$STORE" ! -perm -g+r -print -quit 2>/dev/null || true)
-    if [ -n "$notgroup" ]; then
-        echo "WARNING: $STORE is not fully group-readable; collaborators will see" >&2
-        echo "         a \"manifest ... file does not exist\" error and re-pull." >&2
-        echo "         First offender: $notgroup" >&2
-        echo "         Try: chmod -R g+rX $STORE" >&2
+    _permfix="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fix-store-perms.sh"
+    if [ -x "$_permfix" ]; then
+        "$_permfix" "$STORE" || echo "WARNING: could not make $STORE group-readable" >&2
     else
-        echo ">> store is group-readable (checked)"
+        echo "WARNING: $_permfix missing -- store permissions NOT checked." >&2
+        echo "         Collaborators may hit \"manifest ... file does not exist\"." >&2
     fi
 fi
 
