@@ -144,7 +144,7 @@ echo "GPUs requested: ${SLURM_GPUS_ON_NODE:-?}   node=$(hostname)"
 # last stdout line is ours.
 ABTEM_SRC=${ABTEM_SRC%/}          # a trailing slash would break the match below
 if ! ABTEM_PROBE=$(apptainer exec --nv --bind "$BINDS" "$SIF" \
-        python -P -c 'import abtem\ntry:\n    from abtem.core.backend import ensure_cuda_cluster, is_gpu_dask_client\n    mg = "yes"\nexcept ImportError:\n    mg = "no"\nprint(abtem.__file__ + "|" + abtem.__version__ + "|" + mg)' \
+        python -P -c 'import abtem, importlib; _b = importlib.import_module("abtem.core.backend"); print(abtem.__file__ + "|" + abtem.__version__ + "|" + ("yes" if hasattr(_b, "ensure_cuda_cluster") and hasattr(_b, "is_gpu_dask_client") else "no"))' \
         | tail -n 1); then
     echo "ERROR: could not import abtem inside $SIF." >&2
     echo "  This is NOT (yet) the injection failing -- the container did not" >&2
