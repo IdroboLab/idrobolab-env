@@ -283,7 +283,7 @@ echo "mounts:$MOUNTS"
 # last stdout line is ours. $MOUNTS is unquoted on purpose (pre-split flags).
 if ! ABTEM_PROBE=$(podman-hpc run --rm $GROUP_FLAGS $MOUNTS \
         $PYPATH_FLAG "$IMAGE" \
-        python -P -c 'import abtem\ntry:\n    from abtem.core.backend import ensure_cuda_cluster, is_gpu_dask_client\n    mg = "yes"\nexcept ImportError:\n    mg = "no"\nprint(abtem.__file__ + "|" + abtem.__version__ + "|" + mg)' \
+        python -P -c 'import abtem, importlib; _b = importlib.import_module("abtem.core.backend"); print(abtem.__file__ + "|" + abtem.__version__ + "|" + ("yes" if hasattr(_b, "ensure_cuda_cluster") and hasattr(_b, "is_gpu_dask_client") else "no"))' \
         | tail -n 1); then
     echo "ERROR: could not import abtem inside $IMAGE." >&2
     echo "  This is NOT (yet) the injection failing: the container did not run," >&2
