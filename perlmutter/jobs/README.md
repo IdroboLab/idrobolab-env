@@ -7,20 +7,40 @@ via `$IMAGE` (default `idrobolab`; a bare name resolves against
 submit time with `IMAGE=... sbatch ...`), and mount `$SCRATCH`, `$CFS`, and
 `$HOME` when present.
 
-Before first use, replace `<project>` in the `--account` lines. **CPU and GPU
-allocations are separate accounts.** NERSC's GPU allocation account commonly
-carries a `_g` suffix, but this is **not clearly documented** — the policy page
-says no suffix is needed while the running-jobs page refers to "the one without
-the trailing `_g`". Do not trust either; ask Slurm what you may charge:
+The `--account` lines are set to **<project>** (CPU templates) and **<project>_g** (GPU
+templates); `sbatch -A <other>` overrides per submission.
+
+**On the `_g` suffix.** Confirmed on Perlmutter 2026-08-19: both accounts exist,
+and a GPU job is accepted with *either*.
+
+```
+$ sacctmgr -nP show assoc user=$USER format=account | sort -u
+<project>
+<project>_g
+```
+
+That reconciles NERSC's docs, which appear to contradict each other — the policy
+page says no suffix is needed (true: submission works either way) and the
+running-jobs page refers to "the one without the trailing `_g`" (also true: the
+suffixed account exists). Neither statement is wrong; each describes half of it.
+
+The templates use `_g` for GPU work anyway, because CPU and GPU allocations are
+separate pools and the suffixed account names the GPU one explicitly. **Which
+pool a GPU job submitted under the plain account actually draws down is not
+something this repo has verified** — if that matters to you, check after a run:
+
+```bash
+sacct -j <jobid> -o JobID,Account,AllocTRES%40      # account the job charged
+```
+
+and compare against the balances in the Iris portal (iris.nersc.gov).
+
+To find your own accounts on another project, use `-P`: `sacctmgr` truncates
+columns by default, which is exactly how a wrong account name goes unnoticed.
 
 ```bash
 sacctmgr -nP show assoc user=$USER format=account | sort -u
 ```
-
-`-P` matters: `sacctmgr` truncates columns by default, which is how a wrong
-account name goes unnoticed. Whatever that prints is what `-A` accepts; the
-Iris web portal (iris.nersc.gov) is where you see the CPU and GPU balances
-behind those accounts.
 
 ## Script ↔ resource matrix
 

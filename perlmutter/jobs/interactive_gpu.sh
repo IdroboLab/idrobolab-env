@@ -27,7 +27,7 @@ set -euo pipefail
 # passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
-ACCOUNT=${ACCOUNT:-<project>_g}        # <- replace; GPU vs CPU accounts differ, verify with sacctmgr (README)
+ACCOUNT=${ACCOUNT:-<project>_g}            # override with sbatch -A; see jobs/README.md on _g
 CONSTRAINT=${CONSTRAINT:-gpu}
 NODES=${NODES:-1}
 GPUS=${GPUS:-4}
