@@ -135,10 +135,37 @@ The image ships the Qt6 runtime libs + `xvfb`; `QT_QPA_PLATFORM=xcb` is set.
 
 ## Status
 
-**Not yet built.** The recipe is assembled from PyPI metadata (July 2026) and
-mirrors the proven another image foundation, but the idrobolab Python stack
-(fairchem + ptyrad + nionswift + pymatgen + …) has not been resolved together
-in a real build. Likely first-build adjustments: exact patch versions,
-`nvalchemi-toolkit-ops` (pulled by orb-models) availability, and any Qt runtime
-lib the nionswift GUI needs beyond the set installed here. Build on a host (the
-devcontainer is unprivileged) and iterate with layer caching.
+**Built and pulled on Perlmutter** (image `sha256:d0affd85…`, 20.4 GB, built
+2026-08-18). The full stack resolves together and imports inside the real image:
+
+```
+dask 2026.7.1 | distributed 2026.7.1
+torch 2.8.0+cu129 | abtem 1.1.0 | multi-GPU symbols present
+```
+
+Three things that were only reasoned about are now measured:
+
+- The `--no-deps dask-cuda` pairing holds. `dask` is **2026.7.1**, not the
+  `2026.1.1` that `rapids-dask-dependency` would have pinned — the release abTEM
+  excludes for the `to_zarr` regression, which would have computed correct
+  results and saved them wrongly.
+- `torch` is still **2.8.0**, so the fairchem-core 2.21 ceiling survived the
+  dask-cuda install. The build guard would have failed loudly otherwise.
+- The image's own abTEM (1.1.0, editable from the staged `dev` checkout) already
+  exposes `ensure_cuda_cluster` / `is_gpu_dask_client`. A branch checkout reports
+  the **same version**, which is why the verification launchers discriminate on
+  `abtem.__file__` and never on `__version__`.
+
+Still unverified: `LocalCUDACluster` **construction** on a GPU node. dask-cuda
+26.6 against `distributed` 2026.7 is a combination RAPIDS never tested; imports
+working does not prove a cluster starts. That is precisely what
+`perlmutter/verification/multigpu_abtem/multigpu_verify.sbatch` checks, and it
+can now run against this image with no abTEM checkout at all:
+
+```bash
+IMAGE=idrobolab ./setup_env.sh
+IMAGE=idrobolab sbatch -A <project>_g multigpu_verify.sbatch
+```
+
+Not yet exercised: the nionswift GUI path (needs a forwarded display) and the
+LAMMPS/QE GPU binaries.
