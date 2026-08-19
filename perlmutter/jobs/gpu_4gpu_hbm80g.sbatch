@@ -14,7 +14,7 @@
 # Usage:  sbatch gpu_4gpu_hbm80g.sbatch my_gpu_script.py [args...]
 #
 #SBATCH --job-name=eels_hbm80g
-#SBATCH --account=<project>_g          # <- replace; GPU account = _g suffix
+#SBATCH --account=<project>_g          # <- replace; GPU vs CPU accounts differ, verify with sacctmgr (README)
 #SBATCH --constraint=gpu&hbm80g
 #SBATCH --qos=regular
 #SBATCH --nodes=1

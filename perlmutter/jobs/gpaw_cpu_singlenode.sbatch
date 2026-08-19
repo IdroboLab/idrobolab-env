@@ -15,7 +15,7 @@
 # Usage:  sbatch gpaw_cpu_singlenode.sbatch my_gpaw_script.py [args...]
 #
 #SBATCH --job-name=gpaw_cpu
-#SBATCH --account=<project>            # <- replace; CPU account = NO _g suffix
+#SBATCH --account=<project>            # <- replace; GPU vs CPU accounts differ, verify with sacctmgr (README)
 #SBATCH --constraint=cpu
 #SBATCH --qos=regular
 #SBATCH --nodes=1

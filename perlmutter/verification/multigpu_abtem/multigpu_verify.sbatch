@@ -64,7 +64,7 @@
 # Charging: walltime x 1 node x QOS factor 1.0 = 1 GPU node-hour per hour.
 #
 #SBATCH --job-name=abtem_mgpu
-#SBATCH --account=<project>_g          # <- replace; GPU account = _g suffix
+#SBATCH --account=<project>_g          # <- replace; GPU vs CPU accounts differ, verify with sacctmgr (README)
 #SBATCH --constraint=gpu
 #SBATCH --qos=debug
 #SBATCH --nodes=1

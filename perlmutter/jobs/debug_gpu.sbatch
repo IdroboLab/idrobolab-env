@@ -9,7 +9,7 @@
 #         sbatch debug_gpu.sbatch            # runs the built-in smoke test
 #
 #SBATCH --job-name=eels_debug
-#SBATCH --account=<project>_g          # <- replace; GPU account = _g suffix
+#SBATCH --account=<project>_g          # <- replace; GPU vs CPU accounts differ, verify with sacctmgr (README)
 #SBATCH --constraint=gpu
 #SBATCH --qos=debug
 #SBATCH --nodes=1

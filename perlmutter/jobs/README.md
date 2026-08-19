@@ -1,15 +1,26 @@
-# Slurm submission files for another image's container on Perlmutter
+# Slurm submission files for the project containers on Perlmutter
 
 Template job scripts per node type and QOS. All take the payload as
 arguments (`sbatch <script>.sbatch my_script.py [args...]`), locate the image
-via `$IMAGE` (default `ghcr.io/<username>/otherimage:latest`, overridable at
+via `$IMAGE` (default `idrobolab`; a bare name resolves against
+`ghcr.io/<username>/`, a value containing `/` is used verbatim — overridable at
 submit time with `IMAGE=... sbatch ...`), and mount `$SCRATCH`, `$CFS`, and
 `$HOME` when present.
 
 Before first use, replace `<project>` in the `--account` lines. **CPU and GPU
-allocations are separate accounts and the GPU one carries a `_g` suffix**:
-`-A <project>` for `-C cpu` jobs, `-A <project>_g` for `-C gpu` jobs. Run
-`iris` (or `sacctmgr show assoc user=$USER format=account`) to list yours.
+allocations are separate accounts.** NERSC's GPU allocation account commonly
+carries a `_g` suffix, but this is **not clearly documented** — the policy page
+says no suffix is needed while the running-jobs page refers to "the one without
+the trailing `_g`". Do not trust either; ask Slurm what you may charge:
+
+```bash
+sacctmgr -nP show assoc user=$USER format=account | sort -u
+```
+
+`-P` matters: `sacctmgr` truncates columns by default, which is how a wrong
+account name goes unnoticed. Whatever that prints is what `-A` accepts; the
+Iris web portal (iris.nersc.gov) is where you see the CPU and GPU balances
+behind those accounts.
 
 ## Script ↔ resource matrix
 
@@ -86,7 +97,8 @@ a supported first-class feature rather than something to be hand-wired:
 
 ```bash
 # on a Perlmutter login node, once:
-podman-hpc pull ghcr.io/<username>/otherimage:latest
+../update-image.sh idrobolab         # or another image — pulls into the shared
+                                     # CFS store and fixes its permissions
 podman-hpc images --digests          # record the digest with your results
 # (a locally BUILT image also needs `podman-hpc migrate <tag>` to be visible
 #  on compute nodes; pulled images are migrated automatically)

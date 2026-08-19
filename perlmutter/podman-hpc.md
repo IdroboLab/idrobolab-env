@@ -7,10 +7,11 @@ supported at NERSC).
 
 This is the same recipe as the Apptainer definition proven for NCSA Delta
 (`shared/containers/otherimage/`), translated to a Dockerfile: same
-base image, same versions, same build steps. **Status: the Delta variant is
-built and verified end-to-end (67/67 extra-module tests); this Dockerfile
-translation has not been built yet** — the dev machine has no docker/podman.
-First build attempt may need minor fixes.
+base image, same versions, same build steps. **Status: built and published.**
+`ghcr.io/<username>/otherimage` and `ghcr.io/<username>/idrobolab` both exist and are
+public; idrobolab has been pulled and its stack verified on Perlmutter (see
+`shared/containers/idrobolab/README.md`). What has *not* been exercised is a
+real multi-GPU run — see `verification/multigpu_abtem/`.
 
 ## Fit to Perlmutter
 
@@ -27,9 +28,9 @@ First build attempt may need minor fixes.
 | File | Purpose |
 |---|---|
 | `Dockerfile` | OCI image recipe (base: NGC `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04`) |
-| `requirements-perlmutter.txt` | All PyPI packages pinned to the dev-env versions — auto-generated, do not edit by hand |
-| `siteconfig-perlmutter.py` | GPAW build configuration (MPI, ScaLAPACK, FFTW, libxc, libvdwxc) |
-| `prepare_build_context.sh` | Regenerates `requirements-perlmutter.txt` from the live dev env, then stages the four source trees into `./src/` |
+| `requirements-delta.txt` | All PyPI packages pinned to the dev-env versions — auto-generated, do not edit by hand. One file for both clusters; the name is historical |
+| `siteconfig-delta.py` | GPAW build configuration (MPI, ScaLAPACK, FFTW, libxc, libvdwxc). Also shared; also historically named |
+| `prepare_build_context.sh` | Regenerates `requirements-delta.txt` from the live dev env, then stages the four source trees into `./src/` |
 
 The four dev packages (**gpaw** a fork branch with an extra module,
 **another image**, **gpaw-weaver**, **PySlice**) are installed **editable** at

@@ -15,7 +15,7 @@
 # Usage:  sbatch gpu_multinode_mpi.sbatch my_gpu_script.py [args...]
 #
 #SBATCH --job-name=eels_gpumpi
-#SBATCH --account=<project>_g          # <- replace; GPU account = _g suffix
+#SBATCH --account=<project>_g          # <- replace; GPU vs CPU accounts differ, verify with sacctmgr (README)
 #SBATCH --constraint=gpu
 #SBATCH --qos=regular
 #SBATCH --nodes=2

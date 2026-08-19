@@ -12,7 +12,7 @@
 # Usage:  sbatch gpu_1gpu_shared.sbatch my_gpu_script.py [args...]
 #
 #SBATCH --job-name=eels_1gpu
-#SBATCH --account=<project>_g          # <- replace; GPU account = _g suffix
+#SBATCH --account=<project>_g          # <- replace; GPU vs CPU accounts differ, verify with sacctmgr (README)
 #SBATCH --constraint=gpu
 #SBATCH --qos=shared
 #SBATCH --nodes=1
