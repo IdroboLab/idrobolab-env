@@ -52,7 +52,7 @@
 #
 # Login-node preflight (no GPU needed; proves the injection works before you
 # spend an allocation on it) -- ./setup_env.sh does this with more reporting:
-#   podman-hpc run --rm -v "$ABTEM_SRC:$ABTEM_SRC" $PYPATH_FLAG \
+#   podman-hpc run --rm $GROUP_FLAGS -v "$ABTEM_SRC:$ABTEM_SRC" $PYPATH_FLAG \
 #       ghcr.io/<username>/otherimage:latest \
 #       python -P -c "import abtem; print(abtem.__version__, abtem.__file__)"
 #   # abtem.__file__ MUST be under $ABTEM_SRC. If it is /opt/src/abTEM the
@@ -101,6 +101,20 @@
 # --constraint="scratch&projects" either -- that is a Delta filesystem
 # constraint; on Perlmutter -C selects the node type.
 set -euo pipefail
+
+# Preserve supplementary group membership inside the container. podman runs
+# rootless in a user namespace, and by default only the PRIMARY group is mapped:
+# every supplementary group -- which on NERSC is how project access to
+# /global/cfs/cdirs/<project> is granted -- is dropped. The symptom is a path
+# your shell can enter but the container cannot:
+#
+#   Error: crun: chdir to `/global/cfs/cdirs/<project>/...`: Permission denied
+#
+# It bites collaborators for whom the project group is supplementary while
+# working fine for whoever has it as their primary group, which makes it look
+# like a per-user permission problem. `keep-groups` (crun only, rootless only)
+# passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
+GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
 # Under `sbatch`, Slurm runs a spool COPY of this script, so BASH_SOURCE points
 # at the spool dir (payload absent). Use the submit dir; fall back to the script
@@ -267,7 +281,7 @@ echo "mounts:$MOUNTS"
 # so podman-hpc runs there directly -- the `podman-hpc images` call above relies
 # on the same thing, and this probe needs no GPU. `tail -n 1` because only the
 # last stdout line is ours. $MOUNTS is unquoted on purpose (pre-split flags).
-if ! ABTEM_PROBE=$(podman-hpc run --rm $MOUNTS \
+if ! ABTEM_PROBE=$(podman-hpc run --rm $GROUP_FLAGS $MOUNTS \
         $PYPATH_FLAG "$IMAGE" \
         python -P -c 'import abtem\ntry:\n    from abtem.core.backend import ensure_cuda_cluster, is_gpu_dask_client\n    mg = "yes"\nexcept ImportError:\n    mg = "no"\nprint(abtem.__file__ + "|" + abtem.__version__ + "|" + mg)' \
         | tail -n 1); then
@@ -330,7 +344,7 @@ esac
 # "$@" is forwarded to the payload, so --timing / --gpus / --configs / --rmm-pool
 # work straight off the sbatch command line.
 time srun --cpu-bind=none \
-    podman-hpc run --rm --gpu \
+    podman-hpc run --rm $GROUP_FLAGS --gpu \
         $MOUNTS --workdir "$HERE" \
         $PYPATH_FLAG \
         $THREAD_ENV $SLURM_ENV \
@@ -355,7 +369,7 @@ time srun --cpu-bind=none \
 # * Interactive equivalent (4-GPU shell, interactive QOS: 4 h, <=4 nodes):
 #     ../../jobs/interactive_gpu.sh          # salloc + a shell in the container
 #   or, from the allocation shell, the same checks by hand:
-#     podman-hpc run --rm --gpu -v $HOME:$HOME -v $SCRATCH:$SCRATCH \
+#     podman-hpc run --rm $GROUP_FLAGS --gpu -v $HOME:$HOME -v $SCRATCH:$SCRATCH \
 #         -v $ABTEM_SRC:$ABTEM_SRC -e PYTHONPATH=$ABTEM_SRC $IMAGE \
 #         python $PAYLOAD_DIR/verify_multigpu.py
 #   $HOME is in that list because the repo checkout -- hence $PAYLOAD_DIR --

@@ -111,6 +111,32 @@ Three things that bite in practice:
   against the 40 GB home quota fills quickly with a CUDA image this size, and
   there is no purge policy on the local build store — it only grows.
 
+### Supplementary groups are dropped in the container
+
+podman runs rootless in a user namespace and maps only your **primary** group.
+Every supplementary group is dropped inside the container — and on NERSC,
+supplementary group membership is how access to `/global/cfs/cdirs/<project>`
+is granted. The symptom is a path your shell is sitting in that the container
+cannot enter:
+
+```
+Error: crun: chdir to `/global/cfs/cdirs/<project>/projects/<name>`: Permission denied
+srun: error: nid001008: task 0: Exited with exit code 126
+```
+
+It is easy to misread as a per-user permission problem, because it bites
+collaborators for whom the project group is supplementary while working fine for
+whoever has it as their primary group. Confirm by comparing:
+
+```bash
+id                                                     # on the host
+podman-hpc run --rm -v /global/cfs/cdirs:/global/cfs/cdirs <image> id
+```
+
+Fewer groups inside than outside is the diagnosis. The fix is `--group-add
+keep-groups` (crun only, rootless only), which every launcher here now passes;
+`PODMAN_GROUP_FLAGS=` disables it.
+
 ### Sharing a store: permissions
 
 A store on CFS is only usable by the project if its files are group-readable,

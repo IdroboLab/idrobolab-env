@@ -24,6 +24,20 @@
 
 set -euo pipefail
 
+# Preserve supplementary group membership inside the container. podman runs
+# rootless in a user namespace, and by default only the PRIMARY group is mapped:
+# every supplementary group -- which on NERSC is how project access to
+# /global/cfs/cdirs/<project> is granted -- is dropped. The symptom is a path
+# your shell can enter but the container cannot:
+#
+#   Error: crun: chdir to `/global/cfs/cdirs/<project>/...`: Permission denied
+#
+# It bites collaborators for whom the project group is supplementary while
+# working fine for whoever has it as their primary group, which makes it look
+# like a per-user permission problem. `keep-groups` (crun only, rootless only)
+# passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
+GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
+
 # Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
 # (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
 # verification launchers and `update-image.sh <name>`. A value containing "/"
@@ -56,7 +70,7 @@ NETOPT="--network=no_vni"
 
 echo "IMAGE=$IMAGE  nodes=$SLURM_JOB_NUM_NODES  ranks=$SLURM_NTASKS"
 time srun --cpu-bind=cores \
-    podman-hpc run --rm --mpi $NETOPT \
+    podman-hpc run --rm $GROUP_FLAGS --mpi $NETOPT \
         $MOUNTS --workdir "$SLURM_SUBMIT_DIR" \
         $GPAW_ENV $MPICH_ENV \
         "$IMAGE" python "$SCRIPT" "$@"

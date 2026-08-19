@@ -13,6 +13,20 @@
 #   ./interactive_gpu.sh python -P -c "import gpaw; print(gpaw.__version__)"
 set -euo pipefail
 
+# Preserve supplementary group membership inside the container. podman runs
+# rootless in a user namespace, and by default only the PRIMARY group is mapped:
+# every supplementary group -- which on NERSC is how project access to
+# /global/cfs/cdirs/<project> is granted -- is dropped. The symptom is a path
+# your shell can enter but the container cannot:
+#
+#   Error: crun: chdir to `/global/cfs/cdirs/<project>/...`: Permission denied
+#
+# It bites collaborators for whom the project group is supplementary while
+# working fine for whoever has it as their primary group, which makes it look
+# like a per-user permission problem. `keep-groups` (crun only, rootless only)
+# passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
+GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
+
 ACCOUNT=${ACCOUNT:-<project>_g}        # <- replace; GPU account = _g suffix
 CONSTRAINT=${CONSTRAINT:-gpu}
 NODES=${NODES:-1}
@@ -48,10 +62,10 @@ fi
 # runs there directly — no inner srun needed for a single interactive shell.
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=interactive \
     --nodes="$NODES" --gpus-per-node="$GPUS" --time="$TIME" \
-    podman-hpc run --rm $TTY_FLAGS --gpu \
+    podman-hpc run --rm $GROUP_FLAGS $TTY_FLAGS --gpu \
         $MOUNTS --workdir "$PWD" \
         "$IMAGE" "${CMD[@]}"
 
 # CPU-only equivalent (no GPU allocation, charged against the CPU account):
 #   salloc -A <project> -C cpu -q interactive -N 1 -t 01:00:00 \
-#       podman-hpc run --rm -it -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage:latest /bin/bash
+#       podman-hpc run --rm $GROUP_FLAGS -it -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage:latest /bin/bash

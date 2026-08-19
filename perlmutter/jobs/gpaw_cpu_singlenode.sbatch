@@ -27,6 +27,20 @@
 
 set -euo pipefail
 
+# Preserve supplementary group membership inside the container. podman runs
+# rootless in a user namespace, and by default only the PRIMARY group is mapped:
+# every supplementary group -- which on NERSC is how project access to
+# /global/cfs/cdirs/<project> is granted -- is dropped. The symptom is a path
+# your shell can enter but the container cannot:
+#
+#   Error: crun: chdir to `/global/cfs/cdirs/<project>/...`: Permission denied
+#
+# It bites collaborators for whom the project group is supplementary while
+# working fine for whoever has it as their primary group, which makes it look
+# like a per-user permission problem. `keep-groups` (crun only, rootless only)
+# passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
+GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
+
 # Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
 # (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
 # verification launchers and `update-image.sh <name>`. A value containing "/"
@@ -63,7 +77,7 @@ MPICH_ENV="-e MPICH_SMP_SINGLE_COPY_MODE=CMA -e MPICH_OFI_STARTUP_CONNECT=1"
 
 echo "IMAGE=$IMAGE  ranks=$SLURM_NTASKS  mounts=$MOUNTS"
 time srun --cpu-bind=cores \
-    podman-hpc run --rm --mpi \
+    podman-hpc run --rm $GROUP_FLAGS --mpi \
         $MOUNTS --workdir "$SLURM_SUBMIT_DIR" \
         $GPAW_ENV $MPICH_ENV \
         "$IMAGE" python "$SCRIPT" "$@"
@@ -71,5 +85,5 @@ time srun --cpu-bind=cores \
 # --- Correctness fallback (no Cray MPICH injection) -----------------------
 # If `--mpi` misbehaves, drop it: the container's own MPICH 4.3.2 still runs
 # correctly over TCP (slower, but fine for modest rank counts on one node).
-#   srun podman-hpc run --rm $MOUNTS --workdir "$SLURM_SUBMIT_DIR" \
+#   srun podman-hpc run --rm $GROUP_FLAGS $MOUNTS --workdir "$SLURM_SUBMIT_DIR" \
 #       $GPAW_ENV "$IMAGE" python "$SCRIPT" "$@"

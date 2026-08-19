@@ -55,6 +55,20 @@
 
 set -euo pipefail
 
+# Preserve supplementary group membership inside the container. podman runs
+# rootless in a user namespace, and by default only the PRIMARY group is mapped:
+# every supplementary group -- which on NERSC is how project access to
+# /global/cfs/cdirs/<project> is granted -- is dropped. The symptom is a path
+# your shell can enter but the container cannot:
+#
+#   Error: crun: chdir to `/global/cfs/cdirs/<project>/...`: Permission denied
+#
+# It bites collaborators for whom the project group is supplementary while
+# working fine for whoever has it as their primary group, which makes it look
+# like a per-user permission problem. `keep-groups` (crun only, rootless only)
+# passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
+GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
+
 # This script is run directly (`./setup_env.sh`), never through sbatch, so
 # BASH_SOURCE is the real file -- no spool-copy dance like the .sbatch files.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -177,7 +191,7 @@ INJECT_FLAGS=""
 if [ "$ABTEM_MODE" = branch ]; then
     INJECT_FLAGS="-v $ABTEM_SRC:$ABTEM_SRC -e PYTHONPATH=$ABTEM_SRC"
 fi
-podman-hpc run --rm -i $INJECT_FLAGS \
+podman-hpc run --rm $GROUP_FLAGS -i $INJECT_FLAGS \
     -e ABTEM_SRC_EXPECTED="$ABTEM_SRC" \
     "$IMAGE" python -P - <<'PY'
 import os
