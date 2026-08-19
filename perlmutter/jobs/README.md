@@ -20,14 +20,20 @@ $ sacctmgr -nP show assoc user=$USER format=account | sort -u
 <project>
 <project>_g
 
-$ sbatch -A <project> benchmark_haadf_auto.sbatch          # note: NO suffix
-$ sacct -j <jobid> -o JobID,Account,AllocTRES%40
-JobID           Account                                AllocTRES
-<jobid>        <project>_g billing=128,cpu=128,gres/gpu:a100=4,gre+
+$ sbatch -A <project>   -C gpu -q debug -N1 -t1 --wrap=true     # no suffix
+$ sbatch -A <project>_g -C gpu -q debug -N1 -t1 --wrap=true     # suffix
+$ sacct -j <jobid>,<jobid> -o JobID,Account
+JobID           Account
+<jobid>        <project>_g          <- submitted as <project>
+<jobid>.ba+    <project>_g
+<jobid>        <project>_g          <- submitted as <project>_g
+<jobid>.ba+    <project>_g
 ```
 
-The account was rewritten to `<project>_g` on every step, so the GPU allocation is
-what gets charged regardless of which name you pass. That is why NERSC's two doc
+Both arms land in `<project>_g`, on every step. A real GPU run behaves the same:
+job <jobid>, submitted `-A <project>`, recorded `<project>_g` alongside
+`gres/gpu:a100=4`. So the GPU allocation is what gets charged regardless of
+which name you pass. That is why NERSC's two doc
 pages look contradictory and are both right: the policy page's "no suffix
 needed" describes the submission (true — the filter fixes it up), and the
 running-jobs page's "the one without the trailing `_g`" describes the accounts
