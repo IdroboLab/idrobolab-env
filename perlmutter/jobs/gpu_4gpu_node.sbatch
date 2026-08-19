@@ -26,6 +26,13 @@
 
 set -euo pipefail
 
+# NOTE: a script that drives more than one GPU needs an
+#   if __name__ == "__main__":
+# guard around everything that does work. dask-cuda starts its workers with
+# multiprocessing spawn (fork is unsafe with a live CUDA context), and spawn
+# re-imports the main module in each child -- module-level work then re-runs
+# per worker and tries to start a nested cluster. See jobs/README.md.
+
 # Preserve supplementary group membership inside the container. podman runs
 # rootless in a user namespace, and by default only the PRIMARY group is mapped:
 # every supplementary group -- which on NERSC is how project access to

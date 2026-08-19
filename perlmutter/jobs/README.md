@@ -145,6 +145,35 @@ podman-hpc run --rm -it --gpu -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage
 
 ## Gotchas
 
+- **Your script needs `if __name__ == "__main__":` if it uses multiple GPUs.**
+  dask-cuda starts workers with multiprocessing's **spawn** method (it must —
+  `fork` is unsafe once a CUDA context exists), and spawn *re-imports the main
+  module* in every child. A script that does its work at module level therefore
+  re-runs that work in each worker, which tries to start a cluster of its own:
+
+  ```
+  RuntimeError:
+      An attempt has been made to start a new process before the
+      current process has finished its bootstrapping phase.
+  ```
+
+  The giveaway is your own output repeating N times before the traceback, plus
+  `Port 8787 is already in use. Perhaps you already have a cluster running?`.
+  Nothing about the container or Slurm is wrong. Move everything that *does*
+  something under the guard:
+
+  ```python
+  def main():
+      atoms = read("structure.cif")      # was at module level
+      ...                                # everything else too
+  if __name__ == "__main__":
+      main()
+  ```
+
+  Definitions (functions, classes, constants) can stay at module level — they
+  are what the child needs to import. The payloads in
+  `../verification/multigpu_abtem/` are written this way if you want a template.
+
 - **`GPAW_MPI_BACKEND=cgpaw` is mandatory under `srun`.** The image ships
   GPAW 26.7.1b1, and since 26.7.0 GPAW aborts at import with *"GPAW appears
   to be running inside MPI launcher, but MPI parallelism is disabled"* when
