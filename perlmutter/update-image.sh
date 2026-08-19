@@ -221,6 +221,35 @@ while : ; do
 done
 echo ">> pull completed in $((SECONDS - started))s"
 
+# --- shared-store permissions ----------------------------------------------
+# umask alone is NOT enough. containers/storage sets explicit modes on some
+# metadata -- the per-image directory and its `manifest` in particular -- so a
+# collaborator reads images.json, learns the image ID, and then hits
+#
+#   Error: locating item named "manifest" for image with ID <id>
+#          (consider removing the image to resolve the issue): file does not exist
+#
+# which reads as a corrupt store but is really mode 0700 on our side. podman
+# then falls back to re-pulling. Fix the tree and verify it, rather than leaving
+# it for whoever next tries to run a job.
+#
+# g+rX (capital X) adds execute only where something already has it, i.e. to
+# directories, never to data files. setgid on directories makes anything created
+# later inherit the project group.
+if [ "${FIX_PERMS:-1}" = "1" ]; then
+    chmod -R g+rX "$STORE" 2>/dev/null || true
+    find "$STORE" -type d -exec chmod g+s {} + 2>/dev/null || true
+    notgroup=$(find "$STORE" ! -perm -g+r -print -quit 2>/dev/null || true)
+    if [ -n "$notgroup" ]; then
+        echo "WARNING: $STORE is not fully group-readable; collaborators will see" >&2
+        echo "         a \"manifest ... file does not exist\" error and re-pull." >&2
+        echo "         First offender: $notgroup" >&2
+        echo "         Try: chmod -R g+rX $STORE" >&2
+    else
+        echo ">> store is group-readable (checked)"
+    fi
+fi
+
 # --- provenance -----------------------------------------------------------
 # The digest is what identifies the image in a campaign record; :latest moves.
 echo ">> digest:"
