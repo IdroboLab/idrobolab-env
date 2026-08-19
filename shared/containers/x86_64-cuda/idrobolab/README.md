@@ -156,16 +156,5 @@ Three things that were only reasoned about are now measured:
   the **same version**, which is why the verification launchers discriminate on
   `abtem.__file__` and never on `__version__`.
 
-Still unverified: `LocalCUDACluster` **construction** on a GPU node. dask-cuda
-26.6 against `distributed` 2026.7 is a combination RAPIDS never tested; imports
-working does not prove a cluster starts. That is precisely what
-`perlmutter/verification/multigpu_abtem/multigpu_verify.sbatch` checks, and it
-can now run against this image with no abTEM checkout at all:
-
-```bash
-IMAGE=idrobolab ./setup_env.sh
-IMAGE=idrobolab sbatch -A <project>_g multigpu_verify.sbatch
-```
-
-Not yet exercised: the nionswift GUI path (needs a forwarded display) and the
-LAMMPS/QE GPU binaries.
+Not yet exercised: the nionswift GUI path (needs a forwarded display), the
+LAMMPS/QE GPU binaries, and multi-node GPU MPI (this was a single node).

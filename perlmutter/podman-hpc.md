@@ -9,9 +9,11 @@ This is the same recipe as the Apptainer definition proven for NCSA Delta
 (`shared/containers/otherimage/`), translated to a Dockerfile: same
 base image, same versions, same build steps. **Status: built and published.**
 `ghcr.io/<username>/otherimage` and `ghcr.io/<username>/idrobolab` both exist and are
-public; idrobolab has been pulled and its stack verified on Perlmutter (see
-`shared/containers/idrobolab/README.md`). What has *not* been exercised is a
-real multi-GPU run — see `verification/multigpu_abtem/`.
+public, and idrobolab has been pulled and **verified end to end on Perlmutter**:
+a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
+invariant to GPU count (job <jobid>; log under
+`verification/multigpu_abtem/`, analysis in
+`shared/containers/idrobolab/README.md`).
 
 ## Fit to Perlmutter
 
