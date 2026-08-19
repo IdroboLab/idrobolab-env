@@ -127,16 +127,22 @@ srun: error: nid001008: task 0: Exited with exit code 126
 
 It is easy to misread as a per-user permission problem, because it bites
 collaborators for whom the project group is supplementary while working fine for
-whoever has it as their primary group. Confirm by comparing:
+whoever has it as their primary group — no amount of `chmod` will help, since
+the container is not presenting the group at all.
+
+**Confirmed on Perlmutter 2026-08-19**: adding `--group-add keep-groups` (crun
+only, rootless only) resolved it for a collaborator who could not enter a
+project directory their own shell was sitting in. Every launcher here passes it;
+`PODMAN_GROUP_FLAGS=` disables it.
+
+To diagnose it directly, compare group membership across the boundary:
 
 ```bash
 id                                                     # on the host
 podman-hpc run --rm -v /global/cfs/cdirs:/global/cfs/cdirs <image> id
 ```
 
-Fewer groups inside than outside is the diagnosis. The fix is `--group-add
-keep-groups` (crun only, rootless only), which every launcher here now passes;
-`PODMAN_GROUP_FLAGS=` disables it.
+Fewer groups inside than outside is the signature.
 
 ### Sharing a store: permissions
 
