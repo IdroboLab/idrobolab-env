@@ -10,30 +10,31 @@ submit time with `IMAGE=... sbatch ...`), and mount `$SCRATCH`, `$CFS`, and
 The `--account` lines are set to **<project>** (CPU templates) and **<project>_g** (GPU
 templates); `sbatch -A <other>` overrides per submission.
 
-**On the `_g` suffix.** Confirmed on Perlmutter 2026-08-19: both accounts exist,
-and a GPU job is accepted with *either*.
+**On the `_g` suffix — resolved, and it does not matter.** Both accounts exist,
+and Slurm **remaps a GPU job to the `_g` pool automatically**. Verified on
+Perlmutter 2026-08-19 by submitting with the plain account and reading back what
+was recorded:
 
 ```
 $ sacctmgr -nP show assoc user=$USER format=account | sort -u
 <project>
 <project>_g
+
+$ sbatch -A <project> benchmark_haadf_auto.sbatch          # note: NO suffix
+$ sacct -j <jobid> -o JobID,Account,AllocTRES%40
+JobID           Account                                AllocTRES
+<jobid>        <project>_g billing=128,cpu=128,gres/gpu:a100=4,gre+
 ```
 
-That reconciles NERSC's docs, which appear to contradict each other — the policy
-page says no suffix is needed (true: submission works either way) and the
-running-jobs page refers to "the one without the trailing `_g`" (also true: the
-suffixed account exists). Neither statement is wrong; each describes half of it.
+The account was rewritten to `<project>_g` on every step, so the GPU allocation is
+what gets charged regardless of which name you pass. That is why NERSC's two doc
+pages look contradictory and are both right: the policy page's "no suffix
+needed" describes the submission (true — the filter fixes it up), and the
+running-jobs page's "the one without the trailing `_g`" describes the accounts
+(also true — the suffixed one exists and is where GPU work lands).
 
-The templates use `_g` for GPU work anyway, because CPU and GPU allocations are
-separate pools and the suffixed account names the GPU one explicitly. **Which
-pool a GPU job submitted under the plain account actually draws down is not
-something this repo has verified** — if that matters to you, check after a run:
-
-```bash
-sacct -j <jobid> -o JobID,Account,AllocTRES%40      # account the job charged
-```
-
-and compare against the balances in the Iris portal (iris.nersc.gov).
+The GPU templates still say `<project>_g` because it names the pool the job will be
+charged to, which is worth stating outright. `-A <project>` works identically.
 
 To find your own accounts on another project, use `-P`: `sacctmgr` truncates
 columns by default, which is exactly how a wrong account name goes unnoticed.
