@@ -34,12 +34,12 @@ invariant to GPU count (job <jobid>; log under
 | `siteconfig-delta.py` | GPAW build configuration (MPI, ScaLAPACK, FFTW, libxc, libvdwxc). Also shared; also historically named |
 | `prepare_build_context.sh` | Regenerates `requirements-delta.txt` from the live dev env, then stages the four source trees into `./src/` |
 
-The four dev packages (**gpaw** — vanilla `master`, staged from the committed
-tree by `prepare_build_context.sh` (`GPAW_REF=<ref>` overrides) —
-**another image**, **gpaw-weaver**, **PySlice**) are installed **editable** at
-`/opt/src/<name>`; mount a cluster checkout over that path to run any branch
-(e.g. a fork branch). PAW datasets come from the `gpaw-data`
-pip package inside the image.
+The four dev packages (**gpaw** — a fork branch with an extra module, staged
+from the committed tree by `prepare_build_context.sh` (`GPAW_REF=<ref>`
+overrides) — **another image**, **gpaw-weaver**, **PySlice**) are installed
+**editable** at `/opt/src/<name>`; mount a cluster checkout over that path to
+run any branch. PAW datasets come from the `gpaw-data` pip package inside the
+image.
 
 ## Build
 
