@@ -1,6 +1,6 @@
 #!/bin/bash
 # Materialize the Delta .sif from the shared image. Preferred path: convert the
-# registry image built+pushed by shared/containers/otherimage/publish.sh.
+# registry image built+pushed by shared/containers/x86_64-cuda/otherimage/publish.sh.
 #
 # Run on Delta (or any host with apptainer). Keep the .sif and cache off $HOME:
 #   export APPTAINER_CACHEDIR=$SCRATCH/.apptainer
@@ -17,5 +17,5 @@ echo ">> run: apptainer exec --nv $SIF python script.py   (see jobs/ for Slurm)"
 
 # Alternatives (uncomment as needed):
 # --- local OCI build then convert (no registry): ------------------------------
-#   (cd ../shared/containers/otherimage && ./prepare_build_context.sh && podman build -t otherimage:latest .)
+#   (cd ../shared/containers/x86_64-cuda/otherimage && ./prepare_build_context.sh && podman build -t otherimage:latest .)
 #   apptainer build "$SIF" docker-daemon://otherimage:latest
