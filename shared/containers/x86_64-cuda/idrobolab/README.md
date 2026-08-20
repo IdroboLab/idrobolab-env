@@ -48,9 +48,11 @@ The Dockerfile block lists which package supplies each skipped dependency; the
 build fails loudly if the install moves `torch` off the fairchem 2.8 ceiling.
 
 **Editable** installs from `/opt/src` (bind a cluster checkout over
-`/opt/src/<name>` to run any branch, as in another image): **gpaw** (<username> fork,
-a branch), **gpaw-weaver**, **abTEM**. Everything else comes from the pinned
-requirements. PAW datasets come from the `gpaw-data` pip package.
+`/opt/src/<name>` to run any branch, as in another image): **gpaw** (vanilla
+`master`, staged from the committed tree by `prepare_build_context.sh`;
+`GPAW_REF=<ref>` overrides), **gpaw-weaver**, **abTEM**. Everything else comes
+from the pinned requirements. PAW datasets come from the `gpaw-data` pip
+package.
 
 ## Build & run
 
