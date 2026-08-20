@@ -43,7 +43,7 @@ loudly, not as a silent fall back to one GPU.
 the `to_zarr` regression. `requirements-idrobolab.txt` therefore also carries
 abTEM's exclusion set so the resolve lands correctly the first time. The full
 analysis, including the Plan B downgrade, is in
-[`delta/verification/multigpu_abtem/README.md`](../../../delta/verification/multigpu_abtem/README.md).
+[`delta/verification/multigpu_abtem/README.md`](../../../../delta/verification/multigpu_abtem/README.md).
 The Dockerfile block lists which package supplies each skipped dependency; the
 build fails loudly if the install moves `torch` off the fairchem 2.8 ceiling.
 

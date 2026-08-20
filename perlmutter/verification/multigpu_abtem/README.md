@@ -79,7 +79,7 @@ likely to bite.
 ## How the branch abTEM is injected (no venv)
 
 The container carries its own abTEM, installed **editable** from a checkout
-staged into the build context (`shared/containers/otherimage/Dockerfile`:
+staged into the build context (`shared/containers/x86_64-cuda/otherimage/Dockerfile`:
 `COPY src/abTEM /opt/src/abTEM` + `pip install -e /opt/src/abTEM`). Do **not**
 identify it by version: the Delta README called it 1.0.9, while the
 Dockerfile in this repo stages an abTEM main **1.1.0** checkout, so which abTEM a
