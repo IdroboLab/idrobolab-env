@@ -37,6 +37,13 @@ for repo in gpaw-weaver abTEM; do
     done
     tar -C "${CODE_DIR}/${repo}" "${tar_excludes[@]}" -cf - . \
         | tar -C "src/${repo}" -xf -
+    # The tar captures the WORKING TREE, so say exactly what goes into the
+    # next build: current branch, commit, and whether uncommitted changes ride
+    # along (untracked files are included too, hence plain --porcelain).
+    branch=$(git -C "${CODE_DIR}/${repo}" branch --show-current)
+    dirty=$(git -C "${CODE_DIR}/${repo}" status --porcelain)
+    echo "${repo} staged from working tree on branch '${branch:-<detached HEAD>}'" \
+        "($(git -C "${CODE_DIR}/${repo}" log -1 --format='%h %cs'))${dirty:+ — WARNING: includes uncommitted/untracked changes}"
 done
 find src -xtype l -delete   # drop symlinks left dangling by the excludes
 
