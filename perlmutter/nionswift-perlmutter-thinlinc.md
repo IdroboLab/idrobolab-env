@@ -71,8 +71,11 @@ much faster than `$HOME` for importing Python packages at scale.
 ```bash
 module load python    # NERSC-provided Anaconda-based Python; own Miniforge also fine
 
+# Pin python=3.13: as of 2026-08 the py314 build of nionswift-tool 5.2.0
+# segfaults on launch (silently — see §7.6). Without the pin the solver
+# picks the newest Python.
 conda create -p /global/common/software/mXXXX/$USER/nionswift \
-    -c nion nionswift nionswift-tool
+    -c nion python=3.13 nionswift nionswift-tool
 
 conda activate /global/common/software/mXXXX/$USER/nionswift
 
@@ -173,6 +176,10 @@ Expected friction points, in order of probability. The compute-node OS image is
 minimal (NERSC's own docs note Perlmutter does not ship X Window utilities), so
 everything X/Qt must come from the conda env.
 
+If `nionswift` prints only "Using Python environment: ..." and returns to the
+prompt with exit 0 — no window, no error — go straight to §7.6: the wrapper
+swallows launcher crashes.
+
 ### 7.1 Qt xcb platform plugin fails to load
 
 Symptom: `qt.qpa.plugin: Could not load the Qt platform plugin "xcb"`.
@@ -204,13 +211,19 @@ conda install -c conda-forge mesalib
 
 ### 7.3 nionswift-tool launcher misbehaves (Qt/PATH conflict, launcher crash)
 
-Documented fallback — switch to the pure-Python Qt backend:
+Documented fallback — switch to the pure-Python Qt backend. With
+`nionswift-tool` absent, `nion.swift.command.main()` falls back to PySide6
+in-process (no native launcher involved), so errors surface normally:
 
 ```bash
 conda remove nionswift-tool
-conda install pyqt5          # (pip install PyQt5 in a venv setup)
+conda install -c conda-forge pyside6   # (pip install PySide6 in a venv setup)
 nionswift
 ```
+
+Note: the upstream Nion docs historically said PyQt5, but PyQt5 has no builds
+for current Python versions; the fallback chain in `nion.swift.command` tries
+PySide6.
 
 ### 7.4 X authorization errors on `ssh -X` to the node
 
@@ -223,6 +236,38 @@ has a valid `$DISPLAY` first; a broken first hop propagates.
 Confirm the laptop↔NERSC leg is the ThinLinc protocol, not plain `ssh -X` end to
 end. Reduce the Swift window size; screen-sized redraws are the dominant cost.
 There is no VirtualGL-style GPU-accelerated remote rendering in this chain.
+
+### 7.6 `nionswift` exits silently (exit 0, no window, no output)
+
+The `nionswift` entry point is a thin wrapper: `nion.nionswift_tool.command.
+launch()` runs the native launcher via `subprocess.Popen(...).communicate()`
+and **discards its exit code** — a segfaulting launcher is indistinguishable
+from a clean exit. Debug by invoking the native binary directly, exactly as
+the wrapper does (env prefix and app package as arguments):
+
+```bash
+QT_DEBUG_PLUGINS=1 QT_LOGGING_RULES='qt.qpa.*=true' \
+  "$CONDA_PREFIX/bin/NionSwiftLauncher/NionSwiftLauncher" "$CONDA_PREFIX" nionui_app.nionswift
+echo "exit: $?"        # 139 = segfault
+```
+
+This surfaces the launcher's real stderr and exit code. Useful triage on top
+of that:
+
+```bash
+python -m tkinter                       # X display chain OK? (no xeyes on Perlmutter)
+ldd "$CONDA_PREFIX/bin/NionSwiftLauncher/NionSwiftLauncher" | grep -i "not found"
+gdb -batch -ex run -ex bt --args \
+  "$CONDA_PREFIX/bin/NionSwiftLauncher/NionSwiftLauncher" "$CONDA_PREFIX" nionui_app.nionswift
+```
+
+Known instance (2026-08): the `py314_0` build of nionswift-tool 5.2.0
+segfaults in `Application::initialize()` (`Py_INCREF` on an invalid pointer
+via `QVariant::value<PyObjectPtr>()`) on every launch, with Qt/xcb loading
+fine and `python -c "import nionui_app.nionswift"` succeeding — a launcher
+embedding bug against Python 3.14, not an env or display problem. Fix:
+recreate the env with `python=3.13` (§4), or drop the native launcher for
+PySide6 (§7.3).
 
 ## 8. Sanity-check sequence for first bring-up
 
