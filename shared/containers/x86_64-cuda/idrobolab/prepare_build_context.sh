@@ -12,7 +12,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 CODE_DIR=${CODE_DIR:-/workspaces/code}
-EXCLUDES=(.git build __pycache__ '*.so' '*.egg-info' .venv .pytest_cache)
+EXCLUDES=(.git build __pycache__ '*.so' '*.egg-info' .venv .pytest_cache ./run '*.code-workspace')
 
 mkdir -p src
 
