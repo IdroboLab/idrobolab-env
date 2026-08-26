@@ -221,6 +221,87 @@ Notes:
   allocations, but also no surviving a closed terminal. For detachable
   long sessions use the §6 hold-job pattern instead.
 
+### 5.2 If the ThinLinc home is not the Perlmutter home
+
+The `.desktop` entry has to live in the home directory the **ThinLinc
+desktop** reads; the job script has to live on **Perlmutter** (it is
+executed there by the `ssh` in the `Exec` line). If those are the same
+shared home, §5.1 is complete as is. To find out, open a terminal *inside
+the ThinLinc desktop* and run:
+
+```bash
+echo $HOME                          # where the ThinLinc session's home is
+ls /global/homes/<x>/<user>/bin      # your NERSC global home — mounted here?
+```
+
+- **Global home visible** (the `ls` works): symlink the entry into the
+  ThinLinc home — nothing to copy, later re-runs of the setup script are
+  picked up automatically:
+
+  ```bash
+  mkdir -p ~/.local/share/applications
+  ln -sf /global/homes/<x>/<user>/.local/share/applications/nionswift-perlmutter.desktop \
+      ~/.local/share/applications/
+  ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/
+  ```
+
+- **Separate homes** (the `ls` fails): copy just the entry over (still in
+  the ThinLinc terminal) — and re-copy it after re-running the setup
+  script with changed settings:
+
+  ```bash
+  mkdir -p ~/.local/share/applications ~/Desktop
+  scp perlmutter.nersc.gov:.local/share/applications/nionswift-perlmutter.desktop \
+      ~/.local/share/applications/
+  ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/
+  ```
+
+Then verify the launcher's ssh hop works without a password prompt, again
+from the ThinLinc terminal:
+
+```bash
+ssh perlmutter.nersc.gov true
+```
+
+If this prompts, the ThinLinc-side `~/.ssh` needs the sshproxy key too:
+run `sshproxy -u <username>` inside the ThinLinc session and put the
+`Host perlmutter` / `IdentityFile ~/.ssh/nersc` block (§5.1) in the
+ThinLinc-side `~/.ssh/config`. The 24 h key lifetime then applies to the
+launcher: with an expired key the launcher's terminal window shows the
+prompt/failure — that is expected, regenerate the key.
+
+### 5.3 Launching from the keyboard inside ThinLinc
+
+Both desktops NERSC's ThinLinc offers have a run dialog:
+
+- **MATE**: `Alt+F2` → Run Application (has a "Run in terminal" checkbox).
+- **XFCE**: `Alt+F2` → Application Finder (compact); `Alt+F3` full view.
+
+In the dialog, launch the entry with:
+
+```
+gtk-launch nionswift-perlmutter
+```
+
+(`gtk-launch` runs the `.desktop` entry properly, including its
+`Terminal=true`; typing the raw `ssh` command instead would need "Run in
+terminal" ticked by hand.)
+
+Two gotchas and their fixes:
+
+- **The combo opens your LOCAL launcher instead.** Your own desktop grabs
+  `Alt+F2` before the ThinLinc client sees it. Either press `F8` inside
+  the ThinLinc window (the client's popup menu — it is TigerVNC-based)
+  and choose *Full screen* or *Grab keyboard*, after which all keys go to
+  the remote session; or use a combo your local desktop does not own
+  (next point).
+- **One-keystroke launch**: bind the command to a custom shortcut *in the
+  remote desktop*, picking a combo that does not collide locally (e.g.
+  `Ctrl+Alt+N`): MATE: System → Preferences → Hardware → Keyboard
+  Shortcuts → Add, command `gtk-launch nionswift-perlmutter`. XFCE:
+  Settings → Keyboard → Application Shortcuts → Add. This passes through
+  even in windowed mode.
+
 ## 6. Longer sessions (> interactive walltime)
 
 Submit a placeholder batch job, then attach with `ssh -X`:
