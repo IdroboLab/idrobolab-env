@@ -64,8 +64,21 @@ Notes:
 
 ## 4. One-time: conda environment (do this on a Perlmutter login node)
 
-First get this directory onto Perlmutter without pulling the whole repo —
-a sparse checkout of `perlmutter/` only (git ≥ 2.25):
+**Group members**: this directory is already available on Perlmutter in
+the shared project checkout at `/global/cfs/cdirs/<project>/env` (sparse
+checkout of `perlmutter/` + `shared/`) — use it directly, no GitHub
+access needed:
+
+```bash
+ls /global/cfs/cdirs/<project>/env/perlmutter/
+```
+
+**Maintainers** (or for a personal copy): the repo is private, so cloning
+needs collaborator access and a GitHub personal access token (fine-grained,
+"Contents: Read-only"; used as the https password — account passwords are
+rejected). Sparse checkout of `perlmutter/` only (portable sequence; the
+shorter `git clone --sparse` is broken on older gits such as the ThinLinc
+hosts' 2.25):
 
 ```bash
 git clone --filter=blob:none --no-checkout https://github.com/<username>/hpcenvs.git
@@ -77,12 +90,9 @@ git config pull.rebase true    # repo convention; see top-level CLAUDE.md
 ```
 
 (`--filter=blob:none` downloads file contents only as needed;
-`sparse-checkout set` restricts the working tree to `perlmutter/` plus
-top-level files. A later `git sparse-checkout set <dirs...>` widens it if
-ever needed. On a recent git the shorter `git clone --filter=blob:none
---sparse <url>` + `git sparse-checkout set perlmutter` does the same, but
-older gits — e.g. on the ThinLinc hosts — mishandle `clone --sparse`, so
-the sequence above is the portable one.)
+`sparse-checkout set` restricts the working tree to the named dirs plus
+top-level files, and a later `git sparse-checkout set <dirs...>` widens
+it.)
 
 Install into `/global/common/software/<project>/` — read-optimized for software,
 mounted read-only on compute nodes (so install/update from a *login* node), and
@@ -179,14 +189,28 @@ directory, separate from the Perlmutter global home — the setup script
 below installs everything Perlmutter-side, and §5.2 copies the entry to
 the ThinLinc side.
 
-One-shot setup: run `./setup-nionswift-launcher.sh` (this directory) on a
-login node — it writes both files below, symlinks the launcher onto
-`~/Desktop`, and adds the ssh-config entry; account/env/salloc knobs are
-variables at the top (or `NIONSWIFT_ACCOUNT`/`NIONSWIFT_ENV`/
-`NIONSWIFT_SALLOC_OPTS`). No relogin needed: the menu rescans on next
-open (`update-desktop-database ~/.local/share/applications` nudges it),
-the Desktop icon is immediate, and MATE may ask to mark a new launcher
-trusted on first click. The manual steps it automates:
+One-shot setup with `setup-nionswift-launcher.sh` (this directory). The
+same script detects which machine it is on — run it **twice, Perlmutter
+first**:
+
+```bash
+# 1. on a Perlmutter login node:
+/global/cfs/cdirs/<project>/env/perlmutter/setup-nionswift-launcher.sh
+
+# 2. in a terminal INSIDE the ThinLinc desktop (separate home — fetch the
+#    script from Perlmutter first, then run it):
+scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/setup-nionswift-launcher.sh ~
+~/setup-nionswift-launcher.sh
+```
+
+On Perlmutter it writes the job script and desktop entry (account/env/
+salloc knobs are variables at the top, or `NIONSWIFT_ACCOUNT`/
+`NIONSWIFT_ENV`/`NIONSWIFT_SALLOC_OPTS`); on the ThinLinc host it sets up
+ssh auth, copies the entry over, and links it onto `~/Desktop` (§5.2). No
+relogin needed: the menu rescans on next open (`update-desktop-database
+~/.local/share/applications` nudges it), the Desktop icon is immediate,
+and MATE may ask to mark a new launcher trusted on first click. The
+manual steps it automates:
 
 Neither target directory exists by default — create both first:
 
@@ -250,8 +274,9 @@ Notes:
 The ThinLinc hosts have their **own home directory** — NOT the Perlmutter
 global home. The `.desktop` entry has to live in the home the ThinLinc
 desktop reads, while the job script stays on Perlmutter (it is executed
-there by the `ssh` in the `Exec` line). So after §5.1, copy just the
-entry over — from a terminal *inside the ThinLinc desktop*:
+there by the `ssh` in the `Exec` line). Running the setup script on the
+ThinLinc host (§5.1, step 2) does all of this section automatically; the
+manual equivalent — from a terminal *inside the ThinLinc desktop*:
 
 ```bash
 mkdir -p ~/.local/share/applications ~/Desktop
