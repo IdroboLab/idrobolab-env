@@ -71,8 +71,9 @@ much faster than `$HOME` for importing Python packages at scale.
 ```bash
 module load python    # NERSC-provided Anaconda-based Python; own Miniforge also fine
 
-# As of 2026-08 the linux-64 nionswift-tool 5.2.0 launcher segfaults at
-# startup on BOTH its py313 and py314 builds (silently — see §7.6). Until
+# As of 2026-08 the linux nionswift-tool launcher (all of 5.0.0–5.3.0,
+# conda and pip, any Python) cannot start on X connections without MIT-SHM
+# — i.e. every remote display: ThinLinc, VNC, ssh -X (see §7.6). Until
 # fixed upstream, skip nionswift-tool and use the PySide6 backend (§7.3):
 conda create -p /global/common/software/mXXXX/$USER/nionswift \
     -c nion python=3.13 nionswift
@@ -235,9 +236,10 @@ nionswift
 
 Notes: the upstream Nion docs historically said PyQt5, but PyQt5 has no
 builds for current Python versions; the fallback chain in
-`nion.swift.command` tries PySide6. Downgrading the native launcher does
-NOT help: 5.1.5 (py312_0) fails identically to 5.2.0 (§7.6) — the PySide6
-backend is the only route verified working (2026-08).
+`nion.swift.command` tries PySide6. Downgrading or switching channels does
+NOT help: 5.0.0/5.1.5/5.2.0 (conda) and 5.3.0 (pip) all fail on remote
+displays (§7.6) — the PySide6 backend is the only route verified working
+over ThinLinc/ssh -X (2026-08).
 
 ### 7.4 X authorization errors on `ssh -X` to the node
 
@@ -287,15 +289,21 @@ Two more debugging notes for this failure mode:
   assignment lines there (keep a `.orig` backup), or write diagnostics with
   `os.write(2, ...)`.
 
-Known instance (2026-08): nionswift-tool on linux-64 segfaults on every
-launch — 5.2.0 py313_0 and py314_0 verified, and 5.1.5 py312_0 fails
-identically, so neither Python-version-specific nor a 5.2.0 regression.
-The Python bootstrap completes (faulthandler shows
-"no Python frame" at the crash, with the full app import chain loaded); the
-crash is in the launcher's C++ in `Application::initialize()`
-(`QVariant::value<PyObjectPtr>()` → `Py_INCREF` on an invalid pointer),
-with Qt/xcb loading fine. Not an env, display, or Python problem — a
-launcher bug. Fix: use the PySide6 backend instead (§4, §7.3).
+Known instance (2026-08), root cause isolated: the native launcher cannot
+start on X connections **without MIT-SHM** — which is every remote display
+(ThinLinc/TigerVNC, plain `ssh -X`). Confirmed by control experiments: the
+byte-for-byte identical version set works on a laptop's local display
+(even with `QT_QPA_PLATFORM=xcb` forced under XWayland), and fails there
+the same way with only `QT_XCB_NO_MITSHM=1` set. Failure mode by version:
+5.0.0–5.2.0 segfault in C++ `Application::initialize()`
+(`QVariant::value<PyObjectPtr>()` → `Py_INCREF` on an invalid pointer)
+*after* the Python bootstrap completes (faulthandler shows "no Python
+frame" with the full app import chain loaded); 5.3.0 (pip wheel) exits 0
+cleanly, still windowless. Same on conda and pip, Python 3.12–3.14. Ruled
+out: display chain (tkinter + Qt xcb load fine), OpenGL (software-GL vars
+change nothing; GL libs present), stale config, missing shared libs.
+Fix: PySide6 backend (§4, §7.3). Upstream report drafted 2026-08-26 (post
+to nion-software/nionswift — the nionswift-tool repo restricts issues).
 
 ## 8. Sanity-check sequence for first bring-up
 
