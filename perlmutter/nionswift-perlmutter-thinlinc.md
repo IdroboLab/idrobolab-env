@@ -279,7 +279,7 @@ script generates this file, and if the env is a conda one it inserts the
 Type=Application
 Name=Nion Swift (Perlmutter)
 Comment=Allocate a compute-node slice and launch Nion Swift
-Exec=ssh -X perlmutter.nersc.gov /global/common/software/mXXXX/bin/nionswift-job.sh
+Exec=ssh -Xt perlmutter.nersc.gov /global/common/software/mXXXX/bin/nionswift-job.sh
 Icon=nionswift
 Terminal=true
 Categories=Science;Education;
@@ -287,9 +287,15 @@ Categories=Science;Education;
 
 Notes:
 
-- `Terminal=true` matters: the terminal window shows salloc queue progress
-  and errors (an expired sshproxy cert, a stuck queue), and closing Swift
-  tears down the whole chain and frees the allocation.
+- `Terminal=true` matters: the terminal window hosts the session-size
+  prompts, shows salloc queue progress and errors (an expired sshproxy
+  cert, a stuck queue), and closing Swift tears down the whole chain and
+  frees the allocation.
+- The `-t` on the `Exec` ssh matters too: it allocates a remote pty, so
+  closing the terminal window while the job is still **pending** delivers
+  a SIGHUP to `salloc`, which then revokes the queued allocation itself.
+  Without `-t`, an abandoned pending job stays in the queue until the
+  interactive QOS times it out.
 - `Exec` lines get no shell expansion — use the absolute script path.
 - Icon: the setup script converts the Nion Swift logo (the launcher's
   bundled `Graphics/WinIcon.ico`, or — since the linux builds ship

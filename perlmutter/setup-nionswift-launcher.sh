@@ -154,7 +154,7 @@ EOF
 Type=Application
 Name=Nion Swift (Perlmutter)
 Comment=Allocate a compute-node slice and launch Nion Swift
-Exec=ssh -X perlmutter.nersc.gov $JOB
+Exec=ssh -Xt perlmutter.nersc.gov $JOB
 Icon=$ICON_NAME
 Terminal=true
 Categories=Science;Education;
