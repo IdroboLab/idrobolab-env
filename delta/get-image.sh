@@ -3,7 +3,7 @@
 # registry image built+pushed by shared/containers/x86_64-cuda/otherimage/publish.sh.
 #
 # Run on Delta (or any host with apptainer). Keep the .sif and cache off $HOME:
-#   export APPTAINER_CACHEDIR=$SCRATCH/.apptainer
+#   export APPTAINER_CACHEDIR=$SCRATCH_BASE/$USER/.apptainer
 set -euo pipefail
 IMAGE=${IMAGE:-ghcr.io/<username>/otherimage}
 TAG=${TAG:-latest}

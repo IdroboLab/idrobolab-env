@@ -3,10 +3,17 @@
 Environment setup for NCSA's Delta HPC system (Apptainer container + Slurm job
 templates for another image's GPAW stack).
 
+## Environment variables — no `$SCRATCH`
+
+Delta defines **`$SCRATCH_BASE` (= `/scratch/<account>`, e.g. `/scratch/<project>`)
+and NOT `$SCRATCH`**; the personal scratch area is `$SCRATCH_BASE/$USER`.
+Any script that expands an unguarded `$SCRATCH` under `set -u` aborts.
+Never emit `$SCRATCH` in Delta job scripts.
+
 ## Container image (SIF) location
 
 Container images live in **`$PROJECTS_BASE/software/containers/`** — NOT in
-`$SCRATCH/containers`. Every script defaults `SIF` to
+scratch. Every script defaults `SIF` to
 `$PROJECTS_BASE/software/containers/otherimage_delta.sif`; override per-invocation
 with `SIF=/path/to/image.sif <script>`.
 
@@ -19,10 +26,11 @@ as the default.
 - **Container images** → `$PROJECTS_BASE/software/containers/` (shared, provenance
   via `sha256sum`; `*.sif` is not tracked — only the build recipes under
   `shared/containers/`).
-- **Apptainer caches** → `$SCRATCH/.apptainer` (keep off `$HOME`; do not move to
-  projects).
-- **Source checkouts and job outputs** → `$SCRATCH` (e.g. `$SCRATCH/code/...`,
-  benchmark output dirs). Scratch, not projects.
+- **Apptainer caches** → `$SCRATCH_BASE/$USER/.apptainer` (keep off `$HOME`;
+  do not move to projects).
+- **Source checkouts** → `/projects/<project>/<username>/code/<name>` (purge-proof;
+  bound over the image's editable `/opt/src/<name>`). Job outputs and other
+  regenerable bulk → `$SCRATCH_BASE/$USER/...`.
 
 ## Editable-install import trap — never name a dir after a package
 
@@ -35,7 +43,8 @@ current directory **shadows the real package**. `python -c` puts the CWD on
 
 - Do not create working/output directories named `gpaw`, `otherimage`,
   `gpaw_weaver`, or `pyslice`. Branch-override checkouts go to
-  `$SCRATCH/code/<name>` (bound to `/opt/src/<name>`), never in a run dir.
+  `/projects/<project>/<username>/code/<name>` (bound to `/opt/src/<name>`),
+  never in a run dir.
 - For `python -c` preflight checks, use `python -P` (drops CWD from
   `sys.path`). Never add `-P` to `python path/script.py` runs — it also
   drops the script's own dir and breaks sibling imports. Normal

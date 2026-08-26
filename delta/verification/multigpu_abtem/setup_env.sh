@@ -101,4 +101,4 @@ PY
 echo
 echo "Preflight passed. Submit with:  ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch"
 echo "(If you built the old overlay venv, it is unused now and can be removed:"
-echo "   rm -rf \${MGPU_VENV:-\$SCRATCH/venvs/abtem_mgpu} )"
+echo "   rm -rf \${MGPU_VENV:-\$SCRATCH_BASE/\$USER/venvs/abtem_mgpu} )"

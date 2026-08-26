@@ -17,7 +17,7 @@
 #SBATCH --constraint="scratch"          # filesystem dependency (NCSA-requested)
 #SBATCH --output=%x_%j.out
 
-module reset   # loads defaults (incl. cray-mpich), sets $WORK/$SCRATCH; before set -u (Lmod)
+module reset   # loads defaults (incl. cray-mpich), sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod)
 set -euo pipefail
 
 SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
@@ -31,7 +31,7 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 
 # Run a cluster checkout instead of the baked-in code (container README,
 # "Running your own branches"):
-# BINDS="$BINDS,$SCRATCH/code/gpaw:/opt/src/gpaw"
+# BINDS="$BINDS,/projects/<project>/<username>/code/gpaw:/opt/src/gpaw"
 
 export OMP_NUM_THREADS=1                # pure MPI; the image defaults to 1 anyway
 

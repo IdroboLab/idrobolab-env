@@ -35,7 +35,7 @@
 #SBATCH --constraint="scratch"
 #SBATCH --output=%x_%j.out
 
-module reset                            # loads cray-mpich (default); sets $WORK/$SCRATCH; before set -u (Lmod)
+module reset                            # loads cray-mpich (default); sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod)
 module load cray-mpich                  # ensure CRAY_MPICH_DIR/MPICH_DIR are set
 set -euo pipefail
 
@@ -78,7 +78,7 @@ BINDS="${CRAY_ABI}:/opt/software/mpich/lib,/opt/cray:/opt/cray"
 for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="$BINDS,$p"; done
 
 # Run a cluster checkout instead of the baked-in code:
-# BINDS="$BINDS,$SCRATCH/code/gpaw:/opt/src/gpaw"
+# BINDS="$BINDS,/projects/<project>/<username>/code/gpaw:/opt/src/gpaw"
 
 export OMP_NUM_THREADS=1                # pure MPI
 

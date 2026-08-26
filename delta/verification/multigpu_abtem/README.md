@@ -123,7 +123,7 @@ resolves against `dask 2026.7`.
 ```bash
 # 0. point ABTEM_SRC at your 'multi-gpu-support' checkout and preflight it:
 module reset
-export ABTEM_SRC=$SCRATCH/code/abTEM        # your 'multi-gpu-support' checkout
+export ABTEM_SRC=/projects/<project>/<username>/code/abTEM   # your 'multi-gpu-support' checkout
 git -C "$ABTEM_SRC" switch multi-gpu-support
 ./setup_env.sh                              # preflight (no venv); prints versions
 
@@ -181,7 +181,7 @@ cutoff and reported), `--scan-sampling`, `--gpu-counts 1,2,4,8`,
 `--projection {infinite,finite}` (default `infinite`),
 `--precision {float32,float64}` (float64 tightens agreement), `--tol`.
 
-Outputs (in `--output`, default `$SCRATCH/bench_haadf_<jobid>`): the structure as
+Outputs (in `--output`, default `$SCRATCH_BASE/$USER/bench_haadf_<jobid>`): the structure as
 `.cif` (for VESTA), `haadf_<n>gpu.npy` per GPU count, a reference PNG and
 difference PNGs, and `results.json` (times, speedups, per-count max deviation,
 `invariance_pass`). Exit status is non-zero if the image is not invariant.

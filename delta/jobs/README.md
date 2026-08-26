@@ -78,7 +78,7 @@ mkdir -p $PROJECTS_BASE/software/containers
 # transfer the image (from the dev machine):
 #   scp otherimage_delta.sif <user>@login.delta.ncsa.illinois.edu:$PROJECTS_BASE/software/containers/
 sha256sum $PROJECTS_BASE/software/containers/otherimage_delta.sif   # record for provenance
-export APPTAINER_CACHEDIR=$SCRATCH/.apptainer        # keep caches off $HOME (quota)
+export APPTAINER_CACHEDIR=$SCRATCH_BASE/$USER/.apptainer   # keep caches off $HOME (quota)
 
 # smoke tests (interactive or short jobs):
 apptainer exec $SIF python -P -c "import gpaw, otherimage; print(gpaw.__version__)"
@@ -117,7 +117,7 @@ both run the image's `x86-64-v3` code; no per-partition images needed
   `ImportError: cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw'
   (unknown location)`. Same trap for `otherimage`, `gpaw_weaver`, `pyslice`.
   Fix: rename/move the directory (a branch-override checkout belongs at
-  `$SCRATCH/code/gpaw`, bound to `/opt/src/gpaw` — not in your run dir).
+  `/projects/<project>/<username>/code/gpaw`, bound to `/opt/src/gpaw` — not in your run dir).
 - **For one-liner `python -c` checks, use `python -P`** (drops the CWD from
   `sys.path`) so a stray `gpaw/` can't shadow the import. Do **not** add
   `-P` to `python src/script.py` runs — it also drops the script's own

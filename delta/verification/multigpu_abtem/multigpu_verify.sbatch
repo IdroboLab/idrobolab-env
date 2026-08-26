@@ -39,7 +39,7 @@
 # #SBATCH --mem=0
 # --------------------------------------------------------------------------
 
-module reset   # loads defaults, sets $WORK/$SCRATCH; before set -u (Lmod quirk)
+module reset   # loads defaults, sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod quirk)
 set -euo pipefail
 
 # Under `sbatch`, Slurm runs a spool COPY of this script, so BASH_SOURCE points
@@ -80,7 +80,7 @@ fi
 # container's own abTEM -- no venv: the container is read-only and its Python is
 # itself a venv, so a nested venv cannot see the container's dask-cuda/cupy.
 if [ -n "${ABTEM_SRC+x}" ]; then ABTEM_SRC_GIVEN=1; else ABTEM_SRC_GIVEN=0; fi
-ABTEM_SRC=${ABTEM_SRC-${SCRATCH:-}/code/abTEM}
+ABTEM_SRC=${ABTEM_SRC-/projects/<project>/<username>/code/abTEM}
 
 # Which abTEM gets tested. ABTEM_SRC names a checkout to inject over the
 # container's own copy. Leaving it out is legitimate: the image installs abTEM

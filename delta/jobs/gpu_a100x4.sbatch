@@ -18,7 +18,7 @@
 #SBATCH --constraint="scratch"
 #SBATCH --output=%x_%j.out
 
-module reset   # loads defaults, sets $WORK/$SCRATCH; before set -u (Lmod quirk)
+module reset   # loads defaults, sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod quirk)
 set -euo pipefail
 
 SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
@@ -29,7 +29,7 @@ BINDS=""
 for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"; done
 
 # Run a cluster checkout instead of the baked-in code:
-# BINDS="$BINDS,$SCRATCH/code/otherimage:/opt/src/otherimage"
+# BINDS="$BINDS,/projects/<project>/<username>/code/otherimage:/opt/src/otherimage"
 
 # For 4 MPI ranks x 1 GPU each (instead of one process using 4 GPUs), switch
 # the payload to:  mpiexec -bootstrap fork -n 4 python "$SCRIPT" "$@"
