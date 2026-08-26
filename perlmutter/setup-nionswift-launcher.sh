@@ -160,7 +160,7 @@ if [ "$ASK_TIME" = 1 ]; then
 fi
 
 salloc -A @ACCOUNT@ $SALLOC_ARGS $TIME_ARGS $EXTRA_OPTS -J nionswift \
-     bash -c "ssh -X \"\$SLURM_NODELIST\" '@PRELOAD@@ENV@/bin/nionswift'" \
+     bash -c "ssh -Y \"\$SLURM_NODELIST\" '@PRELOAD@@ENV@/bin/nionswift'" \
   || pause_fail "salloc failed (see message above; interactive QOS walltime cap is 4h)"
 EOF
     sed -i \
@@ -178,7 +178,7 @@ EOF
 Type=Application
 Name=Nion Swift (Perlmutter)
 Comment=Allocate a compute-node slice and launch Nion Swift
-Exec=ssh -Xt perlmutter.nersc.gov $JOB
+Exec=ssh -Yt perlmutter.nersc.gov $JOB
 Icon=$ICON_NAME
 Terminal=true
 Categories=Science;Education;

@@ -268,7 +268,7 @@ Core allocation line (see the generated file for the full logic):
 
 ```bash
 salloc -A mXXXX $SALLOC_ARGS -t "$TIME" -J nionswift \
-     bash -c "ssh -X \"\$SLURM_NODELIST\" '$ENV/bin/nionswift'"
+     bash -c "ssh -Y \"\$SLURM_NODELIST\" '$ENV/bin/nionswift'"
 ```
 
 (`salloc` runs its command on the *login* node, so the script uses the
@@ -285,7 +285,7 @@ script generates this file, and if the env is a conda one it inserts the
 Type=Application
 Name=Nion Swift (Perlmutter)
 Comment=Allocate a compute-node slice and launch Nion Swift
-Exec=ssh -Xt perlmutter.nersc.gov /global/common/software/mXXXX/bin/nionswift-job.sh
+Exec=ssh -Yt perlmutter.nersc.gov /global/common/software/mXXXX/bin/nionswift-job.sh
 Icon=nionswift
 Terminal=true
 Categories=Science;Education;
@@ -302,6 +302,13 @@ Notes:
   a SIGHUP to `salloc`, which then revokes the queued allocation itself.
   Without `-t`, an abandoned pending job stays in the queue until the
   interactive QOS times it out.
+- The hops use `-Y` (trusted forwarding) rather than `-X`: untrusted
+  forwarding needs the X server's SECURITY extension, which TigerVNC
+  lacks, producing "Warning: untrusted X11 forwarding setup failed: xauth
+  key data not generated" and — depending on the OpenSSH config — either
+  a silent fallback to trusted anyway or no forwarding at all. Every hop
+  here is between the user's own sessions on NERSC hosts, where trusted
+  forwarding is the norm.
 - `Exec` lines get no shell expansion — use the absolute script path.
 - Icon: the setup script converts the Nion Swift logo (the launcher's
   bundled `Graphics/WinIcon.ico`, or — since the linux builds ship
