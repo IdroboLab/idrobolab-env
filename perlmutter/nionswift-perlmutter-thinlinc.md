@@ -71,11 +71,13 @@ much faster than `$HOME` for importing Python packages at scale.
 ```bash
 module load python    # NERSC-provided Anaconda-based Python; own Miniforge also fine
 
-# Pin python=3.13: as of 2026-08 the py314 build of nionswift-tool 5.2.0
-# segfaults on launch (silently — see §7.6). Without the pin the solver
-# picks the newest Python.
+# As of 2026-08 the linux-64 nionswift-tool 5.2.0 launcher segfaults at
+# startup on BOTH its py313 and py314 builds (silently — see §7.6). Until
+# fixed upstream, skip nionswift-tool and use the PySide6 backend (§7.3):
 conda create -p /global/common/software/mXXXX/$USER/nionswift \
-    -c nion python=3.13 nionswift nionswift-tool
+    -c nion python=3.13 nionswift
+conda install -p /global/common/software/mXXXX/$USER/nionswift \
+    -c conda-forge pyside6
 
 conda activate /global/common/software/mXXXX/$USER/nionswift
 
@@ -261,13 +263,26 @@ gdb -batch -ex run -ex bt --args \
   "$CONDA_PREFIX/bin/NionSwiftLauncher/NionSwiftLauncher" "$CONDA_PREFIX" nionui_app.nionswift
 ```
 
-Known instance (2026-08): the `py314_0` build of nionswift-tool 5.2.0
-segfaults in `Application::initialize()` (`Py_INCREF` on an invalid pointer
-via `QVariant::value<PyObjectPtr>()`) on every launch, with Qt/xcb loading
-fine and `python -c "import nionui_app.nionswift"` succeeding — a launcher
-embedding bug against Python 3.14, not an env or display problem. Fix:
-recreate the env with `python=3.13` (§4), or drop the native launcher for
-PySide6 (§7.3).
+Two more debugging notes for this failure mode:
+
+- `PYTHONFAULTHANDLER=1 <launcher> "$CONDA_PREFIX" nionui_app.nionswift`
+  prints the Python stack at the moment of a segfault to the real stderr
+  (file descriptor 2), bypassing all output redirection.
+- The launcher's `bin/NionSwiftLauncher/bootstrap.py` replaces
+  `sys.stdout`/`sys.stderr` with a catcher routed into the C++ host as its
+  very first action, so Python tracebacks during bootstrap are invisible if
+  the host dies. When debugging, comment out the two `sys.stdout`/`sys.stderr`
+  assignment lines there (keep a `.orig` backup), or write diagnostics with
+  `os.write(2, ...)`.
+
+Known instance (2026-08): nionswift-tool 5.2.0 on linux-64 segfaults on
+every launch, identically on its py313_0 and py314_0 builds — NOT
+Python-version-specific. The Python bootstrap completes (faulthandler shows
+"no Python frame" at the crash, with the full app import chain loaded); the
+crash is in the launcher's C++ in `Application::initialize()`
+(`QVariant::value<PyObjectPtr>()` → `Py_INCREF` on an invalid pointer),
+with Qt/xcb loading fine. Not an env, display, or Python problem — a
+launcher bug. Fix: use the PySide6 backend instead (§4, §7.3).
 
 ## 8. Sanity-check sequence for first bring-up
 
