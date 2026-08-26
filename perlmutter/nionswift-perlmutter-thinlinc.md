@@ -110,8 +110,12 @@ also only changes when *you* update it, unlike venvs seeded from the NERSC
 source /global/cfs/cdirs/<project>/env/perlmutter/env.sh   # sets UV_PYTHON_INSTALL_DIR
                                                        # (normally in ~/.bashrc already)
 
-# one-time, if uv is not in the shared project bin dir yet:
-curl -LsSf https://astral.sh/uv/install.sh | sh        # installs to ~/.local/bin
+# one-time, if uv is not in the shared project bin dir yet (env.sh puts
+# that dir on PATH for everyone; after `uv self update`, re-chmod):
+mkdir -p /global/common/software/mXXXX/bin
+curl -LsSf https://astral.sh/uv/install.sh \
+    | env UV_INSTALL_DIR=/global/common/software/mXXXX/bin sh
+chmod g+rx /global/common/software/mXXXX/bin/uv*
 
 # python 3.13 pin: nionui 10.2.2/11.1.0 crashes on Python 3.14
 # (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
