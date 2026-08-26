@@ -120,24 +120,24 @@ chmod g+rx /global/common/software/mXXXX/bin/uv*
 # python 3.13 pin: nionui 10.2.2/11.1.0 crashes on Python 3.14
 # (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
 uv python install 3.13
-uv venv --python 3.13 /global/common/software/mXXXX/venvs/nionswift
-uv pip install -p /global/common/software/mXXXX/venvs/nionswift/bin/python \
+uv venv --python 3.13 /global/common/software/mXXXX/venvs/nionswift-py313
+uv pip install -p /global/common/software/mXXXX/venvs/nionswift-py313/bin/python \
     nionswift nionswift-tool nionswift-usim nionswift-eels-analysis \
     nionswift-experimental
 
 # make it usable by the whole project group:
-chmod -R g+rX "$UV_PYTHON_INSTALL_DIR" /global/common/software/mXXXX/venvs/nionswift
+chmod -R g+rX "$UV_PYTHON_INSTALL_DIR" /global/common/software/mXXXX/venvs/nionswift-py313
 
 # sanity: the venv's python must NOT resolve into anyone's $HOME (it does if
 # UV_PYTHON_INSTALL_DIR was unset when the interpreter was installed — then
 # group members cannot run it):
-readlink -f /global/common/software/mXXXX/venvs/nionswift/bin/python
+readlink -f /global/common/software/mXXXX/venvs/nionswift-py313/bin/python
 
-/global/common/software/mXXXX/venvs/nionswift/bin/nionswift    # launches
+/global/common/software/mXXXX/venvs/nionswift-py313/bin/nionswift    # launches
 ```
 
 Group members need no uv of their own to *use* the env — running
-`.../venvs/nionswift/bin/nionswift` is all there is to it.
+`.../venvs/nionswift-py313/bin/nionswift` is all there is to it.
 
 Alternatives (upstream-supported, but on Perlmutter both need the
 `LD_PRELOAD` libexpat workaround because their `pyexpat` links libexpat
@@ -198,7 +198,7 @@ ssh -X nidXXXXXX
 Launch:
 
 ```bash
-/global/common/software/mXXXX/venvs/nionswift/bin/nionswift
+/global/common/software/mXXXX/venvs/nionswift-py313/bin/nionswift
 # (conda-env alternative: activate it and launch with the §4 LD_PRELOAD)
 ```
 
@@ -252,7 +252,7 @@ mkdir -p ~/bin ~/.local/share/applications
 # with X forwarded back through this login node. Closing Swift (or the
 # ssh dropping) ends the command and releases the allocation.
 
-ENV=/global/common/software/mXXXX/venvs/nionswift
+ENV=/global/common/software/mXXXX/venvs/nionswift-py313
 
 exec salloc -A mXXXX -q shared_interactive -C cpu -n 1 -c 32 --mem=120G \
      -t 04:00:00 -J nionswift \

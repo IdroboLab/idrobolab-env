@@ -13,7 +13,7 @@
 set -euo pipefail
 
 ACCOUNT="${NIONSWIFT_ACCOUNT:-<project>}"
-ENV="${NIONSWIFT_ENV:-/global/common/software/${ACCOUNT}/venvs/nionswift}"
+ENV="${NIONSWIFT_ENV:-/global/common/software/${ACCOUNT}/venvs/nionswift-py313}"
 SALLOC_OPTS="${NIONSWIFT_SALLOC_OPTS:--q shared_interactive -C cpu -n 1 -c 32 --mem=120G -t 04:00:00}"
 
 DESKTOP_REL=".local/share/applications/nionswift-perlmutter.desktop"
