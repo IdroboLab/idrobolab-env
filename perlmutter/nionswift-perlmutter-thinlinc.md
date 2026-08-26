@@ -256,12 +256,15 @@ Notes:
   and errors (an expired sshproxy cert, a stuck queue), and closing Swift
   tears down the whole chain and frees the allocation.
 - `Exec` lines get no shell expansion — use the absolute script path.
-- `Icon=nionswift` resolves by name: the setup script extracts the Nion
-  Swift logo from the launcher's bundled `Graphics/WinIcon.ico` (via the
-  env's Pillow) into `~/.local/share/icons/hicolor/256x256/apps/
-  nionswift.png` on the Perlmutter side and copies it to the same relative
-  path on the ThinLinc side — name lookup then works in both homes. If
-  extraction fails it falls back to a stock icon.
+- Icon: the setup script converts the Nion Swift logo (the launcher's
+  bundled `Graphics/WinIcon.ico`, or — since the conda linux build ships
+  without it — the same file fetched from the nionswift-tool GitHub repo)
+  to `~/.local/share/icons/hicolor/256x256/apps/nionswift.png` via the
+  env's Pillow. The Perlmutter-generated entry says `Icon=nionswift`; on
+  the ThinLinc side the script copies the PNG over and rewrites `Icon=`
+  to its absolute local path, because name-based icon lookup is
+  unreliable on the ThinLinc hosts' older MATE/GTK (symptom: a generic
+  text-file icon). Falls back to a stock icon if all of that fails.
 - For non-interactive ThinLinc→Perlmutter auth, point ssh at the sshproxy
   key in `~/.ssh/config` — this must be on the **ThinLinc side**, where
   the `Exec` ssh runs (see §5.2 for getting the key there):
