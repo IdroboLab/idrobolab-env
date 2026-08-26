@@ -17,6 +17,12 @@ ACCOUNT="${NIONSWIFT_ACCOUNT:-<project>}"
 ENV="${NIONSWIFT_ENV:-/global/common/software/${ACCOUNT}/venvs/nionswift-py313}"
 DEFAULT_MEM_GB="${NIONSWIFT_DEFAULT_MEM_GB:-64}"
 DEFAULT_TIME="${NIONSWIFT_DEFAULT_TIME:-4:00:00}"
+# Arbitrary extra salloc options, appended after the sized arguments (so
+# they win where Slurm takes the last occurrence). A --mem* here disables
+# the memory prompt AND the automatic sizing — the options must then be a
+# complete resource spec (QOS, constraint, CPUs); a -t/--time disables the
+# walltime prompt.
+SALLOC_OPTS="${NIONSWIFT_SALLOC_OPTS:-}"
 
 # Shared install locations (Perlmutter side; user-independent contents).
 BIN_DIR="/global/common/software/${ACCOUNT}/bin"
@@ -112,31 +118,48 @@ NODE_CPUS=256
 
 pause_fail() { echo "$*" >&2; read -r -p "press Enter to close "; exit 1; }
 
-read -r -p "Memory in GB [@DEF_MEM@]: " MEM_GB
-MEM_GB=${MEM_GB:-@DEF_MEM@}
-case "$MEM_GB" in
-    ''|*[!0-9]*) pause_fail "invalid memory: '$MEM_GB' (whole GB, e.g. 64)" ;;
-esac
+# Extra salloc options baked in at setup time (NIONSWIFT_SALLOC_OPTS).
+# They are appended last, so they win where Slurm takes the last occurrence.
+# A memory spec here replaces the memory prompt and the automatic sizing;
+# a time spec replaces the walltime prompt.
+EXTRA_OPTS="@EXTRA_OPTS@"
+ASK_MEM=1 ASK_TIME=1
+case " $EXTRA_OPTS" in *" --mem"*) ASK_MEM=0 ;; esac
+case " $EXTRA_OPTS" in *" -t "*|*" --time"*) ASK_TIME=0 ;; esac
 
-read -r -p "Walltime, hours or hh:mm:ss [@DEF_TIME@]: " TIME
-TIME=${TIME:-@DEF_TIME@}
-case "$TIME" in
-    *[!0-9]*) ;;                # already hh:mm[:ss]-style, pass through
-    *) TIME="${TIME}:00:00" ;;  # bare number = hours
-esac
-
-if [ "$MEM_GB" -gt $((NODE_MEM_GB / 2)) ]; then
-    echo "> ${MEM_GB} GB is more than half a node - taking a full node" \
-         "(interactive QOS, ${NODE_MEM_GB} GB / ${NODE_CPUS} CPUs)"
-    SALLOC_ARGS="-q interactive -C cpu -N 1"
+if [ "$ASK_MEM" = 1 ]; then
+    read -r -p "Memory in GB [@DEF_MEM@]: " MEM_GB
+    MEM_GB=${MEM_GB:-@DEF_MEM@}
+    case "$MEM_GB" in
+        ''|*[!0-9]*) pause_fail "invalid memory: '$MEM_GB' (whole GB, e.g. 64)" ;;
+    esac
+    if [ "$MEM_GB" -gt $((NODE_MEM_GB / 2)) ]; then
+        echo "> ${MEM_GB} GB is more than half a node - taking a full node" \
+             "(interactive QOS, ${NODE_MEM_GB} GB / ${NODE_CPUS} CPUs)"
+        SALLOC_ARGS="-q interactive -C cpu -N 1"
+    else
+        CPUS=$(( (MEM_GB * NODE_CPUS + NODE_MEM_GB - 1) / NODE_MEM_GB ))
+        [ "$CPUS" -lt 2 ] && CPUS=2
+        echo "> shared slice: ${MEM_GB} GB, ${CPUS} logical CPUs"
+        SALLOC_ARGS="-q shared_interactive -C cpu -n 1 -c $CPUS --mem=${MEM_GB}G"
+    fi
 else
-    CPUS=$(( (MEM_GB * NODE_CPUS + NODE_MEM_GB - 1) / NODE_MEM_GB ))
-    [ "$CPUS" -lt 2 ] && CPUS=2
-    echo "> shared slice: ${MEM_GB} GB, ${CPUS} logical CPUs, ${TIME}"
-    SALLOC_ARGS="-q shared_interactive -C cpu -n 1 -c $CPUS --mem=${MEM_GB}G"
+    echo "> resources pinned by NIONSWIFT_SALLOC_OPTS: $EXTRA_OPTS"
+    SALLOC_ARGS=""
 fi
 
-salloc -A @ACCOUNT@ $SALLOC_ARGS -t "$TIME" -J nionswift \
+TIME_ARGS=""
+if [ "$ASK_TIME" = 1 ]; then
+    read -r -p "Walltime, hours or hh:mm:ss [@DEF_TIME@]: " TIME
+    TIME=${TIME:-@DEF_TIME@}
+    case "$TIME" in
+        *[!0-9]*) ;;                # already hh:mm[:ss]-style, pass through
+        *) TIME="${TIME}:00:00" ;;  # bare number = hours
+    esac
+    TIME_ARGS="-t $TIME"
+fi
+
+salloc -A @ACCOUNT@ $SALLOC_ARGS $TIME_ARGS $EXTRA_OPTS -J nionswift \
      bash -c "ssh -X \"\$SLURM_NODELIST\" '@PRELOAD@@ENV@/bin/nionswift'" \
   || pause_fail "salloc failed (see message above; interactive QOS walltime cap is 4h)"
 EOF
@@ -146,6 +169,7 @@ EOF
         -e "s|@PRELOAD@|${PRELOAD}|g" \
         -e "s|@DEF_MEM@|${DEFAULT_MEM_GB}|g" \
         -e "s|@DEF_TIME@|${DEFAULT_TIME}|g" \
+        -e "s|@EXTRA_OPTS@|${SALLOC_OPTS}|g" \
         "$JOB"
     chmod 755 "$JOB"
 

@@ -232,7 +232,13 @@ scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/setup-nionsw
 
 On Perlmutter it writes the shared pieces (knobs are variables at the
 top, or `NIONSWIFT_ACCOUNT`/`NIONSWIFT_ENV`/`NIONSWIFT_DEFAULT_MEM_GB`/
-`NIONSWIFT_DEFAULT_TIME`); on a ThinLinc host it sets up ssh auth, copies
+`NIONSWIFT_DEFAULT_TIME`/`NIONSWIFT_SALLOC_OPTS` — the last one bakes
+arbitrary extra salloc options into the job script, appended after the
+sized arguments so they win where Slurm takes the last occurrence; a
+`--mem*` in it suppresses the memory prompt AND the automatic sizing, so
+it must then be a complete resource spec incl. QOS/constraint/CPUs, and
+a `-t`/`--time` suppresses the walltime prompt); on a ThinLinc host it
+sets up ssh auth, copies
 the entry + icon from the shared location into the member's ThinLinc
 home, and links the entry onto `~/Desktop` (§5.2). No relogin needed: the
 menu rescans on next open (`update-desktop-database
