@@ -69,8 +69,11 @@ EOF
     echo "  ~/bin/nionswift-job.sh   (account: $ACCOUNT, env: $ENV)"
     echo "  ~/$DESKTOP_REL"
     echo
-    echo "Next: run this same script in a terminal INSIDE the ThinLinc desktop"
-    echo "to install the entry there (separate home — runbook §5.2)."
+    SELF="$(readlink -f "$0")"
+    echo "Next: in a terminal INSIDE the ThinLinc desktop (separate home!):"
+    echo "  scp perlmutter.nersc.gov:$SELF ~"
+    echo "  ~/$(basename "$SELF")"
+    echo "(runbook §5.2)"
 else
     ############################# ThinLinc side #############################
     echo "No Slurm here — assuming ThinLinc host; installing the desktop entry."
