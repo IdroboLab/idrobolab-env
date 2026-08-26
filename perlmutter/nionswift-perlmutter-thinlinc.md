@@ -230,9 +230,9 @@ scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/setup-nionsw
 ~/setup-nionswift-launcher.sh
 ```
 
-On Perlmutter it writes the shared pieces (account/env/salloc knobs are
-variables at the top, or `NIONSWIFT_ACCOUNT`/`NIONSWIFT_ENV`/
-`NIONSWIFT_SALLOC_OPTS`); on a ThinLinc host it sets up ssh auth, copies
+On Perlmutter it writes the shared pieces (knobs are variables at the
+top, or `NIONSWIFT_ACCOUNT`/`NIONSWIFT_ENV`/`NIONSWIFT_DEFAULT_MEM_GB`/
+`NIONSWIFT_DEFAULT_TIME`); on a ThinLinc host it sets up ssh auth, copies
 the entry + icon from the shared location into the member's ThinLinc
 home, and links the entry onto `~/Desktop` (§5.2). No relogin needed: the
 menu rescans on next open (`update-desktop-database
@@ -240,16 +240,28 @@ menu rescans on next open (`update-desktop-database
 and MATE may ask to mark a new launcher trusted on first click. What it
 installs:
 
-`/global/common/software/mXXXX/bin/nionswift-job.sh` (mode 755):
+`/global/common/software/mXXXX/bin/nionswift-job.sh` (mode 755): the
+generated job script is interactive — it runs in the terminal window the
+`.desktop` entry opens (`Terminal=true`) and prompts for the session
+size, then allocates and launches:
+
+- **Memory in GB** (default 64) and **walltime** (default 4:00:00; a bare
+  number is read as hours).
+- Logical CPUs are derived from the Perlmutter CPU-node ratio — 512 GB /
+  256 logical CPUs, i.e. 2 GB per CPU, rounded up (64 GB → `-c 32`), so
+  the shared-QOS charge is memory- and CPU-proportional alike.
+- **More than half a node (> 256 GB) switches to an exclusive full node
+  on the `interactive` QOS** (`-N 1`, no `--mem`); anything at or below
+  half a node uses `shared_interactive` with `-n 1 -c <cpus>
+  --mem=<GB>G`. Mind the full-node charging caveat (§9) and the 4 h
+  interactive walltime cap (§5).
+- On bad input or a failed `salloc` it pauses ("press Enter to close")
+  so the error stays readable before the terminal window closes.
+
+Core allocation line (see the generated file for the full logic):
 
 ```bash
-#!/bin/bash
-# Allocate a shared-QOS slice and run Nion Swift on the compute node,
-# with X forwarded back through this login node. Closing Swift (or the
-# ssh dropping) ends the command and releases the allocation.
-ENV=/global/common/software/mXXXX/venvs/nionswift-py313
-exec salloc -A mXXXX -q shared_interactive -C cpu -n 1 -c 32 --mem=120G \
-     -t 04:00:00 -J nionswift \
+salloc -A mXXXX $SALLOC_ARGS -t "$TIME" -J nionswift \
      bash -c "ssh -X \"\$SLURM_NODELIST\" '$ENV/bin/nionswift'"
 ```
 
