@@ -71,6 +71,8 @@ much faster than `$HOME` for importing Python packages at scale.
 ```bash
 module load python    # NERSC-provided Anaconda-based Python; own Miniforge also fine
 
+# python=3.13 pin: nionui 10.2.2 crashes on Python 3.14
+# (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
 conda create -p /global/common/software/mXXXX/$USER/nionswift \
     -c nion python=3.13 nionswift nionswift-tool
 
