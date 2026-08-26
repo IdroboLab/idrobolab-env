@@ -64,6 +64,21 @@ Notes:
 
 ## 4. One-time: conda environment (do this on a Perlmutter login node)
 
+First get this directory onto Perlmutter without pulling the whole repo —
+a sparse checkout of `perlmutter/` only (git ≥ 2.25):
+
+```bash
+git clone --filter=blob:none --sparse git@github.com:<username>/hpcenvs.git
+cd hpcenvs
+git sparse-checkout set perlmutter
+git config pull.rebase true    # repo convention; see top-level CLAUDE.md
+```
+
+(`--filter=blob:none` downloads file contents only as needed, `--sparse`
+starts with just the top-level files, and `sparse-checkout set` restricts
+the working tree to `perlmutter/`. A later `git sparse-checkout set
+<dirs...>` widens it if ever needed.)
+
 Install into `/global/common/software/<project>/` — read-optimized for software,
 mounted read-only on compute nodes (so install/update from a *login* node), and
 much faster than `$HOME` for importing Python packages at scale.
@@ -152,9 +167,12 @@ CFS or HPSS and treat the Swift library on scratch as a working copy.
 
 ### 5.1 One-click launcher from the ThinLinc desktop
 
-The global home is shared between the ThinLinc hosts and Perlmutter, so a
-job script on Perlmutter plus a `.desktop` entry gives the ThinLinc desktop
-a menu item that allocates a slice and launches Swift in one click.
+A job script on Perlmutter plus a `.desktop` entry in the ThinLinc-side
+home gives the ThinLinc desktop a menu item that allocates a slice and
+launches Swift in one click. Note the ThinLinc hosts have their own home
+directory, separate from the Perlmutter global home — the setup script
+below installs everything Perlmutter-side, and §5.2 copies the entry to
+the ThinLinc side.
 
 One-shot setup: run `./setup-nionswift-launcher.sh` (this directory) on a
 login node — it writes both files below, symlinks the launcher onto
@@ -210,7 +228,8 @@ Notes:
   tears down the whole chain and frees the allocation.
 - `Exec` lines get no shell expansion — use the absolute script path.
 - For non-interactive ThinLinc→Perlmutter auth, point ssh at the sshproxy
-  key in `~/.ssh/config` (shared home, so one config serves both ends):
+  key in `~/.ssh/config` — this must be on the **ThinLinc side**, where
+  the `Exec` ssh runs (see §5.2 for getting the key there):
 
   ```
   Host perlmutter perlmutter.nersc.gov
@@ -221,40 +240,23 @@ Notes:
   allocations, but also no surviving a closed terminal. For detachable
   long sessions use the §6 hold-job pattern instead.
 
-### 5.2 If the ThinLinc home is not the Perlmutter home
+### 5.2 Installing the entry ThinLinc-side (separate home!)
 
-The `.desktop` entry has to live in the home directory the **ThinLinc
-desktop** reads; the job script has to live on **Perlmutter** (it is
-executed there by the `ssh` in the `Exec` line). If those are the same
-shared home, §5.1 is complete as is. To find out, open a terminal *inside
-the ThinLinc desktop* and run:
+The ThinLinc hosts have their **own home directory** — NOT the Perlmutter
+global home. The `.desktop` entry has to live in the home the ThinLinc
+desktop reads, while the job script stays on Perlmutter (it is executed
+there by the `ssh` in the `Exec` line). So after §5.1, copy just the
+entry over — from a terminal *inside the ThinLinc desktop*:
 
 ```bash
-echo $HOME                          # where the ThinLinc session's home is
-ls /global/homes/<x>/<user>/bin      # your NERSC global home — mounted here?
+mkdir -p ~/.local/share/applications ~/Desktop
+scp perlmutter.nersc.gov:.local/share/applications/nionswift-perlmutter.desktop \
+    ~/.local/share/applications/
+ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/
 ```
 
-- **Global home visible** (the `ls` works): symlink the entry into the
-  ThinLinc home — nothing to copy, later re-runs of the setup script are
-  picked up automatically:
-
-  ```bash
-  mkdir -p ~/.local/share/applications
-  ln -sf /global/homes/<x>/<user>/.local/share/applications/nionswift-perlmutter.desktop \
-      ~/.local/share/applications/
-  ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/
-  ```
-
-- **Separate homes** (the `ls` fails): copy just the entry over (still in
-  the ThinLinc terminal) — and re-copy it after re-running the setup
-  script with changed settings:
-
-  ```bash
-  mkdir -p ~/.local/share/applications ~/Desktop
-  scp perlmutter.nersc.gov:.local/share/applications/nionswift-perlmutter.desktop \
-      ~/.local/share/applications/
-  ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/
-  ```
+Re-run this copy whenever the setup script is re-run with changed
+settings.
 
 Then verify the launcher's ssh hop works without a password prompt, again
 from the ThinLinc terminal:
