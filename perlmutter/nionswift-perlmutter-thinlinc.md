@@ -150,6 +150,68 @@ First run: create the project/library on `$SCRATCH` (all-flash Lustre, intended
 for active I/O). Scratch is subject to purging — keep master copies of data on
 CFS or HPSS and treat the Swift library on scratch as a working copy.
 
+### 5.1 One-click launcher from the ThinLinc desktop
+
+The global home is shared between the ThinLinc hosts and Perlmutter, so a
+job script on Perlmutter plus a `.desktop` entry gives the ThinLinc desktop
+a menu item that allocates a slice and launches Swift in one click.
+
+Neither target directory exists by default — create both first:
+
+```bash
+mkdir -p ~/bin ~/.local/share/applications
+```
+
+`~/bin/nionswift-job.sh` (then `chmod +x` it):
+
+```bash
+#!/bin/bash
+# Allocate a shared-QOS slice and run Nion Swift on the compute node,
+# with X forwarded back through this login node. Closing Swift (or the
+# ssh dropping) ends the command and releases the allocation.
+
+ENV=/global/common/software/mXXXX/$USER/nionswift
+
+exec salloc -A mXXXX -q shared_interactive -C cpu -n 1 -c 32 --mem=120G \
+     -t 04:00:00 -J nionswift \
+     bash -c "ssh -X \"\$SLURM_NODELIST\" 'LD_PRELOAD=$ENV/lib/libexpat.so.1 $ENV/bin/nionswift'"
+```
+
+(`salloc` runs its command on the *login* node, so the script uses the
+ssh-to-allocated-node hop from §5; running `$ENV/bin/nionswift` directly
+needs no `conda activate` — the entry script's shebang pins the env.)
+
+`~/.local/share/applications/nionswift-perlmutter.desktop`:
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=Nion Swift (Perlmutter)
+Comment=Allocate a compute-node slice and launch Nion Swift
+Exec=ssh -X perlmutter.nersc.gov /global/homes/<x>/<user>/bin/nionswift-job.sh
+Icon=utilities-system-monitor
+Terminal=true
+Categories=Science;Education;
+```
+
+Notes:
+
+- `Terminal=true` matters: the terminal window shows salloc queue progress
+  and errors (an expired sshproxy cert, a stuck queue), and closing Swift
+  tears down the whole chain and frees the allocation.
+- `Exec` lines get no shell expansion — use the absolute script path.
+- For non-interactive ThinLinc→Perlmutter auth, point ssh at the sshproxy
+  key in `~/.ssh/config` (shared home, so one config serves both ends):
+
+  ```
+  Host perlmutter perlmutter.nersc.gov
+      IdentityFile ~/.ssh/nersc
+  ```
+
+- This couples the session to the terminal/ssh chain — no idle
+  allocations, but also no surviving a closed terminal. For detachable
+  long sessions use the §6 hold-job pattern instead.
+
 ## 6. Longer sessions (> interactive walltime)
 
 Submit a placeholder batch job, then attach with `ssh -X`:
