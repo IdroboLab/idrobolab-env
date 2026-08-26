@@ -47,7 +47,16 @@ if command -v salloc >/dev/null 2>&1 && [ -d /global/common/software ]; then
     ICON_NAME=utilities-system-monitor
     ICON_DIR=~/.local/share/icons/hicolor/256x256/apps
     ICO="$ENV/bin/NionSwiftLauncher/Graphics/WinIcon.ico"
-    if [ -f "$ICO" ]; then
+    if [ ! -f "$ICO" ]; then
+        # the conda linux build ships without the icon - fetch it from the
+        # nionswift-tool repo (256x256 layer included)
+        ICO="$HOME/.cache/nionswift-WinIcon.ico"
+        mkdir -p ~/.cache
+        curl -fsSL -o "$ICO" \
+            https://raw.githubusercontent.com/nion-software/nionswift-tool/master/launcher/Graphics/WinIcon.ico \
+            || ICO=""
+    fi
+    if [ -n "$ICO" ] && [ -f "$ICO" ]; then
         mkdir -p "$ICON_DIR"
         if "$ENV/bin/python" - "$ICO" "$ICON_DIR/nionswift.png" <<'PYEOF'
 import sys
@@ -63,7 +72,7 @@ PYEOF
             echo "note: icon conversion failed - using a stock icon" >&2
         fi
     else
-        echo "note: $ICO not found - using a stock icon" >&2
+        echo "note: no icon in the env and download failed - using a stock icon" >&2
     fi
 
     cat > ~/bin/nionswift-job.sh <<EOF
