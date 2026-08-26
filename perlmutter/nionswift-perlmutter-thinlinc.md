@@ -73,10 +73,10 @@ module load python    # NERSC-provided Anaconda-based Python; own Miniforge also
 
 # python=3.13 pin: nionui 10.2.2 crashes on Python 3.14
 # (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
-conda create -p /global/common/software/mXXXX/$USER/nionswift \
+conda create -p /global/common/software/mXXXX/$USER/nionswift-py313 \
     -c nion python=3.13 nionswift nionswift-tool
 
-conda activate /global/common/software/mXXXX/$USER/nionswift
+conda activate /global/common/software/mXXXX/$USER/nionswift-py313
 
 # LD_PRELOAD is REQUIRED on Perlmutter (verified 2026-08): the launcher's
 # bundled Qt loads the old SLES system libexpat via fontconfig, which then
@@ -142,7 +142,7 @@ ssh -X nidXXXXXX
 Launch:
 
 ```bash
-conda activate /global/common/software/mXXXX/$USER/nionswift
+conda activate /global/common/software/mXXXX/$USER/nionswift-py313
 LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift   # preload required — see §4/§7.6
 ```
 
@@ -155,6 +155,15 @@ CFS or HPSS and treat the Swift library on scratch as a working copy.
 The global home is shared between the ThinLinc hosts and Perlmutter, so a
 job script on Perlmutter plus a `.desktop` entry gives the ThinLinc desktop
 a menu item that allocates a slice and launches Swift in one click.
+
+One-shot setup: run `./setup-nionswift-launcher.sh` (this directory) on a
+login node — it writes both files below, symlinks the launcher onto
+`~/Desktop`, and adds the ssh-config entry; account/env/salloc knobs are
+variables at the top (or `NIONSWIFT_ACCOUNT`/`NIONSWIFT_ENV`/
+`NIONSWIFT_SALLOC_OPTS`). No relogin needed: the menu rescans on next
+open (`update-desktop-database ~/.local/share/applications` nudges it),
+the Desktop icon is immediate, and MATE may ask to mark a new launcher
+trusted on first click. The manual steps it automates:
 
 Neither target directory exists by default — create both first:
 
@@ -170,7 +179,7 @@ mkdir -p ~/bin ~/.local/share/applications
 # with X forwarded back through this login node. Closing Swift (or the
 # ssh dropping) ends the command and releases the allocation.
 
-ENV=/global/common/software/mXXXX/$USER/nionswift
+ENV=/global/common/software/mXXXX/$USER/nionswift-py313
 
 exec salloc -A mXXXX -q shared_interactive -C cpu -n 1 -c 32 --mem=120G \
      -t 04:00:00 -J nionswift \
