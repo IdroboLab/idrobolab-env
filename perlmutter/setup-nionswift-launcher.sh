@@ -136,6 +136,13 @@ else
     # scp does not preserve the exec bit, and MATE shows a non-executable
     # launcher as an untrusted text file
     chmod +x ~/"$DESKTOP_REL"
+
+    # rewrite Icon= to an absolute local path: name-based icon lookup is
+    # unreliable on the ThinLinc hosts' older MATE/GTK, absolute paths
+    # always resolve
+    if [ -f ~/"$ICON_REL" ]; then
+        sed -i "s|^Icon=.*|Icon=$HOME/$ICON_REL|" ~/"$DESKTOP_REL"
+    fi
     ln -sf ~/"$DESKTOP_REL" ~/Desktop/nionswift-perlmutter.desktop
 
     refresh_desktop_db
