@@ -71,23 +71,16 @@ much faster than `$HOME` for importing Python packages at scale.
 ```bash
 module load python    # NERSC-provided Anaconda-based Python; own Miniforge also fine
 
-# As of 2026-08 the linux nionswift-tool launcher (all of 5.0.0–5.3.0,
-# conda and pip, any Python) fails silently when run on Perlmutter login
-# nodes, regardless of display route (see §7.6). Until resolved, skip
-# nionswift-tool and use the PySide6 backend (§7.3):
 conda create -p /global/common/software/mXXXX/$USER/nionswift \
-    -c nion python=3.13 nionswift
-conda install -p /global/common/software/mXXXX/$USER/nionswift \
-    -c conda-forge pyside6
+    -c nion python=3.13 nionswift nionswift-tool
 
 conda activate /global/common/software/mXXXX/$USER/nionswift
 
-# ...and the PySide6 fallback needs a one-word patch (verified working
-# 2026-08): nionswift's command.py passes bootstrap key "pyqt" but nionui's
-# make_ui only accepts "proxy"/"qt", so unpatched it dies with "Unable to
-# create user interface object". A conda update of nionswift reverts this.
-sed -i.orig 's/{"pyqt": None}/{"qt": None}/' \
-    "$CONDA_PREFIX/lib/python3.13/site-packages/nion/swift/command.py"
+# LD_PRELOAD is REQUIRED on Perlmutter (verified 2026-08): the launcher's
+# bundled Qt loads the old SLES system libexpat via fontconfig, which then
+# shadows the conda env's libexpat when Python imports pyexpat — the app
+# dies silently without it. Full story + debugging chain: §7.6.
+alias nionswift='LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift'
 
 # Optional EELS tooling (also available via conda where packaged):
 pip install nionswift-eels-analysis
@@ -148,7 +141,7 @@ Launch:
 
 ```bash
 conda activate /global/common/software/mXXXX/$USER/nionswift
-nionswift
+LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift   # preload required — see §4/§7.6
 ```
 
 First run: create the project/library on `$SCRATCH` (all-flash Lustre, intended
@@ -236,10 +229,10 @@ nionswift
 
 Notes: the upstream Nion docs historically said PyQt5, but PyQt5 has no
 builds for current Python versions; the fallback chain in
-`nion.swift.command` tries PySide6. Downgrading or switching channels does
-NOT help: 5.0.0/5.1.5/5.2.0 (conda) and 5.3.0 (pip) all fail on Perlmutter
-(§7.6) — the PySide6 backend is the only route verified working there
-(2026-08).
+`nion.swift.command` tries PySide6. On Perlmutter the native launcher
+works with the libexpat preload (§4/§7.6), so this fallback is only
+needed if the preload route breaks; both routes verified 2026-08. A conda
+update of nionswift reverts the sed patch above.
 
 ### 7.4 X authorization errors on `ssh -X` to the node
 
@@ -289,23 +282,31 @@ Two more debugging notes for this failure mode:
   assignment lines there (keep a `.orig` backup), or write diagnostics with
   `os.write(2, ...)`.
 
-Known instance (2026-08): the native launcher fails whenever it runs **on
-a Perlmutter login node**, on ANY display — ThinLinc/TigerVNC, `ssh -X`
-to a known-good laptop X server, and a *local* Xvfb on the node all fail
-identically — while the byte-for-byte identical version set runs fine
-*on* that laptop (local display, forced `QT_QPA_PLATFORM=xcb`, even with
-`QT_XCB_NO_MITSHM=1`). Host-intrinsic: ruled out are the display and X
-transport, SHM, OpenGL (software-GL vars change nothing; GL libs
-present), Qt library contamination (`ldd` resolves all Qt to the bundled
-copies; a fully sanitized `env -i` run fails identically), config,
-Python (3.12–3.14), packaging channel (conda and pip), and launcher
-version (5.0.0–5.3.0; 5.0–5.2 segfault in C++
-`Application::initialize()` — `QVariant::value<PyObjectPtr>()` →
-`Py_INCREF` on an invalid pointer — *after* the Python bootstrap
-completes, 5.3.0 exits 0 cleanly, still windowless; the app never gets
-far enough to write its own log).
-Fix: PySide6 backend (§4, §7.3). Upstream report drafted 2026-08-26 (post
-to nion-software/nionswift — the nionswift-tool repo restricts issues).
+Root cause on Perlmutter (found 2026-08-26, affects any host whose system
+libexpat is older than the env's — SLES 15 qualifies): the launcher's
+bundled Qt loads the **system** `libexpat.so.1` via fontconfig; when the
+embedded Python later imports `pyexpat` (via `nion.swift.Facade` →
+`xmlrpc.server`), the linker reuses that old copy and the import dies with
+`undefined symbol: XML_SetHashSalt16Bytes`. The launcher's `bootstrap.py`
+swallows the ImportError (`except ImportError: pass`) and reports "no
+main"; launcher ≤5.2.0 then `Py_INCREF`s the null result — SIGSEGV in
+`Application::initialize()` — while 5.3.0 exits 0 cleanly. Either way:
+silent, windowless, no app log, on any display and every launcher version
+5.0.0–5.3.0, conda and pip, Python 3.12–3.14. (The identical version set
+works on a laptop with a recent system libexpat, which is what finally
+isolated it.)
+
+**Fix: preload the env's libexpat** (this is the §4/§5 launch command):
+
+```bash
+LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift
+```
+
+Alternative: PySide6 backend (§7.3). Upstream report drafted 2026-08-26
+(post to nion-software/nionswift — the nionswift-tool repo restricts
+issues): four fixes suggested (don't swallow the ImportError, null-check
+the bootstrap result, propagate the wrapper exit code, isolate the
+bundled Qt from system libexpat).
 
 ## 8. Sanity-check sequence for first bring-up
 
