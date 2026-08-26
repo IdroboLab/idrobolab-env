@@ -245,7 +245,7 @@ Type=Application
 Name=Nion Swift (Perlmutter)
 Comment=Allocate a compute-node slice and launch Nion Swift
 Exec=ssh -X perlmutter.nersc.gov /global/homes/<x>/<user>/bin/nionswift-job.sh
-Icon=utilities-system-monitor
+Icon=nionswift
 Terminal=true
 Categories=Science;Education;
 ```
@@ -256,6 +256,12 @@ Notes:
   and errors (an expired sshproxy cert, a stuck queue), and closing Swift
   tears down the whole chain and frees the allocation.
 - `Exec` lines get no shell expansion — use the absolute script path.
+- `Icon=nionswift` resolves by name: the setup script extracts the Nion
+  Swift logo from the launcher's bundled `Graphics/WinIcon.ico` (via the
+  env's Pillow) into `~/.local/share/icons/hicolor/256x256/apps/
+  nionswift.png` on the Perlmutter side and copies it to the same relative
+  path on the ThinLinc side — name lookup then works in both homes. If
+  extraction fails it falls back to a stock icon.
 - For non-interactive ThinLinc→Perlmutter auth, point ssh at the sshproxy
   key in `~/.ssh/config` — this must be on the **ThinLinc side**, where
   the `Exec` ssh runs (see §5.2 for getting the key there):
