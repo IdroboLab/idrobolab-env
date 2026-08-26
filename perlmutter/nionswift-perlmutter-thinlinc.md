@@ -235,10 +235,9 @@ nionswift
 
 Notes: the upstream Nion docs historically said PyQt5, but PyQt5 has no
 builds for current Python versions; the fallback chain in
-`nion.swift.command` tries PySide6. Untested alternative: downgrade the
-native launcher instead (`conda install -c nion nionswift-tool=5.1.5`,
-py311–py313 builds exist) — 5.2.0 is the only version verified broken
-(§7.6).
+`nion.swift.command` tries PySide6. Downgrading the native launcher does
+NOT help: 5.1.5 (py312_0) fails identically to 5.2.0 (§7.6) — the PySide6
+backend is the only route verified working (2026-08).
 
 ### 7.4 X authorization errors on `ssh -X` to the node
 
@@ -288,9 +287,10 @@ Two more debugging notes for this failure mode:
   assignment lines there (keep a `.orig` backup), or write diagnostics with
   `os.write(2, ...)`.
 
-Known instance (2026-08): nionswift-tool 5.2.0 on linux-64 segfaults on
-every launch, identically on its py313_0 and py314_0 builds — NOT
-Python-version-specific. The Python bootstrap completes (faulthandler shows
+Known instance (2026-08): nionswift-tool on linux-64 segfaults on every
+launch — 5.2.0 py313_0 and py314_0 verified, and 5.1.5 py312_0 fails
+identically, so neither Python-version-specific nor a 5.2.0 regression.
+The Python bootstrap completes (faulthandler shows
 "no Python frame" at the crash, with the full app import chain loaded); the
 crash is in the launcher's C++ in `Application::initialize()`
 (`QVariant::value<PyObjectPtr>()` → `Py_INCREF` on an invalid pointer),
