@@ -113,6 +113,27 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     export IDROBOLAB_IMAGE="${IDROBOLAB_IMAGE:-ghcr.io/<username>/idrobolab:latest}"
     export OTHERIMAGE_IMAGE="${OTHERIMAGE_IMAGE:-ghcr.io/<username>/otherimage:latest}"
 
+    # uv-managed Python interpreters go on /global/common: read-optimized for
+    # importing packages, read-only on compute nodes (install from a login
+    # node), and shared project-wide so every venv under
+    # /global/common/software/<project>/venvs/ symlinks ONE interpreter
+    # everyone can read — a venv whose python resolves into someone's $HOME
+    # is unusable by the rest of the group. A pre-set value is respected.
+    : "${UV_PYTHON_INSTALL_DIR:=/global/common/software/${NERSC_PROJECT}/uv/pythons}"
+    export UV_PYTHON_INSTALL_DIR
+
+    # Shared project bin dir (the uv binary, small wrappers). Prepended so
+    # project tools win over system ones; guarded so re-sourcing never grows
+    # PATH, and skipped entirely until the directory exists.
+    _hpcenvs_bin="/global/common/software/${NERSC_PROJECT}/bin"
+    if [ -d "$_hpcenvs_bin" ]; then
+        case ":$PATH:" in
+            *":${_hpcenvs_bin}:"*) ;;
+            *) PATH="${_hpcenvs_bin}:$PATH"; export PATH ;;
+        esac
+    fi
+    unset _hpcenvs_bin
+
     # Diagnostics go to stderr, and only in an interactive shell. ~/.bashrc is
     # also sourced for the remote end of scp/rsync/`ssh host cmd`; anything
     # written to stdout there corrupts the protocol stream and the transfer
@@ -122,6 +143,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
         echo "  PODMAN_STORE                $PODMAN_STORE" >&2
         echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES" >&2
         echo "  PODMANHPC_GRAPH_ROOT        ${PODMANHPC_GRAPH_ROOT:-<unset: node-local default>}" >&2
+        echo "  UV_PYTHON_INSTALL_DIR       $UV_PYTHON_INSTALL_DIR" >&2
     fi
 fi
 
