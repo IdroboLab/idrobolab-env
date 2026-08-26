@@ -208,52 +208,46 @@ CFS or HPSS and treat the Swift library on scratch as a working copy.
 
 ### 5.1 One-click launcher from the ThinLinc desktop
 
-A job script on Perlmutter plus a `.desktop` entry in the ThinLinc-side
-home gives the ThinLinc desktop a menu item that allocates a slice and
-launches Swift in one click. Note the ThinLinc hosts have their own home
-directory, separate from the Perlmutter global home — the setup script
-below installs everything Perlmutter-side, and §5.2 copies the entry to
-the ThinLinc side.
+A shared job script on Perlmutter plus a `.desktop` entry in each
+member's ThinLinc-side home gives the ThinLinc desktop a menu item that
+allocates a slice and launches Swift in one click. The launcher pieces
+are user-independent (shared env, project account), so they install ONCE
+into the project directories; only the `.desktop` entry is per-user,
+because the ThinLinc hosts have their own home directories, separate from
+the Perlmutter global home.
 
 One-shot setup with `setup-nionswift-launcher.sh` (this directory). The
-same script detects which machine it is on — run it **twice, Perlmutter
-first**:
+same script detects which machine it is on:
 
 ```bash
-# 1. on a Perlmutter login node:
+# 1. MAINTAINER, once, on a Perlmutter login node — installs the shared
+#    job script, desktop entry, and icon under /global/common:
 /global/cfs/cdirs/<project>/env/perlmutter/setup-nionswift-launcher.sh
 
-# 2. in a terminal INSIDE the ThinLinc desktop (separate home — fetch the
-#    script from Perlmutter first, then run it):
+# 2. EACH group member, once, in a terminal INSIDE the ThinLinc desktop
+#    (separate home — fetch the script from Perlmutter, then run it):
 scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/setup-nionswift-launcher.sh ~
 ~/setup-nionswift-launcher.sh
 ```
 
-On Perlmutter it writes the job script and desktop entry (account/env/
-salloc knobs are variables at the top, or `NIONSWIFT_ACCOUNT`/
-`NIONSWIFT_ENV`/`NIONSWIFT_SALLOC_OPTS`); on the ThinLinc host it sets up
-ssh auth, copies the entry over, and links it onto `~/Desktop` (§5.2). No
-relogin needed: the menu rescans on next open (`update-desktop-database
+On Perlmutter it writes the shared pieces (account/env/salloc knobs are
+variables at the top, or `NIONSWIFT_ACCOUNT`/`NIONSWIFT_ENV`/
+`NIONSWIFT_SALLOC_OPTS`); on a ThinLinc host it sets up ssh auth, copies
+the entry + icon from the shared location into the member's ThinLinc
+home, and links the entry onto `~/Desktop` (§5.2). No relogin needed: the
+menu rescans on next open (`update-desktop-database
 ~/.local/share/applications` nudges it), the Desktop icon is immediate,
-and MATE may ask to mark a new launcher trusted on first click. The
-manual steps it automates:
+and MATE may ask to mark a new launcher trusted on first click. What it
+installs:
 
-Neither target directory exists by default — create both first:
-
-```bash
-mkdir -p ~/bin ~/.local/share/applications
-```
-
-`~/bin/nionswift-job.sh` (then `chmod +x` it):
+`/global/common/software/mXXXX/bin/nionswift-job.sh` (mode 755):
 
 ```bash
 #!/bin/bash
 # Allocate a shared-QOS slice and run Nion Swift on the compute node,
 # with X forwarded back through this login node. Closing Swift (or the
 # ssh dropping) ends the command and releases the allocation.
-
 ENV=/global/common/software/mXXXX/venvs/nionswift-py313
-
 exec salloc -A mXXXX -q shared_interactive -C cpu -n 1 -c 32 --mem=120G \
      -t 04:00:00 -J nionswift \
      bash -c "ssh -X \"\$SLURM_NODELIST\" '$ENV/bin/nionswift'"
@@ -265,14 +259,15 @@ needs no activation — the entry script's shebang pins the env. The setup
 script generates this file, and if the env is a conda one it inserts the
 §7.6 `LD_PRELOAD` automatically — it detects `$ENV/lib/libexpat.so.1`.)
 
-`~/.local/share/applications/nionswift-perlmutter.desktop`:
+`/global/common/software/mXXXX/share/nionswift/nionswift-perlmutter.desktop`
+(plus `nionswift.png` beside it — §5.2 copies both to the ThinLinc side):
 
 ```ini
 [Desktop Entry]
 Type=Application
 Name=Nion Swift (Perlmutter)
 Comment=Allocate a compute-node slice and launch Nion Swift
-Exec=ssh -X perlmutter.nersc.gov /global/homes/<x>/<user>/bin/nionswift-job.sh
+Exec=ssh -X perlmutter.nersc.gov /global/common/software/mXXXX/bin/nionswift-job.sh
 Icon=nionswift
 Terminal=true
 Categories=Science;Education;
@@ -285,14 +280,14 @@ Notes:
   tears down the whole chain and frees the allocation.
 - `Exec` lines get no shell expansion — use the absolute script path.
 - Icon: the setup script converts the Nion Swift logo (the launcher's
-  bundled `Graphics/WinIcon.ico`, or — since the conda linux build ships
+  bundled `Graphics/WinIcon.ico`, or — since the linux builds ship
   without it — the same file fetched from the nionswift-tool GitHub repo)
-  to `~/.local/share/icons/hicolor/256x256/apps/nionswift.png` via the
-  env's Pillow. The Perlmutter-generated entry says `Icon=nionswift`; on
-  the ThinLinc side the script copies the PNG over and rewrites `Icon=`
-  to its absolute local path, because name-based icon lookup is
-  unreliable on the ThinLinc hosts' older MATE/GTK (symptom: a generic
-  text-file icon). Falls back to a stock icon if all of that fails.
+  to the shared `share/nionswift/nionswift.png` via the env's Pillow. The
+  generated entry says `Icon=nionswift`; on the ThinLinc side the script
+  copies the PNG into the member's home and rewrites `Icon=` to its
+  absolute local path, because name-based icon lookup is unreliable on
+  the ThinLinc hosts' older MATE/GTK (symptom: a generic text-file icon).
+  Falls back to a stock icon if all of that fails.
 - For non-interactive ThinLinc→Perlmutter auth, point ssh at the sshproxy
   key in `~/.ssh/config` — this must be on the **ThinLinc side**, where
   the `Exec` ssh runs (see §5.2 for getting the key there):
@@ -310,20 +305,22 @@ Notes:
 
 The ThinLinc hosts have their **own home directory** — NOT the Perlmutter
 global home. The `.desktop` entry has to live in the home the ThinLinc
-desktop reads, while the job script stays on Perlmutter (it is executed
-there by the `ssh` in the `Exec` line). Running the setup script on the
-ThinLinc host (§5.1, step 2) does all of this section automatically; the
-manual equivalent — from a terminal *inside the ThinLinc desktop*:
+desktop reads, while the job script stays on Perlmutter in the shared
+project bin (it is executed there by the `ssh` in the `Exec` line).
+Running the setup script on the ThinLinc host (§5.1, step 2) does all of
+this section automatically; the manual equivalent — from a terminal
+*inside the ThinLinc desktop*:
 
 ```bash
 mkdir -p ~/.local/share/applications ~/Desktop
-scp perlmutter.nersc.gov:.local/share/applications/nionswift-perlmutter.desktop \
+scp perlmutter.nersc.gov:/global/common/software/mXXXX/share/nionswift/nionswift-perlmutter.desktop \
     ~/.local/share/applications/
+chmod +x ~/.local/share/applications/nionswift-perlmutter.desktop
 ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/
 ```
 
-Re-run this copy whenever the setup script is re-run with changed
-settings.
+Members re-run the ThinLinc step whenever the maintainer re-runs the
+Perlmutter step with changed settings.
 
 Then verify the launcher's ssh hop works without a password prompt, again
 from the ThinLinc terminal:
