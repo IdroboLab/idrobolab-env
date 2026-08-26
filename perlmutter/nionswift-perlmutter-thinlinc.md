@@ -62,7 +62,7 @@ Notes:
   graphics-enabled login shell on Perlmutter (equivalent to
   `ssh -X perlmutter.nersc.gov` from a ThinLinc terminal).
 
-## 4. One-time: conda environment (do this on a Perlmutter login node)
+## 4. One-time: Python environment (uv; do this on a Perlmutter login node)
 
 **Group members**: this directory is already available on Perlmutter in
 the shared project checkout at `/global/cfs/cdirs/<project>/env` (sparse
@@ -98,30 +98,52 @@ Install into `/global/common/software/<project>/` — read-optimized for softwar
 mounted read-only on compute nodes (so install/update from a *login* node), and
 much faster than `$HOME` for importing Python packages at scale.
 
+The recommended route is **pip in a uv-managed venv** (PyPI is upstream's
+preferred distribution nowadays). uv's Pythons are python-build-standalone
+builds with `pyexpat` compiled *into* the interpreter — structurally immune
+to the libexpat-shadowing crash that silently kills the launcher with
+conda/distro Pythons (§7.6), so no `LD_PRELOAD` is needed. The interpreter
+also only changes when *you* update it, unlike venvs seeded from the NERSC
+`python` module, which NERSC replaces on upgrades.
+
 ```bash
-module load python    # NERSC-provided Anaconda-based Python; own Miniforge also fine
+source /global/cfs/cdirs/<project>/env/perlmutter/env.sh   # sets UV_PYTHON_INSTALL_DIR
+                                                       # (normally in ~/.bashrc already)
 
-# python=3.13 pin: nionui 10.2.2 crashes on Python 3.14
+# one-time, if uv is not in the shared project bin dir yet:
+curl -LsSf https://astral.sh/uv/install.sh | sh        # installs to ~/.local/bin
+
+# python 3.13 pin: nionui 10.2.2/11.1.0 crashes on Python 3.14
 # (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
-conda create -p /global/common/software/mXXXX/$USER/nionswift-py313 \
-    -c nion python=3.13 nionswift nionswift-tool
+uv python install 3.13
+uv venv --python 3.13 /global/common/software/mXXXX/venvs/nionswift
+uv pip install -p /global/common/software/mXXXX/venvs/nionswift/bin/python \
+    nionswift nionswift-tool nionswift-usim nionswift-eels-analysis \
+    nionswift-experimental
 
-conda activate /global/common/software/mXXXX/$USER/nionswift-py313
+# make it usable by the whole project group:
+chmod -R g+rX "$UV_PYTHON_INSTALL_DIR" /global/common/software/mXXXX/venvs/nionswift
 
-# LD_PRELOAD is REQUIRED on Perlmutter (verified 2026-08): the launcher's
-# bundled Qt loads the old SLES system libexpat via fontconfig, which then
-# shadows the conda env's libexpat when Python imports pyexpat — the app
-# dies silently without it. Full story + debugging chain: §7.6.
-alias nionswift='LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift'
+# sanity: the venv's python must NOT resolve into anyone's $HOME (it does if
+# UV_PYTHON_INSTALL_DIR was unset when the interpreter was installed — then
+# group members cannot run it):
+readlink -f /global/common/software/mXXXX/venvs/nionswift/bin/python
 
-# Optional EELS tooling (also available via conda where packaged):
-pip install nionswift-eels-analysis
+/global/common/software/mXXXX/venvs/nionswift/bin/nionswift    # launches
 ```
 
-Alternatives (all upstream-supported):
+Group members need no uv of their own to *use* the env — running
+`.../venvs/nionswift/bin/nionswift` is all there is to it.
 
-- conda-forge channel: `conda create -n nionswift -c conda-forge nionswift nionswift-tool`
-- pip in a venv: `pip install nionswift nionswift-tool`
+Alternatives (upstream-supported, but on Perlmutter both need the
+`LD_PRELOAD` libexpat workaround because their `pyexpat` links libexpat
+dynamically — full story in §7.6):
+
+- nion conda channel:
+  `conda create -p <prefix> -c nion python=3.13 nionswift nionswift-tool`,
+  launch with `LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift`.
+- pip in a venv seeded from a conda/module Python: preload
+  `$(python -c 'import sys; print(sys.base_prefix)')/lib/libexpat.so.1`.
 
 Known constraint (from the Nion Swift docs): the `nionswift-tool` launcher bundles
 its own Qt and **requires a PATH that contains no other Qt library directories**.
@@ -172,8 +194,8 @@ ssh -X nidXXXXXX
 Launch:
 
 ```bash
-conda activate /global/common/software/mXXXX/$USER/nionswift-py313
-LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift   # preload required — see §4/§7.6
+/global/common/software/mXXXX/venvs/nionswift/bin/nionswift
+# (conda-env alternative: activate it and launch with the §4 LD_PRELOAD)
 ```
 
 First run: create the project/library on `$SCRATCH` (all-flash Lustre, intended
@@ -226,16 +248,18 @@ mkdir -p ~/bin ~/.local/share/applications
 # with X forwarded back through this login node. Closing Swift (or the
 # ssh dropping) ends the command and releases the allocation.
 
-ENV=/global/common/software/mXXXX/$USER/nionswift-py313
+ENV=/global/common/software/mXXXX/venvs/nionswift
 
 exec salloc -A mXXXX -q shared_interactive -C cpu -n 1 -c 32 --mem=120G \
      -t 04:00:00 -J nionswift \
-     bash -c "ssh -X \"\$SLURM_NODELIST\" 'LD_PRELOAD=$ENV/lib/libexpat.so.1 $ENV/bin/nionswift'"
+     bash -c "ssh -X \"\$SLURM_NODELIST\" '$ENV/bin/nionswift'"
 ```
 
 (`salloc` runs its command on the *login* node, so the script uses the
 ssh-to-allocated-node hop from §5; running `$ENV/bin/nionswift` directly
-needs no `conda activate` — the entry script's shebang pins the env.)
+needs no activation — the entry script's shebang pins the env. The setup
+script generates this file, and if the env is a conda one it inserts the
+§7.6 `LD_PRELOAD` automatically — it detects `$ENV/lib/libexpat.so.1`.)
 
 `~/.local/share/applications/nionswift-perlmutter.desktop`:
 
@@ -491,17 +515,21 @@ silent, windowless, no app log, on any display and every launcher version
 works on a laptop with a recent system libexpat, which is what finally
 isolated it.)
 
-**Fix: preload the env's libexpat** (this is the §4/§5 launch command):
+**Fixes**, strongest first:
 
-```bash
-LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift
-```
+- Structural (the §4 default): use a uv-managed Python —
+  python-build-standalone compiles `pyexpat` into the interpreter, so
+  there is no dynamic libexpat for the launcher to shadow. Verify with
+  `python -c "import sys; print('pyexpat' in sys.builtin_module_names)"`.
+- Workaround for conda/module Pythons: preload the env's libexpat —
+  `LD_PRELOAD="$CONDA_PREFIX/lib/libexpat.so.1" nionswift` (for a venv on
+  such a base: preload from `sys.base_prefix` instead).
+- Last resort: PySide6 backend (§7.3).
 
-Alternative: PySide6 backend (§7.3). Upstream report drafted 2026-08-26
-(post to nion-software/nionswift — the nionswift-tool repo restricts
-issues): four fixes suggested (don't swallow the ImportError, null-check
-the bootstrap result, propagate the wrapper exit code, isolate the
-bundled Qt from system libexpat).
+Reported upstream 2026-08-26 as
+https://github.com/nion-software/nionswift/issues/1946 (don't swallow the
+ImportError, null-check the bootstrap result, propagate the wrapper exit
+code, isolate the bundled Qt from system libexpat).
 
 ## 8. Sanity-check sequence for first bring-up
 
