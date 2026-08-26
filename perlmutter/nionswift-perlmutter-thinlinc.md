@@ -68,16 +68,21 @@ First get this directory onto Perlmutter without pulling the whole repo —
 a sparse checkout of `perlmutter/` only (git ≥ 2.25):
 
 ```bash
-git clone --filter=blob:none --sparse https://github.com/<username>/hpcenvs.git
+git clone --filter=blob:none --no-checkout https://github.com/<username>/hpcenvs.git
 cd hpcenvs
+git sparse-checkout init --cone
 git sparse-checkout set perlmutter
+git checkout main
 git config pull.rebase true    # repo convention; see top-level CLAUDE.md
 ```
 
-(`--filter=blob:none` downloads file contents only as needed, `--sparse`
-starts with just the top-level files, and `sparse-checkout set` restricts
-the working tree to `perlmutter/`. A later `git sparse-checkout set
-<dirs...>` widens it if ever needed.)
+(`--filter=blob:none` downloads file contents only as needed;
+`sparse-checkout set` restricts the working tree to `perlmutter/` plus
+top-level files. A later `git sparse-checkout set <dirs...>` widens it if
+ever needed. On a recent git the shorter `git clone --filter=blob:none
+--sparse <url>` + `git sparse-checkout set perlmutter` does the same, but
+older gits — e.g. on the ThinLinc hosts — mishandle `clone --sparse`, so
+the sequence above is the portable one.)
 
 Install into `/global/common/software/<project>/` — read-optimized for software,
 mounted read-only on compute nodes (so install/update from a *login* node), and
