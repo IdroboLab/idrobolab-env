@@ -81,6 +81,13 @@ conda install -p /global/common/software/mXXXX/$USER/nionswift \
 
 conda activate /global/common/software/mXXXX/$USER/nionswift
 
+# ...and the PySide6 fallback needs a one-word patch (verified working
+# 2026-08): nionswift's command.py passes bootstrap key "pyqt" but nionui's
+# make_ui only accepts "proxy"/"qt", so unpatched it dies with "Unable to
+# create user interface object". A conda update of nionswift reverts this.
+sed -i.orig 's/{"pyqt": None}/{"qt": None}/' \
+    "$CONDA_PREFIX/lib/python3.13/site-packages/nion/swift/command.py"
+
 # Optional EELS tooling (also available via conda where packaged):
 pip install nionswift-eels-analysis
 ```
@@ -220,12 +227,18 @@ in-process (no native launcher involved), so errors surface normally:
 ```bash
 conda remove nionswift-tool
 conda install -c conda-forge pyside6   # (pip install PySide6 in a venv setup)
+# required with nionswift 16.16.2 / nionui 10.2.2 — see §4 for why:
+sed -i.orig 's/{"pyqt": None}/{"qt": None}/' \
+    "$CONDA_PREFIX/lib/python3.13/site-packages/nion/swift/command.py"
 nionswift
 ```
 
-Note: the upstream Nion docs historically said PyQt5, but PyQt5 has no builds
-for current Python versions; the fallback chain in `nion.swift.command` tries
-PySide6.
+Notes: the upstream Nion docs historically said PyQt5, but PyQt5 has no
+builds for current Python versions; the fallback chain in
+`nion.swift.command` tries PySide6. Untested alternative: downgrade the
+native launcher instead (`conda install -c nion nionswift-tool=5.1.5`,
+py311–py313 builds exist) — 5.2.0 is the only version verified broken
+(§7.6).
 
 ### 7.4 X authorization errors on `ssh -X` to the node
 
