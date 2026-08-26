@@ -290,22 +290,20 @@ Two more debugging notes for this failure mode:
   `os.write(2, ...)`.
 
 Known instance (2026-08): the native launcher fails whenever it runs **on
-a Perlmutter login node**, regardless of display — ThinLinc/TigerVNC and
-`ssh -X` to a known-good laptop X server fail identically, while the
-byte-for-byte identical version set runs fine *on* that laptop (local
-display, forced `QT_QPA_PLATFORM=xcb`, even with `QT_XCB_NO_MITSHM=1`).
-So the trigger is the host environment, not the display, X transport,
-SHM, OpenGL (software-GL vars change nothing; GL libs present), config,
-Python (3.12–3.14), packaging channel (conda and pip), or launcher
+a Perlmutter login node**, on ANY display — ThinLinc/TigerVNC, `ssh -X`
+to a known-good laptop X server, and a *local* Xvfb on the node all fail
+identically — while the byte-for-byte identical version set runs fine
+*on* that laptop (local display, forced `QT_QPA_PLATFORM=xcb`, even with
+`QT_XCB_NO_MITSHM=1`). Host-intrinsic: ruled out are the display and X
+transport, SHM, OpenGL (software-GL vars change nothing; GL libs
+present), Qt library contamination (`ldd` resolves all Qt to the bundled
+copies; a fully sanitized `env -i` run fails identically), config,
+Python (3.12–3.14), packaging channel (conda and pip), and launcher
 version (5.0.0–5.3.0; 5.0–5.2 segfault in C++
 `Application::initialize()` — `QVariant::value<PyObjectPtr>()` →
 `Py_INCREF` on an invalid pointer — *after* the Python bootstrap
-completes, 5.3.0 exits 0 cleanly, still windowless). Prime suspect: Qt
-library contamination from the login-node environment (see the §4 note
-that the launcher must not see other Qt directories); triage with a
-sanitized run:
-`env -i DISPLAY=$DISPLAY XAUTHORITY=$HOME/.Xauthority HOME=$HOME
-PATH=/usr/bin:/bin <launcher> <prefix> nionui_app.nionswift`.
+completes, 5.3.0 exits 0 cleanly, still windowless; the app never gets
+far enough to write its own log).
 Fix: PySide6 backend (§4, §7.3). Upstream report drafted 2026-08-26 (post
 to nion-software/nionswift — the nionswift-tool repo restricts issues).
 
