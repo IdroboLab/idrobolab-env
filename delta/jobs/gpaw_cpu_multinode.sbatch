@@ -78,7 +78,7 @@ BINDS="${CRAY_ABI}:/opt/software/mpich/lib,/opt/cray:/opt/cray"
 for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="$BINDS,$p"; done
 
 # Run a cluster checkout instead of the baked-in code:
-# BINDS="$BINDS,/projects/<project>/<username>/code/gpaw:/opt/src/gpaw"
+# BINDS="$BINDS,<project-dir>/code/gpaw:/opt/src/gpaw"
 
 export OMP_NUM_THREADS=1                # pure MPI
 

@@ -28,9 +28,11 @@ as the default.
   `shared/containers/`).
 - **Apptainer caches** → `$SCRATCH_BASE/$USER/.apptainer` (keep off `$HOME`;
   do not move to projects).
-- **Source checkouts** → `/projects/<project>/<username>/code/<name>` (purge-proof;
-  bound over the image's editable `/opt/src/<name>`). Job outputs and other
-  regenerable bulk → `$SCRATCH_BASE/$USER/...`.
+- **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on
+  /projects (e.g. `/projects/<project>/<username>/<campaign>/code/gpaw`),
+  bound over the image's editable `/opt/src/<name>` — test code belongs to
+  the campaign using it, never to a shared cross-project location. Job
+  outputs and other regenerable bulk → `$SCRATCH_BASE/$USER/...`.
 
 ## Editable-install import trap — never name a dir after a package
 
@@ -43,8 +45,8 @@ current directory **shadows the real package**. `python -c` puts the CWD on
 
 - Do not create working/output directories named `gpaw`, `otherimage`,
   `gpaw_weaver`, or `pyslice`. Branch-override checkouts go to
-  `/projects/<project>/<username>/code/<name>` (bound to `/opt/src/<name>`),
-  never in a run dir.
+  `<project-dir>/code/<name>` (bound to `/opt/src/<name>`) — the `code/`
+  level keeps them out of any run CWD.
 - For `python -c` preflight checks, use `python -P` (drops CWD from
   `sys.path`). Never add `-P` to `python path/script.py` runs — it also
   drops the script's own dir and breaks sibling imports. Normal

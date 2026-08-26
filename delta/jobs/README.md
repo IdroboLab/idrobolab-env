@@ -117,7 +117,7 @@ both run the image's `x86-64-v3` code; no per-partition images needed
   `ImportError: cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw'
   (unknown location)`. Same trap for `otherimage`, `gpaw_weaver`, `pyslice`.
   Fix: rename/move the directory (a branch-override checkout belongs at
-  `/projects/<project>/<username>/code/gpaw`, bound to `/opt/src/gpaw` — not in your run dir).
+  `<project-dir>/code/gpaw`, bound to `/opt/src/gpaw` — not in your run dir).
 - **For one-liner `python -c` checks, use `python -P`** (drops the CWD from
   `sys.path`) so a stray `gpaw/` can't shadow the import. Do **not** add
   `-P` to `python src/script.py` runs — it also drops the script's own

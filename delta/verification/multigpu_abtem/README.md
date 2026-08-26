@@ -123,7 +123,7 @@ resolves against `dask 2026.7`.
 ```bash
 # 0. point ABTEM_SRC at your 'multi-gpu-support' checkout and preflight it:
 module reset
-export ABTEM_SRC=/projects/<project>/<username>/code/abTEM   # your 'multi-gpu-support' checkout
+export ABTEM_SRC=<this-dir>/code/abTEM      # project-local 'multi-gpu-support' checkout
 git -C "$ABTEM_SRC" switch multi-gpu-support
 ./setup_env.sh                              # preflight (no venv); prints versions
 

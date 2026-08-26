@@ -29,7 +29,7 @@ BINDS=""
 for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"; done
 
 # Run a cluster checkout instead of the baked-in code:
-# BINDS="$BINDS,/projects/<project>/<username>/code/otherimage:/opt/src/otherimage"
+# BINDS="$BINDS,<project-dir>/code/otherimage:/opt/src/otherimage"
 
 # For 4 MPI ranks x 1 GPU each (instead of one process using 4 GPUs), switch
 # the payload to:  mpiexec -bootstrap fork -n 4 python "$SCRIPT" "$@"
