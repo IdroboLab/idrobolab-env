@@ -68,7 +68,7 @@ First get this directory onto Perlmutter without pulling the whole repo —
 a sparse checkout of `perlmutter/` only (git ≥ 2.25):
 
 ```bash
-git clone --filter=blob:none --sparse git@github.com:<username>/hpcenvs.git
+git clone --filter=blob:none --sparse https://github.com/<username>/hpcenvs.git
 cd hpcenvs
 git sparse-checkout set perlmutter
 git config pull.rebase true    # repo convention; see top-level CLAUDE.md
