@@ -67,8 +67,7 @@ done
 
 # --shared writes to the project's /global/common tree: read-optimized, visible
 # from every node, and the same place install-uv.sh puts shared interpreters.
-# It is a location Jupyter does NOT search by default -- see the note printed
-# at the end about making the hub look there.
+# Jupyter does not search there by default; each user runs --link once.
 if [ -n "${SHARED:-}" ]; then
     [ -n "$PREFIX" ] && die "--shared and --prefix are mutually exclusive"
     PREFIX="/global/common/software/${NERSC_PROJECT:-<project>}/share/jupyter"
@@ -89,11 +88,9 @@ if [ -n "${LIST:-}" ]; then
     exit 0
 fi
 
-# Symlinking is the one discovery route with no moving parts: Jupyter always
-# searches ~/.local/share/jupyter/kernels, so a symlink there is found without
-# JUPYTER_PATH, without a config file, and regardless of how the hub sets up its
-# environment. The kernel.json itself stays in the project tree, so the
-# maintainer can update it for everyone in one place.
+# Jupyter always searches ~/.local/share/jupyter/kernels, so a symlink there is
+# found with nothing else to configure. The kernel.json stays in the project
+# tree, so the maintainer updates it for everyone in one place.
 if [ -n "${LINK:-}" ]; then
     [ "$LINK" = default ] && LINK="/global/common/software/${NERSC_PROJECT:-<project>}/share/jupyter"
     src="${LINK%/}/kernels"
@@ -242,13 +239,9 @@ case "$BACKEND" in
         for p in "$HOME" "${SCRATCH:-}" "${CFS:-}" "${EXTRA_MOUNTS[@]:-}"; do
             add_mount "$p"
         done
-        # --network host is REQUIRED and is the whole reason a container kernel
-        # is more than a wrapper. A kernel is not a server you connect to: the
-        # hub connects INTO it, on five ZMQ ports named in {connection_file}.
-        # podman-hpc containers get a PRIVATE network namespace (see
-        # ../podman-hpc.md, "Networking"), so those ports are unreachable from
-        # the hub -- and -p cannot help, because the ports are chosen per
-        # launch. Host networking is the only way the hub can reach the kernel.
+        # --network host is required: the hub connects INTO the kernel, on five
+        # ZMQ ports named in {connection_file} and chosen per launch, so -p
+        # cannot publish them. See ../podman-hpc.md, "Networking".
         # The connection file's directory has to be mounted, and we cannot know
         # it at install time: a bare KernelManager drops it in tempfile.gettempdir()
         # (/tmp, private to the container), jupyter_server puts it in the runtime
@@ -344,28 +337,10 @@ echo ">> installed kernel '$NAME' ($BACKEND) at $DEST/kernel.json"
 echo "   display name: $DISPLAY"
 if [ -n "$PREFIX" ]; then
     echo
-    echo "   Jupyter does NOT search ${PREFIX%/} by default. Each user needs ONE"
-    echo "   of these, once -- after which every kernel installed there is found:"
+    echo "   Jupyter does not search ${PREFIX%/}. Each user runs this once,"
+    echo "   and then sees every kernel installed there, now and later:"
     echo
-    echo "     a) symlink them into the per-user dir Jupyter always searches:"
-    echo
-    echo "          $0 --link ${PREFIX%/}"
-    echo
-    echo "        No environment variable, nothing to configure, and the"
-    echo "        kernel.json stays here so you can update it for everyone."
-    echo
-    echo "     b) or export JUPYTER_PATH=${PREFIX%/} in the environment the hub"
-    echo "        starts from. Verified to make Jupyter find the kernels; whether"
-    echo "        the hub picks up your shell environment is not -- it does not"
-    echo "        source ~/.bashrc."
-fi
-if [ "$BACKEND" = image ]; then
-    echo
-    echo "   NOTE: the container kernel relies on --network host so the hub can"
-    echo "   reach the kernel ZMQ ports. That flag is REQUIRED (podman-hpc gives"
-    echo "   containers a private namespace) but has not been verified against"
-    echo "   podman-hpc itself. If the kernel dies at startup, check that first:"
-    echo "     podman-hpc run --rm --network host $TARGET true"
+    echo "     $0 --link ${PREFIX%/}"
 fi
 echo
 echo "   Next: open https://jupyter.nersc.gov, start a Perlmutter server, and"
