@@ -56,10 +56,54 @@ shift
 # Bind the NERSC filesystems. podman-hpc does not inherit the host mount
 # namespace the way Apptainer does, so every path the job touches (input,
 # output, PAW setups, code checkouts) must be mounted explicitly.
+# Bind-mounts + the in-container working directory. podman-hpc mounts nothing
+# by default, so every path the job reads or writes needs an explicit -v; each
+# is mounted at its own name so an absolute path means the same thing on both
+# sides.
+#
+# NERSC spells the community filesystem two ways -- /global/cfs/cdirs/<project>
+# and /global/cfs/projectdirs/<project>, a symlink to it -- and $CFS is the
+# first. Working from the second used to fail before the payload ever started:
+#
+#   Error: workdir "/global/cfs/projectdirs/<project>/..." does not exist on container <id>
+#
+# So resolve to the canonical path (`pwd -P` follows the symlink) and mount
+# every CFS tree under BOTH names: either spelling then works, as the working
+# directory and in paths handed to the payload. See jobs/README.md.
 MOUNTS=""
-for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}"; do
-    [ -n "$p" ] && [ -d "$p" ] && MOUNTS="$MOUNTS -v $p:$p"
+_mounted=""
+add_mount() {
+    local p=${1:-} m twin
+    [ -n "$p" ] && [ -d "$p" ] || return 0
+    p=$(cd "$p" && pwd -P)
+    # Skip a path already mounted or contained in one: an identical destination
+    # is a hard podman error ("duplicate mount destination"), a nested one just
+    # shadows part of its parent.
+    for m in $_mounted; do
+        case "$p" in "$m" | "$m"/*) return 0 ;; esac
+    done
+    _mounted="$_mounted $p"
+    MOUNTS="$MOUNTS -v $p:$p"
+    # Mirror the cluster: the same directory answers to a projectdirs name
+    # there, so give the container that name too, mounted FROM that name so
+    # `podman inspect` and any error message read like the paths people type.
+    # Fall back to the canonical source if the symlink is not there.
+    case "$p" in
+        /global/cfs/cdirs/*)
+            twin="/global/cfs/projectdirs/${p#/global/cfs/cdirs/}"
+            if [ -d "$twin" ]; then
+                MOUNTS="$MOUNTS -v $twin:$twin"
+            else
+                MOUNTS="$MOUNTS -v $p:$twin"
+            fi ;;
+    esac
+}
+# Broad filesystems first, so the working directory collapses into whichever
+# one holds it instead of adding a redundant nested mount.
+for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "${SLURM_SUBMIT_DIR:-$PWD}"; do
+    add_mount "$p"
 done
+WORKDIR=$(cd "${SLURM_SUBMIT_DIR:-$PWD}" && pwd -P)
 
 # Run a cluster checkout instead of the baked-in code (see podman-hpc.md,
 # "Running your own branches"):
@@ -78,12 +122,12 @@ MPICH_ENV="-e MPICH_SMP_SINGLE_COPY_MODE=CMA -e MPICH_OFI_STARTUP_CONNECT=1"
 echo "IMAGE=$IMAGE  ranks=$SLURM_NTASKS  mounts=$MOUNTS"
 time srun --cpu-bind=cores \
     podman-hpc run --rm $GROUP_FLAGS --mpi \
-        $MOUNTS --workdir "$SLURM_SUBMIT_DIR" \
+        $MOUNTS --workdir "$WORKDIR" \
         $GPAW_ENV $MPICH_ENV \
         "$IMAGE" python "$SCRIPT" "$@"
 
 # --- Correctness fallback (no Cray MPICH injection) -----------------------
 # If `--mpi` misbehaves, drop it: the container's own MPICH 4.3.2 still runs
 # correctly over TCP (slower, but fine for modest rank counts on one node).
-#   srun podman-hpc run --rm $GROUP_FLAGS $MOUNTS --workdir "$SLURM_SUBMIT_DIR" \
+#   srun podman-hpc run --rm $GROUP_FLAGS $MOUNTS --workdir "$WORKDIR" \
 #       $GPAW_ENV "$IMAGE" python "$SCRIPT" "$@"

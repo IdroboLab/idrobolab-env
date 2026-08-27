@@ -42,10 +42,54 @@ case "$IMAGE" in
     *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
 esac
 
+# Bind-mounts + the in-container working directory. podman-hpc mounts nothing
+# by default, so every path the job reads or writes needs an explicit -v; each
+# is mounted at its own name so an absolute path means the same thing on both
+# sides.
+#
+# NERSC spells the community filesystem two ways -- /global/cfs/cdirs/<project>
+# and /global/cfs/projectdirs/<project>, a symlink to it -- and $CFS is the
+# first. Working from the second used to fail before the payload ever started:
+#
+#   Error: workdir "/global/cfs/projectdirs/<project>/..." does not exist on container <id>
+#
+# So resolve to the canonical path (`pwd -P` follows the symlink) and mount
+# every CFS tree under BOTH names: either spelling then works, as the working
+# directory and in paths handed to the payload. See jobs/README.md.
 MOUNTS=""
-for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}"; do
-    [ -n "$p" ] && [ -d "$p" ] && MOUNTS="$MOUNTS -v $p:$p"
+_mounted=""
+add_mount() {
+    local p=${1:-} m twin
+    [ -n "$p" ] && [ -d "$p" ] || return 0
+    p=$(cd "$p" && pwd -P)
+    # Skip a path already mounted or contained in one: an identical destination
+    # is a hard podman error ("duplicate mount destination"), a nested one just
+    # shadows part of its parent.
+    for m in $_mounted; do
+        case "$p" in "$m" | "$m"/*) return 0 ;; esac
+    done
+    _mounted="$_mounted $p"
+    MOUNTS="$MOUNTS -v $p:$p"
+    # Mirror the cluster: the same directory answers to a projectdirs name
+    # there, so give the container that name too, mounted FROM that name so
+    # `podman inspect` and any error message read like the paths people type.
+    # Fall back to the canonical source if the symlink is not there.
+    case "$p" in
+        /global/cfs/cdirs/*)
+            twin="/global/cfs/projectdirs/${p#/global/cfs/cdirs/}"
+            if [ -d "$twin" ]; then
+                MOUNTS="$MOUNTS -v $twin:$twin"
+            else
+                MOUNTS="$MOUNTS -v $p:$twin"
+            fi ;;
+    esac
+}
+# Broad filesystems first, so the working directory collapses into whichever
+# one holds it instead of adding a redundant nested mount.
+for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "$PWD"; do
+    add_mount "$p"
 done
+WORKDIR=$(pwd -P)
 
 # Anything after the script name becomes the in-container command; default
 # is an interactive bash.
@@ -63,7 +107,7 @@ fi
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=interactive \
     --nodes="$NODES" --gpus-per-node="$GPUS" --time="$TIME" \
     podman-hpc run --rm $GROUP_FLAGS $TTY_FLAGS --gpu \
-        $MOUNTS --workdir "$PWD" \
+        $MOUNTS --workdir "$WORKDIR" \
         "$IMAGE" "${CMD[@]}"
 
 # CPU-only equivalent (no GPU allocation, charged against the CPU account):
