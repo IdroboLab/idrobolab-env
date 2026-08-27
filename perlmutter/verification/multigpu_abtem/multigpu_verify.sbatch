@@ -92,9 +92,12 @@
 # one-line edit: --exclusive AND --gpus-per-node=4 both have to go, or the job
 # still holds (and is charged for) a whole node's GPUs.
 #   #SBATCH --qos=shared
-#   #SBATCH --gpus=2 --cpus-per-task=64 --mem=128G
-#   ...and DELETE the --exclusive and --gpus-per-node=4 lines above. Set --mem
-#   explicitly there: without --exclusive the job gets only the default share.
+#   #SBATCH --gpus=2 --cpus-per-task=64
+#   ...and DELETE the --exclusive, --gpus-per-node=4 AND --mem lines above. Do
+#   NOT replace --mem with a smaller value: on the shared queue Slurm derives a
+#   core count from --mem too, takes the larger, and rejects anything that is
+#   not exactly 32 logical cores per GPU. The slice's memory share comes with
+#   the cores. See jobs/README.md.
 
 # No `module reset` here: Perlmutter has no such command (the Delta script opens
 # with one) and the site profile is already in force. No

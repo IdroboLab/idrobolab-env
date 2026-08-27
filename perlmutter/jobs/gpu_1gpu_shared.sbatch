@@ -19,7 +19,15 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32             # 32 logical = 16 physical cores
 #SBATCH --gpus=1
-#SBATCH --mem=64G
+# No --mem, deliberately. Slurm derives a core count from --mem as well as
+# from --cpus-per-task and takes the larger; the GPU shared queue then
+# rejects anything that is not exactly 32 cores per GPU:
+#
+#   Logical queue gpu_shared_ss11 requires you to request 32.0 cores per GPU,
+#   job requested 38 cores (adjusted for memory) for 1 GPUs
+#
+# 64 GB is 38 cores at the node's ~1.7 GB per logical core. The slice comes
+# with its proportional share (~55 GB per GPU) without asking.
 #SBATCH --time=04:00:00
 #SBATCH --output=%x_%j.out
 
@@ -114,5 +122,5 @@ time srun --cpu-bind=cores \
         $THREAD_ENV \
         "$IMAGE" python "$SCRIPT" "$@"
 
-# For 2 GPUs in the same QOS: --gpus=2 --cpus-per-task=64 --mem=128G
-# (still one process; let the code see both devices).
+# For 2 GPUs in the same QOS: --gpus=2 --cpus-per-task=64 (no --mem -- see
+# the header). Still one process; let the code see both devices.

@@ -54,12 +54,23 @@ case "$IMAGE" in
 esac
 
 # On `shared` you are charged for the slice you hold, so the slice has to be
-# spelled out. NERSC's per-GPU share of a GPU node is 16 physical cores (32
-# logical) and 64 GB; ask for more than that and the charge scales with it.
-# On interactive/regular the allocation is whole nodes and only the GPU count
-# matters. CPUS/MEM override the derived values.
+# spelled out: NERSC's per-GPU share of a GPU node is 32 logical (16 physical)
+# cores. On interactive/regular the allocation is whole nodes and only the GPU
+# count matters.
+#
+# Do NOT also ask for the matching memory. Slurm derives a core count from
+# --mem as well as from --cpus-per-task, takes the larger of the two, and the
+# GPU shared queue then rejects anything that is not exactly 32 cores per GPU:
+#
+#   salloc: error: Logical queue gpu_shared_ss11 requires you to request 32.0
+#   cores per GPU, job requested 38 cores (adjusted for memory) for 1 GPUs
+#
+# 64 GB is 38 cores at the node's ~1.7 GB per logical core, so spelling out
+# the memory share is exactly what breaks the request. Left unset, the slice
+# arrives with its proportional share anyway. MEM= is still honoured if you
+# have a reason to pin it -- keep it under 32 cores' worth (~55 GB per GPU).
 CPUS=${CPUS:-$(( GPUS > 0 ? GPUS * 32 : 32 ))}
-MEM=${MEM:-$(( GPUS > 0 ? GPUS * 64 : 64 ))G}
+MEM=${MEM:-}
 
 # GPUs are opt-out: GPUS=0 gives a CPU session (pair it with CONSTRAINT=cpu and
 # the non-_g account, or Slurm rejects the combination).
@@ -69,7 +80,7 @@ if [ "$GPUS" -gt 0 ] 2>/dev/null; then
 fi
 case "$QOS" in
     shared)
-        SALLOC_RES="--ntasks=1 --cpus-per-task=$CPUS --mem=$MEM"
+        SALLOC_RES="--ntasks=1 --cpus-per-task=$CPUS${MEM:+ --mem=$MEM}"
         if [ -n "$RUN_GPU_FLAGS" ]; then
             SALLOC_RES="$SALLOC_RES --gpus=$GPUS"
         fi ;;
