@@ -19,13 +19,18 @@
 # ID (podman gives the container its own UTS namespace), so ignore that part
 # and use localhost.
 #
-# Defaults to ONE GPU on the `shared` QOS, which is what NERSC policy asks for
-# at 1-2 GPUs and is 4x cheaper than holding a whole node: a 1-GPU slice is
-# 0.25 node-hours per wallclock hour. An idle notebook is charged exactly like
-# a busy one, so keep TIME short and exit when done -- restarting is cheap.
+# Defaults to ONE GPU on `shared_interactive`: a fraction of a node, charged
+# for the fraction held (a 1-GPU slice is 0.25 node-hours per wallclock hour,
+# 4x cheaper than a whole node), and served from the interactive reservation so
+# it starts promptly. An idle notebook is charged exactly like a busy one, so
+# keep TIME short and exit when done -- restarting is cheap.
 #
-# QOS=interactive gets you a whole node instead (factor 1.0, <=4 h, 2 jobs at a
-# time) and generally starts sooner, since `shared` queues behind regular work.
+# NOT the plain `shared` QOS, which is what you want for sbatch work but is a
+# BATCH queue: an interactive session submitted there sits behind regular jobs
+# and can take far too long to start.
+#
+# QOS=interactive takes a whole node (factor 1.0, <=4 h, 2 jobs at a time) if
+# the slice will not do, or if shared_interactive is unavailable.
 set -euo pipefail
 
 # Preserve supplementary group membership inside the container -- see the long
@@ -34,7 +39,7 @@ GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
 ACCOUNT=${ACCOUNT:-<project>_g}            # override with -A; see jobs/README.md on _g
 CONSTRAINT=${CONSTRAINT:-gpu}
-QOS=${QOS:-shared}                     # or interactive, for a whole node
+QOS=${QOS:-shared_interactive}         # or interactive, for a whole node
 NODES=${NODES:-1}
 GPUS=${GPUS:-1}                        # 0 for a CPU-only session
 TIME=${TIME:-02:00:00}
@@ -53,10 +58,10 @@ case "$IMAGE" in
     *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
 esac
 
-# On `shared` you are charged for the slice you hold, so the slice has to be
-# spelled out: NERSC's per-GPU share of a GPU node is 32 logical (16 physical)
-# cores. On interactive/regular the allocation is whole nodes and only the GPU
-# count matters.
+# On the slice QOSes (`shared`, `shared_interactive`) you are charged for the
+# slice you hold, so the slice has to be spelled out: NERSC's per-GPU share of
+# a GPU node is 32 logical (16 physical) cores. On interactive/regular the
+# allocation is whole nodes and only the GPU count matters.
 #
 # Do NOT also ask for the matching memory. Slurm derives a core count from
 # --mem as well as from --cpus-per-task, takes the larger of the two, and the
@@ -79,7 +84,7 @@ if [ "$GPUS" -gt 0 ] 2>/dev/null; then
     RUN_GPU_FLAGS="--gpu"
 fi
 case "$QOS" in
-    shared)
+    shared|shared_interactive)
         SALLOC_RES="--ntasks=1 --cpus-per-task=$CPUS${MEM:+ --mem=$MEM}"
         if [ -n "$RUN_GPU_FLAGS" ]; then
             SALLOC_RES="$SALLOC_RES --gpus=$GPUS"
@@ -160,6 +165,11 @@ JUPYTER_ARGS="--no-browser --ip=0.0.0.0 --port=$PORT --port-retries=0"
 # through another layer of quoting (salloc exports the caller's environment).
 export MOUNTS WORKDIR IMAGE PORT GROUP_FLAGS RUN_GPU_FLAGS SHM_FLAGS THREAD_ENV JUPYTER_ARGS
 
+# Say what is being asked for BEFORE salloc blocks: if it does queue, this is
+# the line that tells you which QOS to blame.
+echo "requesting: qos=$QOS ${GPUS} GPU(s) ${CPUS} logical cores, $TIME" >&2
+echo "  (Ctrl-C and retry with QOS=interactive GPUS=4 if this does not start)" >&2
+
 # salloc is the documented interactive entry point on Perlmutter (not
 # `srun --pty`), and its shell runs on the compute node -- so `hostname` below
 # is the node you need in the tunnel, and podman-hpc runs there directly.
@@ -198,6 +208,9 @@ EOF
 #   the token -- do not add --ServerApp.token='' to save typing.
 # * Ctrl-C stops the server; the allocation ends with it because salloc exits.
 # * A dropped tunnel does not kill the server: re-run the ssh line only.
-# * `shared` is not an interactive QOS: the allocation queues behind regular
-#   work, so a busy machine can leave you waiting. QOS=interactive GPUS=4 is
-#   the fast-start alternative at 4x the charge.
+# * Check what you actually got: `scontrol show job $SLURM_JOB_ID | grep -i qos`
+#   inside the allocation, or `squeue --me -o "%i %q %P %T %r"` from another
+#   shell -- the last column gives the pending reason when it does not start.
+# * QOS=shared is the BATCH slice queue. It works, but an interactive session
+#   there waits behind regular jobs; that is what shared_interactive exists to
+#   avoid. Use `shared` for sbatch, not for this.
