@@ -100,6 +100,14 @@ if [ -n "${LINK:-}" ]; then
     [ -d "$src" ] || die "no kernels directory at $src"
     dest="$HOME/.local/share/jupyter/kernels"
     mkdir -p "$dest"
+    # Clear symlinks that no longer resolve: they are the residue of a shared
+    # kernel that has been removed or renamed, and Jupyter reports them as
+    # broken kernels rather than ignoring them.
+    for l in "$dest"/*; do
+        if [ -L "$l" ] && [ ! -e "$l" ]; then
+            rm -f "$l"; echo "  pruned $(basename "$l") (shared kernel is gone)"
+        fi
+    done
     n=0
     for d in "$src"/*/; do
         [ -f "$d/kernel.json" ] || continue
@@ -119,6 +127,15 @@ fi
 
 if [ -n "${REMOVE:-}" ]; then
     d="$KERNEL_ROOT/$REMOVE"
+    # A symlink is one of ours pointing at a shared kernel -- drop the link and
+    # never follow it, or removing your own copy would delete the project's.
+    # Handle a BROKEN one too: that is exactly what a user is left holding after
+    # the shared kernel it pointed at is removed.
+    if [ -L "$d" ]; then
+        rm -f "$d"
+        echo ">> removed symlink $d (the shared kernel it pointed at is untouched)"
+        exit 0
+    fi
     [ -d "$d" ] || die "no such kernel: $d"
     [ -f "$d/kernel.json" ] || die "$d has no kernel.json — refusing to delete it"
     rm -rf "$d"

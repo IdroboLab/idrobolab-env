@@ -53,6 +53,26 @@ Managing them:
 
 Kernels are written to `~/.local/share/jupyter/kernels/<name>/kernel.json`.
 
+### Moving a personal kernel to the shared tree
+
+```bash
+cd $CFS/$NERSC_PROJECT/env/perlmutter/helpers
+. ../env.sh                                   # container kernels need the image store
+
+./install-jupyter-kernel.sh --remove idrobolab                       # 1. drop the personal copy
+./install-jupyter-kernel.sh --image idrobolab --name idrobolab \
+                            --gpu --shared                            # 2. install project-wide
+./install-jupyter-kernel.sh --link                                    # 3. link it back
+```
+
+Step 1 is not optional: `--link` refuses to replace a real directory, so a
+leftover personal kernel of the same name would silently shadow the shared one.
+Restart the Jupyter server from the Hub Control Panel afterwards.
+
+`--remove` on a linked kernel deletes only your symlink — the shared original
+is untouched — and it also clears a symlink left dangling by a shared kernel
+that has since been removed. `--link` prunes those too.
+
 ### One kernel for the whole project
 
 The maintainer installs into the project tree on `/global/common`, once:
