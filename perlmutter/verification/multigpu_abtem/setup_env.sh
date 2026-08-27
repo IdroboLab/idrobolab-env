@@ -153,7 +153,7 @@ IMAGE_REPO=${IMAGE_REPO%:*}
 IMAGE_LIST=$(podman-hpc images 2>/dev/null || true)
 if ! grep -qF -- "$IMAGE_REPO" <<<"$IMAGE_LIST"; then
     echo "NOTE: '$IMAGE_REPO' not visible in \`podman-hpc images\`." >&2
-    echo "      Pull it into the shared store first:  ../../update-image.sh otherimage" >&2
+    echo "      Pull it into the shared store first:  ../../helpers/update-image.sh otherimage" >&2
     echo "      (or: podman-hpc pull $IMAGE). Pulls need a LOGIN node." >&2
 fi
 

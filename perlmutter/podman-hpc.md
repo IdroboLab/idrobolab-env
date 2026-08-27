@@ -171,8 +171,8 @@ that explicitly creates `0700` still gets `0700`. The permissions have to be
 re-applied after whatever wrote the store:
 
 ```bash
-./fix-store-perms.sh                 # fix $PODMAN_STORE and verify
-./fix-store-perms.sh --check         # report only; exit 1 if broken (cron-safe)
+helpers/fix-store-perms.sh           # fix $PODMAN_STORE and verify
+helpers/fix-store-perms.sh --check   # report only; exit 1 if broken (cron-safe)
 ```
 
 `update-image.sh` calls it after every pull, so the normal workflow stays

@@ -55,7 +55,7 @@ likely to bite.
 
 - The image is an **OCI image**, not a `.sif`: `ghcr.io/<username>/otherimage:latest`,
   overridable with `IMAGE=...`. Pull/refresh it into the project's shared CFS
-  store with `../../update-image.sh otherimage` — **the argument is not
+  store with `../../helpers/update-image.sh otherimage` — **the argument is not
   optional**, the script defaults to `idrobolab` — on a login node only, since
   compute nodes have no route to ghcr.io. Then `source ../../env.sh` so
   `PODMANHPC_ADDITIONAL_STORES` points at the read-only `/dvs_ro` mirror of that
@@ -218,7 +218,7 @@ the note under *Benchmark* below.
 ```bash
 # 0. one-time: make the image visible to compute nodes, and set the store vars
 . ../../env.sh                       # PODMANHPC_ADDITIONAL_STORES -> /dvs_ro mirror
-../../update-image.sh otherimage     # login node only; pulls into the CFS store
+../../helpers/update-image.sh otherimage   # login node only; pulls into the CFS store
 podman-hpc images --digests          # record the digest with your results
 
 # 1. point ABTEM_SRC at your 'multi-gpu-support' checkout and preflight it
@@ -428,7 +428,7 @@ from Delta's; only their *distinctness* is checked.
   image you **built** rather than pulled also needs `podman-hpc migrate <tag>`.
 - **The image vanished between runs** — `$SCRATCH` is purged after 8 weeks
   without access, and the default squash store lives there. Keep campaign images
-  in the CFS store (`../../update-image.sh otherimage` — bare, it pulls
+  in the CFS store (`../../helpers/update-image.sh otherimage` — bare, it pulls
   `idrobolab`) and record the digest.
 - **`Killed` (SIGKILL) during cluster bring-up, no traceback** — host-memory OOM:
   not enough RAM for N dask-cuda workers in this (large) container. Most common

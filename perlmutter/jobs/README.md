@@ -125,7 +125,7 @@ a supported first-class feature rather than something to be hand-wired:
 
 ```bash
 # on a Perlmutter login node, once:
-../update-image.sh idrobolab         # or another image — pulls into the shared
+../helpers/update-image.sh idrobolab # or another image — pulls into the shared
                                      # CFS store and fixes its permissions
 podman-hpc images --digests          # record the digest with your results
 # (a locally BUILT image also needs `podman-hpc migrate <tag>` to be visible

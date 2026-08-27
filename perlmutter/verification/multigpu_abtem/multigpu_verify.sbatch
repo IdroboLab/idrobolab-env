@@ -28,7 +28,7 @@
 #
 # Usage:
 #   . ../../env.sh              # PODMANHPC_ADDITIONAL_STORES -> shared CFS store
-#   ../../update-image.sh otherimage   # pull/refresh the image (LOGIN node only)
+#   ../../helpers/update-image.sh otherimage   # pull/refresh the image (LOGIN node only)
 #                                      # the argument matters: with none the
 #                                      # script pulls idrobolab, a different
 #                                      # (and much larger) image
@@ -254,7 +254,7 @@ THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 echo "== image =="
 podman-hpc images --digests | grep -E "REPOSITORY|${IMAGE%%:*}" || \
     echo "(not listed: source ../../env.sh for the shared CFS store, or pull" \
-         "it on a LOGIN node with ../../update-image.sh otherimage)"
+         "it on a LOGIN node with ../../helpers/update-image.sh otherimage)"
 
 echo "IMAGE=$IMAGE"
 echo "abtem_src=$ABTEM_SRC (via PYTHONPATH, mounted at the same path)"

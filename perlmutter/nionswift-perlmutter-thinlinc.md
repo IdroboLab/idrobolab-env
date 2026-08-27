@@ -116,7 +116,7 @@ source /global/cfs/cdirs/<project>/env/perlmutter/env.sh   # sets UV_PYTHON_INST
 # with the personal group/umask mode, which locks the rest of the
 # project out (observed 2026-08: group member got "permission denied").
 # The script chgrp's + setgids everything and verifies group access.
-/global/cfs/cdirs/<project>/env/perlmutter/install-uv.sh
+/global/cfs/cdirs/<project>/env/perlmutter/helpers/install-uv.sh
 
 # python 3.13 pin: nionui 10.2.2/11.1.0 crashes on Python 3.14
 # (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
@@ -222,17 +222,17 @@ into the project directories; only the `.desktop` entry is per-user,
 because the ThinLinc hosts have their own home directories, separate from
 the Perlmutter global home.
 
-One-shot setup with `setup-nionswift-launcher.sh` (this directory). The
+One-shot setup with `helpers/setup-nionswift-launcher.sh`. The
 same script detects which machine it is on:
 
 ```bash
 # 1. MAINTAINER, once, on a Perlmutter login node — installs the shared
 #    job script, desktop entry, and icon under /global/common:
-/global/cfs/cdirs/<project>/env/perlmutter/setup-nionswift-launcher.sh
+/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-nionswift-launcher.sh
 
 # 2. EACH group member, once, in a terminal INSIDE the ThinLinc desktop
 #    (separate home — fetch the script from Perlmutter, then run it):
-scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/setup-nionswift-launcher.sh ~
+scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-nionswift-launcher.sh ~
 ~/setup-nionswift-launcher.sh
 ```
 
