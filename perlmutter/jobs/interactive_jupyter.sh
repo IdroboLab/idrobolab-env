@@ -159,24 +159,39 @@ WORKDIR=$(pwd -P)
 # --port-retries=0 matters: by default Jupyter silently walks to the next free
 # port if $PORT is taken, which would leave the ssh line printed below pointing
 # at nothing. Better to fail loudly and pick another PORT.
-JUPYTER_ARGS="--no-browser --ip=0.0.0.0 --port=$PORT --port-retries=0"
+#
+# --allow-root is not optional: `jupyter lab` REFUSES to start as uid 0 without
+# it (a [C] line, then it exits). The container does run as root, and under
+# rootless podman that root IS your own host uid -- see ../podman-hpc.md,
+# "The container runs as root, and that is correct here".
+JUPYTER_ARGS="--no-browser --ip=0.0.0.0 --port=$PORT --port-retries=0 --allow-root"
+
+# The image's HOME is /root, which lives in the container's ephemeral overlay
+# and vanishes with --rm. Point it at the real home (mounted above) so tokens,
+# kernels, jupyter settings and installed extensions survive the session.
+HOME_ENV="-e HOME=$HOME"
 
 # Everything the inner shell needs, passed through the environment rather than
 # through another layer of quoting (salloc exports the caller's environment).
-export MOUNTS WORKDIR IMAGE PORT GROUP_FLAGS RUN_GPU_FLAGS SHM_FLAGS THREAD_ENV JUPYTER_ARGS
+export MOUNTS WORKDIR IMAGE PORT GROUP_FLAGS RUN_GPU_FLAGS SHM_FLAGS THREAD_ENV HOME_ENV JUPYTER_ARGS
 
 # Say what is being asked for BEFORE salloc blocks: if it does queue, this is
 # the line that tells you which QOS to blame.
 echo "requesting: qos=$QOS ${GPUS} GPU(s) ${CPUS} logical cores, $TIME" >&2
 echo "  (Ctrl-C and retry with QOS=interactive GPUS=4 if this does not start)" >&2
 
-# salloc is the documented interactive entry point on Perlmutter (not
-# `srun --pty`), and its shell runs on the compute node -- so `hostname` below
-# is the node you need in the tunnel, and podman-hpc runs there directly.
+# salloc with an explicit command runs THAT COMMAND ON THE LOGIN NODE -- only
+# srun steps land on the allocated node. Getting this wrong is silent and
+# expensive: the container starts, Jupyter serves, and everything runs on a
+# shared login node with no GPU while the allocation sits idle. The giveaway
+# is a banner naming loginNN when salloc said "Nodes nidNNNNNN are ready".
+#
+# So: the inner shell (login node) reads the node name from $SLURM_NODELIST for
+# the tunnel, and srun places the container on it.
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos="$QOS" \
     --nodes="$NODES" $SALLOC_RES --time="$TIME" --job-name=jupyter \
     bash -c '
-        node=$(hostname)
+        node=$(scontrol show hostnames "$SLURM_NODELIST" | head -1)
         cat >&2 <<EOF
 
   ---------------------------------------------------------------------------
@@ -194,8 +209,8 @@ exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos="$QOS" \
   ---------------------------------------------------------------------------
 
 EOF
-        exec podman-hpc run --rm -i $GROUP_FLAGS $RUN_GPU_FLAGS $SHM_FLAGS \
-            $MOUNTS --workdir "$WORKDIR" $THREAD_ENV \
+        exec srun --unbuffered podman-hpc run --rm -i $GROUP_FLAGS $RUN_GPU_FLAGS $SHM_FLAGS \
+            $MOUNTS --workdir "$WORKDIR" $THREAD_ENV $HOME_ENV \
             "$IMAGE" jupyter lab $JUPYTER_ARGS "$@"
     ' bash "$@"
 

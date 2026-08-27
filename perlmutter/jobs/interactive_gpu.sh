@@ -93,21 +93,27 @@ WORKDIR=$(pwd -P)
 
 # Anything after the script name becomes the in-container command; default
 # is an interactive bash.
+# --pty on srun for the interactive shell, so the terminal behaves; a one-shot
+# command wants plain srun and its unbuffered output.
 if [ $# -gt 0 ]; then
     CMD=("$@")
     TTY_FLAGS="-i"
+    SRUN_FLAGS="--unbuffered"
 else
     CMD=(/bin/bash)
     TTY_FLAGS="-it"
+    SRUN_FLAGS="--pty"
 fi
 
-# salloc is the documented interactive entry point on Perlmutter (not
-# `srun --pty`). The allocation shell runs on a compute node, so podman-hpc
-# runs there directly — no inner srun needed for a single interactive shell.
+# salloc with an explicit command runs THAT COMMAND ON THE LOGIN NODE -- only
+# srun steps land on the allocated node. Without the inner srun the container
+# runs on a shared login node, with no GPU, while the allocation sits idle.
+# (`salloc` with NO command is the case that drops you onto the compute node;
+# passing a command overrides that.)
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=interactive \
     --nodes="$NODES" --gpus-per-node="$GPUS" --time="$TIME" \
-    podman-hpc run --rm $GROUP_FLAGS $TTY_FLAGS --gpu \
-        $MOUNTS --workdir "$WORKDIR" \
+    srun $SRUN_FLAGS podman-hpc run --rm $GROUP_FLAGS $TTY_FLAGS --gpu \
+        $MOUNTS --workdir "$WORKDIR" -e HOME="$HOME" \
         "$IMAGE" "${CMD[@]}"
 
 # CPU-only equivalent (no GPU allocation, charged against the CPU account):
