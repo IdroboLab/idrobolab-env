@@ -55,13 +55,13 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 |---|---|---|---|---|
 | `gpaw_cpu_singlenode.sbatch` | `cpu` / `regular` | 1 node, 128 ranks, 512 GB | 1 CPU node-hr | GPAW MPI on one node |
 | `gpaw_cpu_multinode.sbatch` | `cpu` / `regular` | 4 nodes × 128 ranks | 4 CPU node-hr | Large GPAW SCF |
-| `gpu_1gpu_shared.sbatch` | `gpu` / `shared` | 1 A100, 16 cores, 64 GB | **0.25** GPU node-hr | **Default for GPU work** — dev, abTEM, orb, torch |
+| `gpu_1gpu_shared.sbatch` | `gpu` / `shared` | 1 A100, 32 logical cores | **0.25** GPU node-hr | **Default for GPU work** — dev, abTEM, orb, torch |
 | `gpu_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | One process driving 4 GPUs |
 | `gpu_4gpu_hbm80g.sbatch` | `gpu&hbm80g` / `regular` | 1 node, 4×A100 **80 GB** | 1 GPU node-hr | complex128 EMCD, exact-S₂, big S-matrix budgets |
 | `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | GPU-parallel GPAW, distributed torch |
 | `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | Smoke tests before a long run |
 | `interactive_gpu.sh` | `gpu` / `interactive` | 1 node, ≤4 h | 1 GPU node-hr | Shell in the container (helper, not sbatch) |
-| `interactive_jupyter.sh` | `gpu` / `shared` | 1 A100, 16 cores, 64 GB, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
+| `interactive_jupyter.sh` | `gpu` / `shared` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
 
 ## Node hardware
 
@@ -221,6 +221,20 @@ No `-p` is needed on the container: podman-hpc uses the host network stack, so
   reject as a duplicate destination. Append to `$MOUNTS` by hand only when the
   host and container paths differ, as the commented-out branch-checkout
   overrides do.
+- **Never pass `--mem` with `--gpus` on the `shared` QOS.** Slurm derives a
+  core count from `--mem` as well as from `--cpus-per-task`, takes the larger,
+  and the GPU shared queue requires *exactly* 32 logical cores per GPU:
+
+  ```
+  salloc: error: Logical queue gpu_shared_ss11 requires you to request 32.0
+  cores per GPU, job requested 38 cores (adjusted for memory) for 1 GPUs
+  ```
+
+  64 GB works out to 38 cores at the node's ~1.7 GB per logical core, so
+  spelling out the memory share is what breaks the request. Ask for
+  `--cpus-per-task=$((32 * gpus))` and nothing else; the slice arrives with
+  its proportional memory (~55 GB per GPU) regardless. `sbatch --test-only`
+  checks a template against the queue rules without charging anything.
 - **`$SCRATCH` (`/pscratch/sd/<first-letter>/<user>`) is purged**: any file
   not *accessed* in 8 weeks is deleted. Campaign results belong on `$CFS`
   (`/global/cfs/cdirs/<project>`), not scratch.
