@@ -110,12 +110,13 @@ also only changes when *you* update it, unlike venvs seeded from the NERSC
 source /global/cfs/cdirs/<project>/env/perlmutter/env.sh   # sets UV_PYTHON_INSTALL_DIR
                                                        # (normally in ~/.bashrc already)
 
-# one-time, if uv is not in the shared project bin dir yet (env.sh puts
-# that dir on PATH for everyone; after `uv self update`, re-chmod):
-mkdir -p /global/common/software/mXXXX/bin
-curl -LsSf https://astral.sh/uv/install.sh \
-    | env UV_INSTALL_DIR=/global/common/software/mXXXX/bin sh
-chmod g+rx /global/common/software/mXXXX/bin/uv*
+# install (or update) uv into the shared project bin dir — env.sh puts
+# that dir on PATH for everyone. ALWAYS use this script, never
+# `uv self update` or `cp -p` from a home dir: both leave the binary
+# with the personal group/umask mode, which locks the rest of the
+# project out (observed 2026-08: group member got "permission denied").
+# The script chgrp's + setgids everything and verifies group access.
+/global/cfs/cdirs/<project>/env/perlmutter/install-uv.sh
 
 # python 3.13 pin: nionui 10.2.2/11.1.0 crashes on Python 3.14
 # (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
@@ -125,8 +126,13 @@ uv pip install -p /global/common/software/mXXXX/venvs/nionswift-py313/bin/python
     nionswift nionswift-tool nionswift-usim nionswift-eels-analysis \
     nionswift-experimental
 
-# make it usable by the whole project group:
-chmod -R g+rX "$UV_PYTHON_INSTALL_DIR" /global/common/software/mXXXX/venvs/nionswift-py313
+# make it usable by the whole project group — group ownership AND mode
+# (chmod alone is useless if files carry your personal group), plus
+# setgid on dirs so future files inherit the project group:
+chgrp -R mXXXX  "$UV_PYTHON_INSTALL_DIR" /global/common/software/mXXXX/venvs/nionswift-py313
+chmod -R g+rX   "$UV_PYTHON_INSTALL_DIR" /global/common/software/mXXXX/venvs/nionswift-py313
+find "$UV_PYTHON_INSTALL_DIR" /global/common/software/mXXXX/venvs/nionswift-py313 \
+    -type d -exec chmod g+s {} +
 
 # sanity: the venv's python must NOT resolve into anyone's $HOME (it does if
 # UV_PYTHON_INSTALL_DIR was unset when the interpreter was installed — then
