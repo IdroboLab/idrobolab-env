@@ -134,6 +134,44 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     fi
     unset _hpcenvs_bin
 
+    # Interactive conveniences. Only defined in an interactive shell: aliases
+    # are not expanded in non-interactive bash anyway, and this file is also
+    # sourced for the remote end of scp/rsync/`ssh host cmd`. Set
+    # HPCENVS_ALIASES=0 before sourcing to skip them (e.g. if `q` is already
+    # yours). Deliberately written against $SCRATCH and `squeue --me` rather
+    # than a hard-coded username, so they are correct for everyone in the
+    # project — these started life as one group member's personal aliases.
+    if [ "${HPCENVS_ALIASES:-1}" != "0" ] && [ -n "${PS1:-}" ]; then
+
+        # Personal scratch. Guarded: unset $SCRATCH would make `cds` a `cd` to
+        # $HOME, which is a silent and confusing wrong answer on a purge-aware
+        # filesystem.
+        if [ -n "${SCRATCH:-}" ]; then
+            alias cds='cd "$SCRATCH"'
+        fi
+
+        # Project space on CFS: the shared `projects` directory, which is
+        # where group work lives. Export HPCENVS_PROJECT_DIR before sourcing
+        # to land somewhere else instead -- your own subdirectory, say
+        # (.../projects/<name>) -- and that value is left alone here.
+        #
+        # Spelled `cdirs`: /global/cfs/projectdirs is a single top-level
+        # symlink to it, so both names reach the same directory in a shell,
+        # but this is the real one and the only one that exists inside a
+        # container unless mounted (jobs/*.sbatch mount both, see
+        # jobs/README.md). Landing on the canonical path keeps $PWD -- and
+        # anything derived from it -- usable in a container command line.
+        : "${HPCENVS_PROJECT_DIR:=/global/cfs/cdirs/${NERSC_PROJECT}/projects}"
+        export HPCENVS_PROJECT_DIR
+        alias cdp='cd "$HPCENVS_PROJECT_DIR"'
+
+        # Queue: everything of mine, then filtered by state. `--me` is the
+        # portable form of `-u $USER` and needs no per-user edit.
+        alias q='squeue --me'
+        alias sr='squeue --me -t RUNNING'
+        alias sp='squeue --me -t PENDING'
+    fi
+
     # Diagnostics go to stderr, and only in an interactive shell. ~/.bashrc is
     # also sourced for the remote end of scp/rsync/`ssh host cmd`; anything
     # written to stdout there corrupts the protocol stream and the transfer
