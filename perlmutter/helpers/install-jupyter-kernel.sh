@@ -110,9 +110,17 @@ case "$BACKEND" in
             *)   TARGET="ghcr.io/${IMAGE_OWNER:-<username>}/${TARGET}:${TAG:-latest}" ;;
         esac
         DEFAULT_NAME=$(basename "${TARGET%%:*}")
-        command -v podman-hpc >/dev/null 2>&1 \
-            || echo "WARNING: podman-hpc not on PATH here; the kernel will still" \
-                    "need it wherever JupyterHub runs it." >&2
+        # Bake in the absolute path. JupyterHub launches the kernel from its own
+        # environment, not from a login shell, so a bare `podman-hpc` in argv is
+        # a bet on the hub PATH -- and when it loses, the kernel dies at startup
+        # with a message about the kernel, not about PATH.
+        PODMAN_BIN=$(command -v podman-hpc 2>/dev/null || true)
+        if [ -z "$PODMAN_BIN" ]; then
+            PODMAN_BIN=podman-hpc
+            echo "WARNING: podman-hpc is not on PATH here, so the kernel will call" >&2
+            echo "         it by bare name and depend on the hub PATH. Run this on a" >&2
+            echo "         Perlmutter login node to bake in the absolute path." >&2
+        fi
         ;;
 esac
 
@@ -164,7 +172,7 @@ case "$BACKEND" in
         # ../podman-hpc.md, "Networking"), so those ports are unreachable from
         # the hub -- and -p cannot help, because the ports are chosen per
         # launch. Host networking is the only way the hub can reach the kernel.
-        ARGV=(podman-hpc run --rm -i --network host --group-add keep-groups)
+        ARGV=("$PODMAN_BIN" run --rm -i --network host --group-add keep-groups)
         [ "$GPU" = 1 ] && ARGV+=(--gpu)
         # shellcheck disable=SC2206
         ARGV+=($MOUNTS)

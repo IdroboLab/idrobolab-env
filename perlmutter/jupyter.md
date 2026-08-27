@@ -84,10 +84,85 @@ and two flags in it are load-bearing:
   under `$HOME` and passes its path; the container has to see the same path.
 
 > **Not verified.** `--network host` has not been tested against podman-hpc
-> itself. If a container kernel dies at startup, check that first:
-> `podman-hpc run --rm --network host <image> true`. The venv backend carries
-> no such caveat — prefer it for the hub unless you specifically need the
-> image.
+> itself. Until it is, prefer the venv backend for the hub unless you
+> specifically need the image. The four checks below settle it in about ten
+> minutes; please record the outcome here.
+
+### Verifying a container kernel
+
+Four checks, cheapest first. Stop at the first failure — each one is a
+prerequisite for the next.
+
+**1. Does podman-hpc accept the flag at all?** Login node, seconds.
+
+```bash
+podman-hpc run --rm --network host ghcr.io/<username>/idrobolab:latest true; echo "exit=$?"
+```
+
+`exit=0` means the flag is accepted. An "unknown flag" error means container
+kernels are not possible this way and only the venv backend works.
+
+**2. Does it actually give the host network namespace?** This is the check that
+matters, because acceptance is not the same as effect. On a compute node
+(`../jobs/interactive_gpu.sh` gets you a shell), in one terminal:
+
+```bash
+podman-hpc run --rm --network host ghcr.io/<username>/idrobolab:latest \
+    python3 -m http.server 8899 --bind 0.0.0.0
+```
+
+and in a second shell **on that same node**:
+
+```bash
+ss -ltn | grep 8899          # expected: a listener, WITHOUT any -p flag
+curl -sI http://localhost:8899/
+```
+
+A listener here — where the same command without `--network host` shows
+nothing — is host networking working. That is the whole premise of the
+container kernel.
+
+**3. Does an ipykernel in the container answer from outside?** This is what the
+hub does, and you can prove it without the hub. Install the kernel, then drive
+it with `jupyter_client` from a host-side python:
+
+```bash
+./install-jupyter-kernel.sh --image idrobolab --name idrobolab --gpu
+module load python                      # any python with jupyter_client
+python - <<'EOF'
+from jupyter_client.manager import start_new_kernel
+km, kc = start_new_kernel(kernel_name="idrobolab")
+kc.execute("import sys; print('prefix:', sys.prefix)")
+import queue
+while True:
+    m = kc.get_iopub_msg(timeout=60)
+    if m["msg_type"] == "stream":
+        print("kernel said:", m["content"]["text"].strip()); break
+kc.stop_channels(); km.shutdown_kernel()
+EOF
+```
+
+`prefix: /opt/venv` proves the kernel ran **inside the container** and that the
+ZMQ ports were reachable from outside it. A hang means the ports are not
+reachable — check 2 failed, or `--network host` is accepted but ineffective.
+
+**4. On the hub itself.** <https://jupyter.nersc.gov> → start a Perlmutter
+server → **restart it from the Hub Control Panel** if the kernel was installed
+while it was running → pick the kernel → run:
+
+```python
+import sys, socket
+print(sys.prefix)                            # /opt/venv  -> the container
+print(open("/etc/os-release").readline())    # ubuntu     -> the container
+print(socket.gethostname())                  # container ID, not nidXXXXXX
+import torch; print(torch.cuda.is_available())   # only if the hub gave you a GPU node
+```
+
+If step 3 passes and step 4 does not, the difference is the hub's environment
+rather than the container: check that the `argv[0]` in your `kernel.json` is an
+absolute path (the installer bakes one in when run on a login node), and that
+the node the hub gave you can see the image —
+`helpers/update-image.sh` puts it in the shared store.
 
 ---
 
