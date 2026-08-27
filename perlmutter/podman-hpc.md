@@ -209,13 +209,14 @@ may evolve.
 
 ## Networking
 
-**podman-hpc runs the container on the host network namespace, so ports need
-no `-p`/`--publish` mapping.** A server bound to `0.0.0.0:<port>` inside the
-container is bound on the compute node itself, exactly as if it had been
-started outside a container. This is unlike Docker on a laptop, where the
-container sits behind a private bridge and NAT.
+**Whether a server inside the container is reachable from the node is
+UNRESOLVED — publish the port (`-p <port>:<port>`) and do not rely on host
+networking.** `-p` is correct under either explanation below: with a private
+namespace it is what makes the port reachable, and with host networking podman
+discards it with a warning and the bind is unaffected.
 
-Verified on a compute node (2026-08-27):
+The evidence points both ways. In favour of host networking, on a compute node
+(2026-08-27):
 
 ```bash
 $ podman-hpc run --rm ghcr.io/<username>/idrobolab:latest sh -c 'hostname; cat /proc/net/dev'
@@ -226,9 +227,30 @@ Inter-|   Receive ...
 ```
 
 `hsn0` — the node's Slingshot interface, with live counters — is visible
-inside the container. A private network namespace would show only `lo` plus a
-`10.0.2.x` slirp4netns tap. It is also what makes `--mpi` work at all: `srun`
-launches one container per rank and those ranks have to find each other.
+inside the container, where a private namespace would show only `lo` plus a
+`10.0.2.x` slirp4netns tap. `--mpi` also has to work somehow: `srun` launches
+one container per rank and those ranks have to find each other.
+
+Against it: a JupyterLab bound to `0.0.0.0:8899` inside the container was
+refused from a login node, refused over `ssh -J` from the compute node itself,
+and `ss -ltn` on the node showed nothing listening on that port. That is what a
+private namespace looks like — and it would be explained if podman-hpc
+bind-mounts the host `/proc`, in which case `/proc/net/dev` says nothing about
+which namespace the container is in.
+
+To settle it, run a listener in the container on a compute node and probe it
+from a second shell **on that same node**, while it is definitely running:
+
+```bash
+podman-hpc run --rm -p 8899:8899 <image> python3 -m http.server 8899 --bind 0.0.0.0
+# other shell, same node:
+ss -ltn | grep 8899          # does the port exist on the node?
+curl -sI http://localhost:8899/
+```
+
+Then repeat without `-p`. The difference is the answer.
+`jobs/interactive_jupyter.sh` runs that check automatically when its
+reachability probe fails.
 
 Two consequences worth knowing:
 
