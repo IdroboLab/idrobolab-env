@@ -80,8 +80,9 @@ shift
 MOUNTS=""
 _mounted=""
 add_mount() {
-    local p=${1:-} m twin
+    local p=${1:-} m twin given
     [ -n "$p" ] && [ -d "$p" ] || return 0
+    given=$p
     p=$(cd "$p" && pwd -P)
     # Skip a path already mounted or contained in one: an identical destination
     # is a hard podman error ("duplicate mount destination"), a nested one just
@@ -91,19 +92,31 @@ add_mount() {
     done
     _mounted="$_mounted $p"
     MOUNTS="$MOUNTS -v $p:$p"
+    # Also mount it under the name we were GIVEN, when that is a symlink to the
+    # canonical one. $HOME is the case that matters: NERSC sets it to
+    # /global/homes/<i>/<user>, a symlink to /global/u1/<i>/<user>. Mounting only
+    # the resolved name leaves $HOME itself non-existent inside the container --
+    # which reads as "not a writable location", and anything that resolves $HOME
+    # (Jupyter runtime dirs, ~/.config) lands in the ephemeral overlay instead.
+    [ "$given" = "$p" ] || MOUNTS="$MOUNTS -v $p:$given"
     # Mirror the cluster: the same directory answers to a projectdirs name
     # there, so give the container that name too, mounted FROM that name so
     # `podman inspect` and any error message read like the paths people type.
     # Fall back to the canonical source if the symlink is not there.
+    # $CFS is often the bare /global/cfs/cdirs, so match that too -- the
+    # /*-only pattern silently produced no twin at all for it.
     case "$p" in
-        /global/cfs/cdirs/*)
-            twin="/global/cfs/projectdirs/${p#/global/cfs/cdirs/}"
-            if [ -d "$twin" ]; then
-                MOUNTS="$MOUNTS -v $twin:$twin"
-            else
-                MOUNTS="$MOUNTS -v $p:$twin"
-            fi ;;
+        /global/cfs/cdirs)   twin="/global/cfs/projectdirs" ;;
+        /global/cfs/cdirs/*) twin="/global/cfs/projectdirs/${p#/global/cfs/cdirs/}" ;;
+        *)                   twin="" ;;
     esac
+    if [ -n "$twin" ] && [ "$twin" != "$given" ]; then
+        if [ -d "$twin" ]; then
+            MOUNTS="$MOUNTS -v $twin:$twin"
+        else
+            MOUNTS="$MOUNTS -v $p:$twin"
+        fi
+    fi
 }
 # Broad filesystems first, so the working directory collapses into whichever
 # one holds it instead of adding a redundant nested mount.

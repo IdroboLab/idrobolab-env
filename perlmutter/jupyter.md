@@ -313,6 +313,7 @@ the ~55 GB per GPU comes with them.
 | `image not known` | image not in the compute-node-visible store | `helpers/update-image.sh idrobolab` on a login node |
 | New kernel missing from the hub launcher | hub caches the kernel list | Restart the server from the Hub Control Panel |
 | Container kernel dies at startup | `--network host` may not be accepted | `podman-hpc run --rm --network host <image> true` |
+| `IPython parent '/global/homes/…' is not a writable location`, then the kernel never responds | `$HOME` is a symlink (`/global/homes/<i>/<u>` → `/global/u1/<i>/<u>`) and only the resolved name was mounted, so `HOME` itself does not exist in the container | Re-run the installer — it now mounts both spellings. Check `kernel.json`: the `-e HOME=` value must appear as a `-v` destination |
 
 Useful while a session is up:
 

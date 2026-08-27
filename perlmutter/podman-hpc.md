@@ -256,6 +256,15 @@ narrower tool and is what `jobs/interactive_jupyter.sh` uses.
 MPI is unaffected by any of this — `podman-hpc run --mpi` handles rank
 rendezvous itself, and needs no published ports.
 
+**Mount paths under the name you will use, not just the resolved one.** `$HOME`
+on Perlmutter is `/global/homes/<i>/<user>`, a symlink to
+`/global/u1/<i>/<user>`. Mounting only the resolved path leaves `$HOME` itself
+non-existent inside the container, which surfaces as *"not a writable
+location"* from anything that resolves `~`, and quietly sends writes into the
+ephemeral overlay. `-v "$HOME:$HOME"` works because podman resolves the source
+symlink but creates the destination exactly as given. The `add_mount` helper in
+`jobs/*` and `helpers/install-jupyter-kernel.sh` mounts both spellings.
+
 Two consequences of running as root worth knowing:
 
 - **The hostname inside the container is the container ID** (`04ad5a40ad5c`

@@ -139,20 +139,36 @@ esac
 MOUNTS=""
 _mounted=""
 add_mount() {
-    local p=${1:-} m twin
+    local p=${1:-} m twin given
     [ -n "$p" ] && [ -d "$p" ] || return 0
+    given=$p
     p=$(cd "$p" && pwd -P)
     for m in $_mounted; do
         case "$p" in "$m" | "$m"/*) return 0 ;; esac
     done
     _mounted="$_mounted $p"
     MOUNTS="$MOUNTS -v $p:$p"
+    # Also mount it under the name we were GIVEN, when that is a symlink to the
+    # canonical one. $HOME is the case that matters: NERSC sets it to
+    # /global/homes/<i>/<user>, a symlink to /global/u1/<i>/<user>. Mounting only
+    # the resolved name leaves $HOME itself non-existent inside the container --
+    # which reads as "not a writable location", and anything that resolves $HOME
+    # (Jupyter runtime dirs, ~/.config) lands in the ephemeral overlay instead.
+    [ "$given" = "$p" ] || MOUNTS="$MOUNTS -v $p:$given"
+    # $CFS is often the bare /global/cfs/cdirs, so match that too -- the
+    # /*-only pattern silently produced no twin at all for it.
     case "$p" in
-        /global/cfs/cdirs/*)
-            twin="/global/cfs/projectdirs/${p#/global/cfs/cdirs/}"
-            if [ -d "$twin" ]; then MOUNTS="$MOUNTS -v $twin:$twin"
-            else                    MOUNTS="$MOUNTS -v $p:$twin"; fi ;;
+        /global/cfs/cdirs)   twin="/global/cfs/projectdirs" ;;
+        /global/cfs/cdirs/*) twin="/global/cfs/projectdirs/${p#/global/cfs/cdirs/}" ;;
+        *)                   twin="" ;;
     esac
+    if [ -n "$twin" ] && [ "$twin" != "$given" ]; then
+        if [ -d "$twin" ]; then
+            MOUNTS="$MOUNTS -v $twin:$twin"
+        else
+            MOUNTS="$MOUNTS -v $p:$twin"
+        fi
+    fi
 }
 
 # --- build argv ---------------------------------------------------------------
