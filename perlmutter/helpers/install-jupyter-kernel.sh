@@ -199,6 +199,23 @@ case "$BACKEND" in
         # substituted path as $1 and mounts its directory, unless one of the
         # static mounts already covers it (an identical -v destination is a hard
         # podman error, whereas a nested one is harmless).
+        # JupyterHub launches a kernel without a login shell, so ~/.bashrc --
+        # and therefore env.sh -- never runs. Without this the kernel starts,
+        # podman-hpc cannot see the shared CFS store, and it fails with
+        # "image not known" for an image that `podman-hpc images` lists happily
+        # on a login node. Capture it at install time, when env.sh HAS run.
+        # An explicit --env of the same name wins.
+        case " ${EXTRA_ENV[*]:-} " in
+            *" PODMANHPC_ADDITIONAL_STORES="*) : ;;
+            *)  if [ -n "${PODMANHPC_ADDITIONAL_STORES:-}" ]; then
+                    EXTRA_ENV+=("PODMANHPC_ADDITIONAL_STORES=$PODMANHPC_ADDITIONAL_STORES")
+                else
+                    echo "WARNING: PODMANHPC_ADDITIONAL_STORES is not set here, so the" >&2
+                    echo "         kernel will not know about the shared image store." >&2
+                    echo "         Run \`. ../env.sh\` first, then re-run with --force." >&2
+                fi ;;
+        esac
+
         _gpu=""; [ "$GPU" = 1 ] && _gpu="--gpu"
         _covered=""
         for m in $_mounted; do _covered="$_covered$m|$m/*|"; done

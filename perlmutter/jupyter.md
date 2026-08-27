@@ -153,7 +153,16 @@ EOF
 ZMQ ports were reachable from outside it. A hang means the ports are not
 reachable — check 2 failed, or `--network host` is accepted but ineffective.
 
-**4. On the hub itself.** <https://jupyter.nersc.gov> → start a Perlmutter
+**4. On the hub itself.** Install the kernel *after* sourcing `env.sh`, so the
+shared image store is baked in — the hub launches kernels without a login
+shell, so `~/.bashrc` never runs:
+
+```bash
+. $CFS/$NERSC_PROJECT/env/perlmutter/env.sh
+$CFS/$NERSC_PROJECT/env/perlmutter/helpers/install-jupyter-kernel.sh \
+    --image idrobolab --name idrobolab --gpu --force
+```
+ <https://jupyter.nersc.gov> → start a Perlmutter
 server → **restart it from the Hub Control Panel** if the kernel was installed
 while it was running → pick the kernel → run:
 
@@ -312,6 +321,7 @@ the ~55 GB per GPU comes with them.
 | `chdir to /global/cfs/…: Permission denied` | supplementary groups dropped | `--group-add keep-groups` (the launcher passes it) |
 | `image not known` | image not in the compute-node-visible store | `helpers/update-image.sh idrobolab` on a login node |
 | New kernel missing from the hub launcher | hub caches the kernel list | Restart the server from the Hub Control Panel |
+| Hub kernel dies with `image not known`, though `podman-hpc images` lists it on a login node | the hub runs no login shell, so `env.sh` never sets `PODMANHPC_ADDITIONAL_STORES` | Source `env.sh`, then re-install with `--force` — the installer bakes the store path into the kernel `env` |
 | Container kernel dies at startup | `--network host` may not be accepted | `podman-hpc run --rm --network host <image> true` |
 | `IPython parent '/global/homes/…' is not a writable location`, then the kernel never responds | `$HOME` is a symlink (`/global/homes/<i>/<u>` → `/global/u1/<i>/<u>`) and only the resolved name was mounted, so `HOME` itself does not exist in the container | Re-run the installer — it now mounts both spellings. Check `kernel.json`: the `-e HOME=` value must appear as a `-v` destination |
 
