@@ -206,9 +206,25 @@ exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos="$QOS" \
       http://localhost:$PORT/lab?token=<token from the output below>
 
   (the host it advertises is the container ID, not $node -- ignore it)
+
+  Keep THIS terminal open -- Ctrl-C here ends the server AND the allocation.
+  Run the ssh line in a second terminal, while the server is still up.
   ---------------------------------------------------------------------------
 
 EOF
+        # Prove the exact path the tunnel will use: this login node -> the
+        # port on the compute node. `ssh -L` relays through a login node, so a
+        # failure here cannot be fixed at the laptop end. Backgrounded, so it
+        # reports while Jupyter starts; exits as soon as the port answers.
+        # (No apostrophes in this block -- it lives inside bash -c '...'.)
+        ( for _ in $(seq 30); do
+              sleep 2
+              if timeout 2 bash -c "exec 3<>/dev/tcp/$node/$PORT" 2>/dev/null; then
+                  echo "  [check] $node:$PORT answers from $(hostname) -- run the ssh -L line now" >&2
+                  exit 0
+              fi
+          done
+          echo "  [check] $node:$PORT still refusing after 60 s (checked from $(hostname))" >&2 ) &
         exec srun --unbuffered podman-hpc run --rm -i $GROUP_FLAGS $RUN_GPU_FLAGS $SHM_FLAGS \
             $MOUNTS --workdir "$WORKDIR" $THREAD_ENV $HOME_ENV \
             "$IMAGE" jupyter lab $JUPYTER_ARGS "$@"
@@ -216,12 +232,16 @@ EOF
 
 # Notes
 # -----
+# * Ctrl-C in the launching terminal goes to srun, not to Jupyter: srun asks
+#   for a second Ctrl-C within 1 s, then cancels the step and the allocation.
+#   That is the intended way to finish -- it frees the slice immediately. It
+#   also means the server is gone the moment you press it, so run the ssh -L
+#   line from a SECOND terminal while this one is still streaming logs.
 # * The tunnel binds $PORT on your LAPTOP and forwards to $PORT on the compute
 #   node; the login node only relays. Nothing is bound on the login node, so
 #   there is no collision with other users there.
 # * The port IS open on the compute node to anyone who can route to it. Keep
 #   the token -- do not add --ServerApp.token='' to save typing.
-# * Ctrl-C stops the server; the allocation ends with it because salloc exits.
 # * A dropped tunnel does not kill the server: re-run the ssh line only.
 # * Check what you actually got: `scontrol show job $SLURM_JOB_ID | grep -i qos`
 #   inside the allocation, or `squeue --me -o "%i %q %P %T %r"` from another
