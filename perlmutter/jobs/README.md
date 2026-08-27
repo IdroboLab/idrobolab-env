@@ -61,6 +61,7 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 | `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | GPU-parallel GPAW, distributed torch |
 | `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | Smoke tests before a long run |
 | `interactive_gpu.sh` | `gpu` / `interactive` | 1 node, ≤4 h | 1 GPU node-hr | Shell in the container (helper, not sbatch) |
+| `interactive_jupyter.sh` | `gpu` / `shared` | 1 A100, 16 cores, 64 GB, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
 
 ## Node hardware
 
@@ -143,6 +144,19 @@ podman-hpc run --rm -it --gpu -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage
 # or just: ./interactive_gpu.sh
 ```
 
+Notebook in the browser on your laptop:
+
+```bash
+./interactive_jupyter.sh              # 1 A100 on a shared node, 2 h — 0.25 node-hr/h
+QOS=interactive GPUS=4 ./interactive_jupyter.sh    # whole node, starts sooner, 4x the charge
+# paste the ssh -L line it prints on your laptop, open the URL with its host
+# replaced by localhost, token unchanged
+```
+
+No `-p` is needed on the container: podman-hpc uses the host network stack, so
+`--ip=0.0.0.0` binds the port on the node itself. See ../podman-hpc.md,
+"Networking".
+
 ## Gotchas
 
 - **Your script needs `if __name__ == "__main__":` if it uses multiple GPUs.**
@@ -183,8 +197,30 @@ podman-hpc run --rm -it --gpu -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage
 - **podman-hpc mounts nothing by default.** Apptainer on Delta inherits
   `$HOME` and `$PWD` for free; podman-hpc does not. Every path the job reads
   or writes — inputs, outputs, PAW setups, branch checkouts — needs an
-  explicit `-v host:container`, and the templates set `--workdir` to
-  `$SLURM_SUBMIT_DIR` for the same reason.
+  explicit `-v host:container`, and the templates set `--workdir` for the same
+  reason.
+- **CFS has two names, and the container only knows the one you mount.**
+  `/global/cfs/projectdirs/<project>` is a symlink to
+  `/global/cfs/cdirs/<project>`; your login shell accepts either, `$CFS` is the
+  `cdirs` spelling, and submitting from the other used to fail before the
+  payload ever started:
+
+  ```
+  Error: workdir "/global/cfs/projectdirs/<project>/..." does not exist on container <id>
+  ```
+
+  The templates' `add_mount` now resolves each path with `pwd -P` and mounts
+  every CFS tree under **both** names — `/global/cfs/cdirs/<project>` and
+  `/global/cfs/projectdirs/<project>`, each mounted from its own name so the
+  container mirrors the cluster's own layout. Either spelling works, as the
+  submit directory and in paths handed to the payload; `--workdir` itself is
+  set to the canonical `cdirs` path, which is the one guaranteed to be mounted.
+  Keep that helper if you copy a
+  template, and add campaign directories with `add_mount <dir>`: it also skips
+  a path already covered by a broader mount, which podman would otherwise
+  reject as a duplicate destination. Append to `$MOUNTS` by hand only when the
+  host and container paths differ, as the commented-out branch-checkout
+  overrides do.
 - **`$SCRATCH` (`/pscratch/sd/<first-letter>/<user>`) is purged**: any file
   not *accessed* in 8 weeks is deleted. Campaign results belong on `$CFS`
   (`/global/cfs/cdirs/<project>`), not scratch.

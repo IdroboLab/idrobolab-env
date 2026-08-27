@@ -207,6 +207,52 @@ Check the current NERSC podman-hpc docs for the exact `--mpi`/`--gpu` flag
 names and srun integration — these follow NERSC's documented patterns but
 may evolve.
 
+## Networking
+
+**podman-hpc runs the container on the host network namespace, so ports need
+no `-p`/`--publish` mapping.** A server bound to `0.0.0.0:<port>` inside the
+container is bound on the compute node itself, exactly as if it had been
+started outside a container. This is unlike Docker on a laptop, where the
+container sits behind a private bridge and NAT.
+
+Verified on a compute node (2026-08-27):
+
+```bash
+$ podman-hpc run --rm ghcr.io/<username>/idrobolab:latest sh -c 'hostname; cat /proc/net/dev'
+04ad5a40ad5c
+Inter-|   Receive ...
+    lo: ...
+  hsn0:   30884     514 ...
+```
+
+`hsn0` — the node's Slingshot interface, with live counters — is visible
+inside the container. A private network namespace would show only `lo` plus a
+`10.0.2.x` slirp4netns tap. It is also what makes `--mpi` work at all: `srun`
+launches one container per rank and those ranks have to find each other.
+
+Two consequences worth knowing:
+
+- **The hostname inside the container is the container ID** (`04ad5a40ad5c`
+  above), not `nidXXXXXX`. That is the *UTS* namespace, which podman keeps
+  private regardless of network mode. Anything that advertises its own URL —
+  Jupyter, a dask dashboard — will print that ID as the host. Substitute the
+  real node name (`echo $SLURM_NODELIST`, or `hostname` outside the container).
+- **A port you open is reachable by anyone who can route to the node.** Keep
+  whatever token or auth the server offers.
+
+Reaching such a port from your laptop is an ssh problem, not a container one —
+the tunnel crosses login node → compute node, a boundary the container never
+sees:
+
+```bash
+# laptop; the far end must be the node name, not localhost, because it is
+# resolved on the login node
+ssh -N -L 8899:nidXXXXXX:8899 <user>@perlmutter.nersc.gov
+```
+
+`jobs/interactive_jupyter.sh` does the whole sequence and prints that line
+with the node filled in.
+
 ## Running your own branches (cluster checkouts)
 
 Same pattern as the Delta image — the dev packages resolve to

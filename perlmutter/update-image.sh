@@ -352,7 +352,10 @@ cat <<EOF
 
    \$HOME is mounted because podman-hpc bind-mounts nothing by default and
    --workdir is often under it; see perlmutter/jobs/*.sbatch for the full
-   pattern.
+   pattern -- including the add_mount helper, which you need if you work from
+   /global/cfs/projectdirs/<project> (the symlink spelling of \$CFS: it is not
+   mounted by the one-liner above, and podman rejects a --workdir it cannot
+   see).
 
    Re-check from a compute node (this node's graph-root copy would mask a
    broken store):
