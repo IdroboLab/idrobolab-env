@@ -14,6 +14,7 @@ via podman-hpc, OCI/Docker images only).
 | [verification/multigpu_abtem/](verification/multigpu_abtem/) | abTEM multi-GPU verification + HAADF scaling benchmark (launchers; payloads in `shared/`) |
 | [jobs/](jobs/) | Slurm templates per node type and QOS (CPU 1/N-node, GPU shared/full-node/hbm80g/multi-node, debug, interactive) + node specs, QOS limits, charging |
 | [jobs/interactive_jupyter.sh](jobs/interactive_jupyter.sh) | JupyterLab in the container on a compute node; prints the `ssh -L` tunnel line with the node name filled in |
+| [helpers/setup-user.sh](helpers/setup-user.sh) | **Start here as a new group member** — one command sets up your shell, Jupyter kernels, and checks what silently breaks later |
 | [helpers/](helpers/) | Scripts run by hand on a login node: image pulls, store permissions, shared uv, the Nion Swift launcher |
 | [helpers/update-image.sh](helpers/update-image.sh) | Pull/refresh an image into the shared CFS store (`/global/cfs/cdirs/<project>/podman-hpc`). Login nodes only |
 | [env.sh](env.sh) | Source from `~/.bashrc`: `PODMANHPC_ADDITIONAL_STORES` and friends, plus interactive aliases (`cds` `cdp` `q` `sr` `sp`). Silent, idempotent, inert off Perlmutter |
