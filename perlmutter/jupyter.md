@@ -83,12 +83,10 @@ and two flags in it are load-bearing:
 - **`-v $HOME:$HOME` and `-e HOME=$HOME`.** The hub writes the connection file
   under `$HOME` and passes its path; the container has to see the same path.
 
-> **Partly verified (2026-08-27).** Checks 1 and 2 below pass on a compute
-> node: `--network host` is accepted (`exit=0`) and is *effective* — a server
-> bound inside the container appears in `ss -ltn` on the node with no `-p`,
-> where the default namespace shows nothing. Checks 3 and 4 — an actual kernel
-> driven from outside, and the hub itself — are still open. Until they are
-> done, prefer the venv backend for the hub unless you need the image.
+> **Verified end to end (2026-08-27).** All four checks below pass: the flag is
+> accepted, it really does give the host network namespace, and a container
+> kernel runs on jupyter.nersc.gov — `sys.prefix` `/opt/venv`, Ubuntu 24.04,
+> on nid004142. Container kernels work; use whichever backend suits the job.
 
 ### Verifying a container kernel
 
@@ -170,9 +168,13 @@ while it was running → pick the kernel → run:
 import sys, socket
 print(sys.prefix)                            # /opt/venv  -> the container
 print(open("/etc/os-release").readline())    # ubuntu     -> the container
-print(socket.gethostname())                  # container ID, not nidXXXXXX
+print(socket.gethostname())                  # nidXXXXXX -- see below
 import torch; print(torch.cuda.is_available())   # only if the hub gave you a GPU node
 ```
+
+`sys.prefix` and `/etc/os-release` are the proof; the hostname is **not** — under
+`--network host` it is the node name, because the hostname travels with the
+network namespace. Only a default-networked container reports its container ID.
 
 If step 3 passes and step 4 does not, the difference is the hub's environment
 rather than the container: check that the `argv[0]` in your `kernel.json` is an

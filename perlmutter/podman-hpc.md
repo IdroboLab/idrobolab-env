@@ -267,11 +267,14 @@ symlink but creates the destination exactly as given. The `add_mount` helper in
 
 Two consequences of running as root worth knowing:
 
-- **The hostname inside the container is the container ID** (`04ad5a40ad5c`
-  above), not `nidXXXXXX`. That is the *UTS* namespace, which podman keeps
-  private regardless of network mode. Anything that advertises its own URL —
-  Jupyter, a dask dashboard — will print that ID as the host. Substitute the
-  real node name (`echo $SLURM_NODELIST`, or `hostname` outside the container).
+- **The hostname inside a default-networked container is the container ID**
+  (`04ad5a40ad5c` above), not `nidXXXXXX`. Anything that advertises its own URL
+  — Jupyter, a dask dashboard — prints that ID as the host; substitute the real
+  node name (`echo $SLURM_NODELIST`, or `hostname` outside the container).
+  Under `--network host` the hostname is the node name instead, since it
+  travels with the network namespace (observed 2026-08-27: `nid004142` from a
+  hub kernel). So the hostname tells you the network mode, not whether you are
+  in a container — use `sys.prefix` or `/etc/os-release` for that.
 - **A port you open is reachable by anyone who can route to the node.** Keep
   whatever token or auth the server offers.
 
