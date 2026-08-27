@@ -253,6 +253,33 @@ ssh -N -L 8899:nidXXXXXX:8899 <user>@perlmutter.nersc.gov
 `jobs/interactive_jupyter.sh` does the whole sequence and prints that line
 with the node filled in.
 
+## The container runs as root, and that is correct here
+
+`whoami` inside the container says `root`. Under **rootless** podman that root
+is your own host uid: the user namespace maps container uid 0 to the uid that
+launched it. Files the container writes to a mounted path come out owned by
+you, not by root, and the container has no privilege on the node it did not
+already have.
+
+So do **not** add a non-root user to these images. It would make things worse:
+a non-root container uid maps into your *subuid* range (something like
+100999), which does not own your `$HOME`, `$SCRATCH` or the project directory —
+the container would lose write access to every mounted path.
+
+Two consequences do need handling:
+
+- **`HOME` is `/root`**, which lives in the container's ephemeral overlay and
+  disappears with `--rm`. Anything a tool stores in its home — Jupyter tokens,
+  kernels, installed extensions, matplotlib's font cache — is lost each run.
+  Pass `-e HOME="$HOME"` (with `$HOME` mounted) to keep that state.
+- **Some tools refuse to run as uid 0.** `jupyter lab` is one: it prints
+  `[C] Running as root is not recommended. Use --allow-root to bypass.` and
+  *exits*. `--allow-root` is required, not cosmetic.
+
+`--group-add keep-groups` is the related flag: it passes your supplementary
+groups through, which is how project access to `/global/cfs/cdirs/<project>`
+is granted. See "Supplementary groups are dropped in the container" above.
+
 ## Running your own branches (cluster checkouts)
 
 Same pattern as the Delta image — the dev packages resolve to

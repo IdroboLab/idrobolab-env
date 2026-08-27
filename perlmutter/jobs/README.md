@@ -248,6 +248,14 @@ No `-p` is needed on the container: podman-hpc uses the host network stack, so
   `--cpus-per-task=$((32 * gpus))` and nothing else; the slice arrives with
   its proportional memory (~55 GB per GPU) regardless. `sbatch --test-only`
   checks a template against the queue rules without charging anything.
+- **`salloc <command>` runs the command on the LOGIN node.** Only `srun`
+  steps land on the allocated node. `salloc` with *no* command is the case
+  that drops you onto a compute node; passing a command overrides that, and
+  the failure is silent — the work runs on a shared login node with no GPU
+  while the allocation sits idle and is charged. The giveaway is a hostname
+  reading `loginNN` right after Slurm said `Nodes nidNNNNNN are ready`. Both
+  interactive helpers wrap the payload in `srun` for this reason, and take
+  the node name for the tunnel from `$SLURM_NODELIST` rather than `hostname`.
 - **`$SCRATCH` (`/pscratch/sd/<first-letter>/<user>`) is purged**: any file
   not *accessed* in 8 weeks is deleted. Campaign results belong on `$CFS`
   (`/global/cfs/cdirs/<project>`), not scratch.
