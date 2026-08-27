@@ -243,7 +243,8 @@ curl -sI http://localhost:8899/
 ```
 
 `jobs/interactive_jupyter.sh` runs that check automatically when its
-reachability probe fails, via `srun --overlap` into the live allocation.
+reachability probe fails, via `srun --overlap` into the live allocation; see
+`jupyter.md` for the whole story.
 
 MPI is unaffected by any of this — `podman-hpc run --mpi` handles rank
 rendezvous itself, and needs no published ports.

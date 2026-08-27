@@ -28,7 +28,7 @@
 # This is a LOGIN-NODE setup script; the kernel itself runs wherever
 # JupyterHub puts it. For a session on a node you allocate yourself, with an
 # ssh tunnel and the exact image the batch jobs use, see
-# ../jobs/interactive_jupyter.sh instead.
+# ../jobs/interactive_jupyter.sh instead. Both routes: ../jupyter.md
 set -euo pipefail
 
 BACKEND="" TARGET="" NAME="" DISPLAY="" PREFIX="" GPU=0 FORCE=0 DRY=0

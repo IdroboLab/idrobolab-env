@@ -20,7 +20,7 @@ Two ways to reach a notebook, and they are complements rather than rivals:
 no tunnel, nothing to keep open, survives a dropped laptop connection;
 [`../jobs/interactive_jupyter.sh`](../jobs/interactive_jupyter.sh) gives you a
 session on a node you allocated yourself, running the exact image the batch
-jobs use.
+jobs use. Both are documented in [../jupyter.md](../jupyter.md).
 
 `update-image.sh` locates `fix-store-perms.sh` relative to its own file, so the
 two must stay in this directory together. Everything else here is standalone.
