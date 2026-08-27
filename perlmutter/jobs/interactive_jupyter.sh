@@ -216,15 +216,31 @@ EOF
         # port on the compute node. `ssh -L` relays through a login node, so a
         # failure here cannot be fixed at the laptop end. Backgrounded, so it
         # reports while Jupyter starts; exits as soon as the port answers.
+        #
+        # It announces itself first: a probe that says nothing is
+        # indistinguishable from a probe that never ran, and the answer line
+        # is easy to miss in the middle of the server log.
+        #
+        # curl for the test where available -- bash net redirection
+        # (/dev/tcp) is a compile-time option and not guaranteed present.
         # (No apostrophes in this block -- it lives inside bash -c '...'.)
-        ( for _ in $(seq 30); do
+        ( echo "  [check] probing $node:$PORT from $(hostname), up to 90 s ..." >&2
+          if command -v curl >/dev/null 2>&1; then
+              _probe() { curl -s -o /dev/null --max-time 2 "http://$1:$2/"; }
+          elif (exec 3<>/dev/tcp/127.0.0.1/22) 2>/dev/null || [ $? -ne 127 ]; then
+              _probe() { timeout 2 bash -c "exec 3<>/dev/tcp/$1/$2" 2>/dev/null; }
+          else
+              echo "  [check] no curl and no bash /dev/tcp -- cannot probe; try the tunnel and see" >&2
+              exit 0
+          fi
+          for _ in $(seq 45); do
               sleep 2
-              if timeout 2 bash -c "exec 3<>/dev/tcp/$node/$PORT" 2>/dev/null; then
-                  echo "  [check] $node:$PORT answers from $(hostname) -- run the ssh -L line now" >&2
+              if _probe "$node" "$PORT"; then
+                  echo "  [check] $node:$PORT ANSWERS -- run the ssh -L line now" >&2
                   exit 0
               fi
           done
-          echo "  [check] $node:$PORT still refusing after 60 s (checked from $(hostname))" >&2 ) &
+          echo "  [check] NO answer from $node:$PORT after 90 s -- the tunnel will refuse too" >&2 ) &
         exec srun --unbuffered podman-hpc run --rm -i $GROUP_FLAGS $RUN_GPU_FLAGS $SHM_FLAGS \
             $MOUNTS --workdir "$WORKDIR" $THREAD_ENV $HOME_ENV \
             "$IMAGE" jupyter lab $JUPYTER_ARGS "$@"
