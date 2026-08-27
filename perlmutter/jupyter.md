@@ -83,10 +83,12 @@ and two flags in it are load-bearing:
 - **`-v $HOME:$HOME` and `-e HOME=$HOME`.** The hub writes the connection file
   under `$HOME` and passes its path; the container has to see the same path.
 
-> **Not verified.** `--network host` has not been tested against podman-hpc
-> itself. Until it is, prefer the venv backend for the hub unless you
-> specifically need the image. The four checks below settle it in about ten
-> minutes; please record the outcome here.
+> **Partly verified (2026-08-27).** Checks 1 and 2 below pass on a compute
+> node: `--network host` is accepted (`exit=0`) and is *effective* — a server
+> bound inside the container appears in `ss -ltn` on the node with no `-p`,
+> where the default namespace shows nothing. Checks 3 and 4 — an actual kernel
+> driven from outside, and the hub itself — are still open. Until they are
+> done, prefer the venv backend for the hub unless you need the image.
 
 ### Verifying a container kernel
 
@@ -120,7 +122,12 @@ curl -sI http://localhost:8899/
 
 A listener here — where the same command without `--network host` shows
 nothing — is host networking working. That is the whole premise of the
-container kernel.
+container kernel. Observed 2026-08-27 on nid001084:
+
+```
+$ ss -ltn | grep 8899
+LISTEN 0      0            0.0.0.0:8899       0.0.0.0:*
+```
 
 **3. Does an ipykernel in the container answer from outside?** This is what the
 hub does, and you can prove it without the hub. Install the kernel, then drive

@@ -246,6 +246,13 @@ curl -sI http://localhost:8899/
 reachability probe fails, via `srun --overlap` into the live allocation; see
 `jupyter.md` for the whole story.
 
+**`--network host` is accepted and works**, verified on a compute node
+2026-08-27: with it, a server bound inside the container appears in `ss -ltn`
+on the node with no `-p` at all. Use it where per-launch ports rule out `-p` —
+a Jupyter *kernel*, for instance, whose five ZMQ ports are chosen at start-up
+(`helpers/install-jupyter-kernel.sh`). For a single known port, `-p` is the
+narrower tool and is what `jobs/interactive_jupyter.sh` uses.
+
 MPI is unaffected by any of this — `podman-hpc run --mpi` handles rank
 rendezvous itself, and needs no published ports.
 
