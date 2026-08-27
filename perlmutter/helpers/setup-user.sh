@@ -6,6 +6,7 @@
 #
 #     hpcenvs-setup            # do it
 #     hpcenvs-setup --check    # report only, change nothing
+#     hpcenvs-setup --undo     # remove the block it added from your startup file
 #
 # What it does:
 #   1. sources env.sh from your shell startup file (image store, aliases, PATH)
@@ -17,11 +18,12 @@
 #   symlinks it into /global/common/software/<project>/bin as `hpcenvs-setup`.
 set -euo pipefail
 
-CHECK=0 PUBLISH=0
+CHECK=0 PUBLISH=0 UNDO=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --check)   CHECK=1;   shift ;;
         --publish) PUBLISH=1; shift ;;
+        --undo)    UNDO=1;    shift ;;
         -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
         *) echo "unknown option: $1 (try --help)" >&2; exit 1 ;;
     esac
@@ -49,6 +51,30 @@ if [ "$PUBLISH" = 1 ]; then
     chmod g+rX "$BIN_DIR/hpcenvs-setup" 2>/dev/null || true
     echo ">> published $BIN_DIR/hpcenvs-setup -> $SELF"
     echo "   Group members with env.sh sourced have that on PATH already."
+    exit 0
+fi
+
+# --- undo: remove our block, leave everything else alone ---------------------
+# Only the marked block, never the whole file: people put their own things in
+# these files, and a startup file is not ours to reset.
+if [ "$UNDO" = 1 ]; then
+    removed=0
+    for rc in "$HOME/.bashrc.ext" "$HOME/.bashrc"; do
+        [ -f "$rc" ] || continue
+        grep -qF "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
+        cp -p "$rc" "$rc.hpcenvs-backup"
+        sed -i "/^# >>> hpcenvs (${PROJECT}) >>>$/,/^# <<< hpcenvs (${PROJECT}) <<<$/d" "$rc"
+        # ...including the blank line we wrote before it, so the file comes back
+        # byte-identical when ours was the only addition.
+        sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$rc"
+        echo ">> removed the hpcenvs block from $rc (backup: $rc.hpcenvs-backup)"
+        removed=1
+    done
+    if [ "$removed" = 0 ]; then
+        echo ">> no hpcenvs block found in ~/.bashrc.ext or ~/.bashrc"
+    else
+        echo "   Open a new shell; the current one still has env.sh applied."
+    fi
     exit 0
 fi
 
