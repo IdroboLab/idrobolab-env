@@ -166,6 +166,9 @@ QOS=interactive GPUS=4 ./interactive_jupyter.sh    # whole node, 4x the charge
 # replaced by localhost, token unchanged
 ```
 
+For a notebook with no tunnel at all, put your environment into
+jupyter.nersc.gov instead: `../helpers/install-jupyter-kernel.sh`.
+
 The container needs `-p <port>:<port>` for the port to exist on the node —
 binding `0.0.0.0` inside the container is not enough, and `/proc/net/dev`
 inside the container looks like host networking but is not. See

@@ -9,9 +9,18 @@ in [`../verification/`](../verification/).
 | [update-image.sh](update-image.sh) | Pull/refresh an image into the shared CFS store and fix its permissions. Login nodes only — compute nodes cannot write the store | Whenever a new image is published |
 | [fix-store-perms.sh](fix-store-perms.sh) | Make the shared CFS store group-readable and verify it; `--check` reports only, exit 1 if broken (cron-safe) | Called by `update-image.sh` after every pull; by hand after a direct `podman-hpc pull --squash-dir` |
 | [install-uv.sh](install-uv.sh) | Install or update `uv` in the shared project bin dir with group-correct permissions | Once, then to update uv — **instead of `uv self update`**, which cuts the rest of the project off |
+| [install-jupyter-kernel.sh](install-jupyter-kernel.sh) | Register a Jupyter kernel — container, venv or conda env — so **jupyter.nersc.gov** runs your environment. `--list` / `--remove` manage them | Once per environment you want in the hub launcher |
 | [setup-nionswift-launcher.sh](setup-nionswift-launcher.sh) | One-shot setup of the Nion Swift one-click launcher; detects whether it is on Perlmutter or a ThinLinc host | Once per maintainer, once per group member (ThinLinc side) — see [../nionswift-perlmutter-thinlinc.md](../nionswift-perlmutter-thinlinc.md) |
 
-All four are idempotent: re-running one is the normal way to update.
+All are idempotent: re-running one is the normal way to update
+(`install-jupyter-kernel.sh` wants `--force` to replace an existing kernel).
+
+Two ways to reach a notebook, and they are complements rather than rivals:
+`install-jupyter-kernel.sh` puts your environment in **jupyter.nersc.gov** —
+no tunnel, nothing to keep open, survives a dropped laptop connection;
+[`../jobs/interactive_jupyter.sh`](../jobs/interactive_jupyter.sh) gives you a
+session on a node you allocated yourself, running the exact image the batch
+jobs use.
 
 `update-image.sh` locates `fix-store-perms.sh` relative to its own file, so the
 two must stay in this directory together. Everything else here is standalone.
