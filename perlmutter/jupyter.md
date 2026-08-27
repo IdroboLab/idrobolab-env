@@ -52,8 +52,46 @@ Managing them:
 ```
 
 Kernels are written to `~/.local/share/jupyter/kernels/<name>/kernel.json`.
-`--prefix DIR` puts them elsewhere, but the hub only finds those if
-`JUPYTER_PATH` includes `DIR`, which it does not set for you.
+
+### One kernel for the whole project
+
+The maintainer installs into the project tree on `/global/common`, once:
+
+```bash
+. $CFS/$NERSC_PROJECT/env/perlmutter/env.sh
+./install-jupyter-kernel.sh --image idrobolab --name idrobolab --gpu --shared
+```
+
+`--shared` writes to `/global/common/software/$NERSC_PROJECT/share/jupyter/kernels`
+and makes it group-readable — the same tree `install-uv.sh` uses, and the same
+reason: a file left at the default `0600` is useless to everyone else.
+
+Jupyter does **not** search that location by default, so each user needs one
+step, once. Two options:
+
+```bash
+# a) symlink them into the dir Jupyter always searches  (recommended)
+$CFS/$NERSC_PROJECT/env/perlmutter/helpers/install-jupyter-kernel.sh --link
+
+# b) or, in whatever environment the hub starts from
+export JUPYTER_PATH=/global/common/software/$NERSC_PROJECT/share/jupyter
+```
+
+**(a) is recommended because it cannot fail:** `~/.local/share/jupyter/kernels`
+is always searched, so a symlink there needs no environment variable, no config
+file, and no assumption about how the hub builds its environment. The
+`kernel.json` stays in the project tree, so updating it there updates it for
+everyone. `--link` is idempotent, and skips any name where a real directory
+already exists rather than clobbering someone's own kernel.
+
+**(b) is verified to make Jupyter find the kernels**, but whether jupyter.nersc.gov
+picks up `JUPYTER_PATH` from your shell is not — the hub does not source
+`~/.bashrc`.
+
+> A third route — `c.KernelSpecManager.kernel_dirs` in
+> `~/.jupyter/jupyter_server_config.py` — looks plausible and did **not** work
+> when tested (jupyter_client 8.9.1 kept its default `kernel_dirs` and ignored
+> the config). Do not use it.
 
 ### venv and conda
 

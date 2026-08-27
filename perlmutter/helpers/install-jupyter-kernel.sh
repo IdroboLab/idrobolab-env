@@ -22,6 +22,11 @@
 #   --mount PATH       container only: extra bind mount, repeatable
 #   --env K=V          extra environment variable for the kernel, repeatable
 #   --prefix DIR       install under DIR/kernels/ instead of ~/.local/share/jupyter
+#   --shared           install project-wide under /global/common/software/<project>
+#                      /share/jupyter, group-readable, for everyone in the project
+#   --link [DIR]       (each user, once) symlink every kernel from the shared
+#                      dir into ~/.local/share/jupyter/kernels, so Jupyter finds
+#                      them with no environment variable at all
 #   --force            overwrite an existing kernel of the same name
 #   --dry-run          print the kernel.json instead of writing it
 #
@@ -45,6 +50,9 @@ while [ $# -gt 0 ]; do
         --name)    NAME=${2:?};    shift 2 ;;
         --display) DISPLAY=${2:?}; shift 2 ;;
         --prefix)  PREFIX=${2:?};  shift 2 ;;
+        --shared)  SHARED=1;       shift ;;
+        --link)    case "${2:-}" in -*|"") LINK=default; shift ;;
+                                    *)     LINK=$2; shift 2 ;; esac ;;
         --mount)   EXTRA_MOUNTS+=("${2:?}"); shift 2 ;;
         --env)     EXTRA_ENV+=("${2:?}");    shift 2 ;;
         --gpu)     GPU=1;   shift ;;
@@ -57,6 +65,14 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# --shared writes to the project's /global/common tree: read-optimized, visible
+# from every node, and the same place install-uv.sh puts shared interpreters.
+# It is a location Jupyter does NOT search by default -- see the note printed
+# at the end about making the hub look there.
+if [ -n "${SHARED:-}" ]; then
+    [ -n "$PREFIX" ] && die "--shared and --prefix are mutually exclusive"
+    PREFIX="/global/common/software/${NERSC_PROJECT:-<project>}/share/jupyter"
+fi
 KERNEL_ROOT="${PREFIX:-$HOME/.local/share/jupyter}/kernels"
 
 if [ -n "${LIST:-}" ]; then
@@ -70,6 +86,34 @@ if [ -n "${LIST:-}" ]; then
             "$(sed -n 's/.*"display_name": *"\([^"]*\)".*/\1/p' "$d/kernel.json")"
     done
     [ "$_found" = 1 ] || echo "  (none)"
+    exit 0
+fi
+
+# Symlinking is the one discovery route with no moving parts: Jupyter always
+# searches ~/.local/share/jupyter/kernels, so a symlink there is found without
+# JUPYTER_PATH, without a config file, and regardless of how the hub sets up its
+# environment. The kernel.json itself stays in the project tree, so the
+# maintainer can update it for everyone in one place.
+if [ -n "${LINK:-}" ]; then
+    [ "$LINK" = default ] && LINK="/global/common/software/${NERSC_PROJECT:-<project>}/share/jupyter"
+    src="${LINK%/}/kernels"
+    [ -d "$src" ] || die "no kernels directory at $src"
+    dest="$HOME/.local/share/jupyter/kernels"
+    mkdir -p "$dest"
+    n=0
+    for d in "$src"/*/; do
+        [ -f "$d/kernel.json" ] || continue
+        name=$(basename "$d")
+        if [ -e "$dest/$name" ] && [ ! -L "$dest/$name" ]; then
+            echo "SKIP $name -- a real directory of that name already exists in $dest" >&2
+            continue
+        fi
+        ln -sfn "${d%/}" "$dest/$name"
+        echo "  linked $name"
+        n=$((n + 1))
+    done
+    echo ">> $n kernel(s) linked from $src into $dest"
+    echo "   Restart your Jupyter server from the Hub Control Panel to see them."
     exit 0
 fi
 
@@ -270,11 +314,33 @@ fi
 mkdir -p "$DEST"
 kernel_json > "$DEST/kernel.json"
 
+# A shared kernel is useless if the group cannot read it, and the default umask
+# on a personal file leaves it 0600. Same problem install-uv.sh exists to solve.
+if [ -n "${SHARED:-}" ]; then
+    chgrp -R "${NERSC_PROJECT:-<project>}" "$DEST" 2>/dev/null \
+        || echo "WARNING: could not chgrp $DEST to ${NERSC_PROJECT:-<project>}" >&2
+    chmod -R g+rX "$DEST" 2>/dev/null \
+        || echo "WARNING: could not make $DEST group-readable" >&2
+fi
+
 echo ">> installed kernel '$NAME' ($BACKEND) at $DEST/kernel.json"
 echo "   display name: $DISPLAY"
 if [ -n "$PREFIX" ]; then
-    echo "   NOTE: a non-default --prefix is only found if JUPYTER_PATH includes"
-    echo "         ${PREFIX%/}, which JupyterHub does not set for you."
+    echo
+    echo "   Jupyter does NOT search ${PREFIX%/} by default. Each user needs ONE"
+    echo "   of these, once -- after which every kernel installed there is found:"
+    echo
+    echo "     a) symlink them into the per-user dir Jupyter always searches:"
+    echo
+    echo "          $0 --link ${PREFIX%/}"
+    echo
+    echo "        No environment variable, nothing to configure, and the"
+    echo "        kernel.json stays here so you can update it for everyone."
+    echo
+    echo "     b) or export JUPYTER_PATH=${PREFIX%/} in the environment the hub"
+    echo "        starts from. Verified to make Jupyter find the kernels; whether"
+    echo "        the hub picks up your shell environment is not -- it does not"
+    echo "        source ~/.bashrc."
 fi
 if [ "$BACKEND" = image ]; then
     echo
