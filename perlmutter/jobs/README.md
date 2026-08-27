@@ -166,9 +166,10 @@ QOS=interactive GPUS=4 ./interactive_jupyter.sh    # whole node, 4x the charge
 # replaced by localhost, token unchanged
 ```
 
-No `-p` is needed on the container: podman-hpc uses the host network stack, so
-`--ip=0.0.0.0` binds the port on the node itself. See ../podman-hpc.md,
-"Networking".
+The container needs `-p <port>:<port>` for the port to exist on the node —
+binding `0.0.0.0` inside the container is not enough, and `/proc/net/dev`
+inside the container looks like host networking but is not. See
+../podman-hpc.md, "Networking".
 
 ## Gotchas
 

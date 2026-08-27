@@ -150,16 +150,14 @@ for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "$PWD"; do
 done
 WORKDIR=$(pwd -P)
 
-# Publish the port. Whether this is needed is UNRESOLVED: `hsn0` is visible in
-# /proc/net/dev inside the container, which looks like host networking, but a
-# server bound to 0.0.0.0:$PORT was refused both from a login node and from the
-# compute node itself -- which is what a PRIVATE network namespace looks like.
-# podman-hpc may simply bind-mount the host /proc, in which case /proc/net/dev
-# says nothing about the namespace.
+# Publish the port. Required, and confirmed the hard way: without it the server
+# binds 0.0.0.0:$PORT inside a PRIVATE network namespace, where nothing outside
+# the container can reach it -- not the login node, not the compute node it runs
+# on. Adding -p was the single change that made this work.
 #
-# -p is correct either way: with a private namespace it is what makes the port
-# reachable; with host networking podman discards it with a warning and the
-# bind is unaffected. PUBLISH=0 drops it.
+# Do not be misled by /proc/net/dev inside the container showing hsn0: podman-hpc
+# gives the container a view of the host /proc, so it describes the node rather
+# than the namespace. See ../podman-hpc.md, "Networking". PUBLISH=0 drops it.
 PUBLISH_FLAGS=""
 [ "${PUBLISH:-1}" = "0" ] || PUBLISH_FLAGS="-p $PORT:$PORT"
 

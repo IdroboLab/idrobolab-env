@@ -209,14 +209,15 @@ may evolve.
 
 ## Networking
 
-**Whether a server inside the container is reachable from the node is
-UNRESOLVED — publish the port (`-p <port>:<port>`) and do not rely on host
-networking.** `-p` is correct under either explanation below: with a private
-namespace it is what makes the port reachable, and with host networking podman
-discards it with a warning and the bind is unaffected.
+**A server inside the container needs `-p <port>:<port>` to be reachable from
+the node, exactly as with Docker on a laptop.** Confirmed 2026-08-27: a
+JupyterLab bound to `0.0.0.0:8899` in the container was unreachable — refused
+from a login node, refused over `ssh -J` on the compute node itself, and absent
+from `ss -ltn` there — and adding `-p 8899:8899` (the only change) made it work.
 
-The evidence points both ways. In favour of host networking, on a compute node
-(2026-08-27):
+**Do not conclude host networking from `/proc/net/dev`.** This is the trap that
+cost several debugging rounds, because the container looks like it is on the
+host network:
 
 ```bash
 $ podman-hpc run --rm ghcr.io/<username>/idrobolab:latest sh -c 'hostname; cat /proc/net/dev'
@@ -226,33 +227,28 @@ Inter-|   Receive ...
   hsn0:   30884     514 ...
 ```
 
-`hsn0` — the node's Slingshot interface, with live counters — is visible
-inside the container, where a private namespace would show only `lo` plus a
-`10.0.2.x` slirp4netns tap. `--mpi` also has to work somehow: `srun` launches
-one container per rank and those ranks have to find each other.
-
-Against it: a JupyterLab bound to `0.0.0.0:8899` inside the container was
-refused from a login node, refused over `ssh -J` from the compute node itself,
-and `ss -ltn` on the node showed nothing listening on that port. That is what a
-private namespace looks like — and it would be explained if podman-hpc
-bind-mounts the host `/proc`, in which case `/proc/net/dev` says nothing about
-which namespace the container is in.
-
-To settle it, run a listener in the container on a compute node and probe it
-from a second shell **on that same node**, while it is definitely running:
+`hsn0` — the node's Slingshot interface, with live counters — appears inside
+the container, where a private namespace would be expected to show only `lo`
+plus a `10.0.2.x` slirp4netns tap. It is not evidence of the namespace:
+podman-hpc gives the container a view of the host `/proc`, so `/proc/net/*`
+describes the node, not the container. The only reliable test is whether the
+port actually answers:
 
 ```bash
+# on a compute node, in the container
 podman-hpc run --rm -p 8899:8899 <image> python3 -m http.server 8899 --bind 0.0.0.0
-# other shell, same node:
-ss -ltn | grep 8899          # does the port exist on the node?
+# second shell, SAME node, while that is running
+ss -ltn | grep 8899
 curl -sI http://localhost:8899/
 ```
 
-Then repeat without `-p`. The difference is the answer.
 `jobs/interactive_jupyter.sh` runs that check automatically when its
-reachability probe fails.
+reachability probe fails, via `srun --overlap` into the live allocation.
 
-Two consequences worth knowing:
+MPI is unaffected by any of this — `podman-hpc run --mpi` handles rank
+rendezvous itself, and needs no published ports.
+
+Two consequences of running as root worth knowing:
 
 - **The hostname inside the container is the container ID** (`04ad5a40ad5c`
   above), not `nidXXXXXX`. That is the *UTS* namespace, which podman keeps
