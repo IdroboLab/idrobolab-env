@@ -188,17 +188,32 @@ case "$BACKEND" in
         # ../podman-hpc.md, "Networking"), so those ports are unreachable from
         # the hub -- and -p cannot help, because the ports are chosen per
         # launch. Host networking is the only way the hub can reach the kernel.
-        ARGV=("$PODMAN_BIN" run --rm -i --network host --group-add keep-groups)
-        [ "$GPU" = 1 ] && ARGV+=(--gpu)
-        # shellcheck disable=SC2206
-        ARGV+=($MOUNTS)
-        ARGV+=(-e "HOME=$HOME" "$TARGET"
-               python -m ipykernel_launcher -f '{connection_file}')
+        # The connection file's directory has to be mounted, and we cannot know
+        # it at install time: a bare KernelManager drops it in tempfile.gettempdir()
+        # (/tmp, private to the container), jupyter_server puts it in the runtime
+        # dir, and JUPYTER_RUNTIME_DIR can move it anywhere. Getting it wrong is
+        # silent -- ipykernel cannot write where it was told, generates its own
+        # ports, and the client waits forever on the ports it chose.
+        #
+        # So resolve it at LAUNCH time: a one-line bash wrapper takes the
+        # substituted path as $1 and mounts its directory, unless one of the
+        # static mounts already covers it (an identical -v destination is a hard
+        # podman error, whereas a nested one is harmless).
+        _gpu=""; [ "$GPU" = 1 ] && _gpu="--gpu"
+        _covered=""
+        for m in $_mounted; do _covered="$_covered$m|$m/*|"; done
+        WRAPPER="d=\$(dirname \"\$1\"); extra=; case \"\$d\" in ${_covered%|}) ;; *) extra=\"-v \$d:\$d\" ;; esac; exec $PODMAN_BIN run --rm -i --network host --group-add keep-groups $_gpu \$extra $MOUNTS -e HOME=$HOME $TARGET python -m ipykernel_launcher -f \"\$1\""
+        ARGV=(/bin/bash -c "$WRAPPER" kernel '{connection_file}')
         ;;
 esac
 
 # --- emit kernel.json ---------------------------------------------------------
-json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+# JSON string escaping: backslash, quote, and the control characters a shell
+# snippet can plausibly contain (a raw newline in a JSON string is invalid).
+json_escape() {
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/\\t/g' \
+        | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/\\n/g'
+}
 
 kernel_json() {
     printf '{\n  "argv": [\n'
