@@ -150,12 +150,19 @@ for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "$PWD"; do
 done
 WORKDIR=$(pwd -P)
 
-# No -p/--publish anywhere below, and that is not an oversight: podman-hpc runs
-# the container on the HOST network namespace (verified on a compute node --
-# hsn0 with live counters is visible inside), so --ip=0.0.0.0 binds $PORT
-# directly on the node. Adding -p here would be discarded with a warning. See
-# ../podman-hpc.md, "Networking".
+# Publish the port. Whether this is needed is UNRESOLVED: `hsn0` is visible in
+# /proc/net/dev inside the container, which looks like host networking, but a
+# server bound to 0.0.0.0:$PORT was refused both from a login node and from the
+# compute node itself -- which is what a PRIVATE network namespace looks like.
+# podman-hpc may simply bind-mount the host /proc, in which case /proc/net/dev
+# says nothing about the namespace.
 #
+# -p is correct either way: with a private namespace it is what makes the port
+# reachable; with host networking podman discards it with a warning and the
+# bind is unaffected. PUBLISH=0 drops it.
+PUBLISH_FLAGS=""
+[ "${PUBLISH:-1}" = "0" ] || PUBLISH_FLAGS="-p $PORT:$PORT"
+
 # --port-retries=0 matters: by default Jupyter silently walks to the next free
 # port if $PORT is taken, which would leave the ssh line printed below pointing
 # at nothing. Better to fail loudly and pick another PORT.
@@ -173,7 +180,7 @@ HOME_ENV="-e HOME=$HOME"
 
 # Everything the inner shell needs, passed through the environment rather than
 # through another layer of quoting (salloc exports the caller's environment).
-export MOUNTS WORKDIR IMAGE PORT GROUP_FLAGS RUN_GPU_FLAGS SHM_FLAGS THREAD_ENV HOME_ENV JUPYTER_ARGS
+export MOUNTS WORKDIR IMAGE PORT GROUP_FLAGS RUN_GPU_FLAGS SHM_FLAGS THREAD_ENV HOME_ENV PUBLISH_FLAGS JUPYTER_ARGS
 
 # Say what is being asked for BEFORE salloc blocks: if it does queue, this is
 # the line that tells you which QOS to blame.
@@ -223,7 +230,7 @@ EOF
         #
         # curl for the test where available -- bash net redirection
         # (/dev/tcp) is a compile-time option and not guaranteed present.
-        # (No apostrophes in this block -- it lives inside bash -c '...'.)
+        # (No apostrophes in this block -- it lives inside a quoted bash -c.)
         ( echo "  [check] probing $node:$PORT from $(hostname), up to 90 s ..." >&2
           if command -v curl >/dev/null 2>&1; then
               _probe() { curl -s -o /dev/null --max-time 2 "http://$1:$2/"; }
@@ -240,9 +247,18 @@ EOF
                   exit 0
               fi
           done
-          echo "  [check] NO answer from $node:$PORT after 90 s -- the tunnel will refuse too" >&2 ) &
+          echo "  [check] NO answer from $node:$PORT after 90 s -- the tunnel will refuse too" >&2
+          # Distinguish the two explanations without a second session: ask the
+          # compute node itself. A listener visible there but not from here is
+          # a network block between login and compute; nothing listening there
+          # means the port lives inside a private namespace and never reached
+          # the node at all.
+          echo "  [check] asking $node what is listening on $PORT ..." >&2
+          timeout 60 srun --overlap -N1 -n1 bash -c \
+              "ss -ltn 2>/dev/null | grep :$PORT || echo none" >&2
+          ) &
         exec srun --unbuffered podman-hpc run --rm -i $GROUP_FLAGS $RUN_GPU_FLAGS $SHM_FLAGS \
-            $MOUNTS --workdir "$WORKDIR" $THREAD_ENV $HOME_ENV \
+            $PUBLISH_FLAGS $MOUNTS --workdir "$WORKDIR" $THREAD_ENV $HOME_ENV \
             "$IMAGE" jupyter lab $JUPYTER_ARGS "$@"
     ' bash "$@"
 
