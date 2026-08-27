@@ -83,26 +83,31 @@ echo "hpcenvs user setup — project $PROJECT"
 echo
 
 # --- 1. shell startup --------------------------------------------------------
-# NERSC's own ~/.bashrc is managed and carries a "do not edit" banner; the
-# supported place for user customisation is ~/.bashrc.ext, which it sources.
-# Prefer that where it exists so an upstream refresh of ~/.bashrc cannot
-# silently drop our line.
+# ~/.bashrc, per NERSC's current guidance: the .bashrc.ext / .bash_profile.ext
+# split is deprecated and the standard dotfiles are yours to edit.
+# https://docs.nersc.gov/environment/#customizing-your-shell-environment
 echo "1. shell startup"
-if [ -f "$HOME/.bashrc.ext" ]; then
-    RC="$HOME/.bashrc.ext"
-else
-    RC="$HOME/.bashrc"
-fi
+RC="$HOME/.bashrc"
 MARK="# >>> hpcenvs (${PROJECT}) >>>"
 ENDMARK="# <<< hpcenvs (${PROJECT}) <<<"
 LINE=". ${PERLMUTTER}/env.sh"
 
-if [ -f "$RC" ] && grep -qF "$MARK" "$RC"; then
-    if grep -qF "$LINE" "$RC"; then
-        ok "$RC already sources env.sh"
+# An account created before February 2020 may still have a .ext file, and an
+# earlier version of this script wrote the block there. Find it wherever it is,
+# so a re-run neither duplicates the block nor reports it missing.
+FOUND_IN=""
+for rc in "$RC" "$HOME/.bashrc.ext"; do
+    [ -f "$rc" ] && grep -qF "$MARK" "$rc" && { FOUND_IN=$rc; break; }
+done
+
+if [ -n "$FOUND_IN" ]; then
+    if grep -qF "$LINE" "$FOUND_IN"; then
+        ok "$FOUND_IN already sources env.sh"
+        [ "$FOUND_IN" = "$HOME/.bashrc.ext" ] && \
+            warn "  that is a deprecated .ext file -- see the note below"
     else
-        warn "$RC has an hpcenvs block, but pointing somewhere else --"
-        warn "  edit it by hand, or delete the block and re-run"
+        warn "$FOUND_IN has an hpcenvs block, but pointing somewhere else --"
+        warn "  edit it by hand, or run --undo and re-run"
     fi
 elif [ "$CHECK" = 1 ]; then
     warn "$RC does not source env.sh (run without --check to add it)"
@@ -118,6 +123,15 @@ else
     act "added env.sh to $RC"
     act "run '. $RC' or open a new shell to pick it up now"
 fi
+
+# Flag the legacy files rather than working around them forever: NERSC asks
+# that their contents move into the standard dotfiles and the .ext files go.
+for ext in "$HOME/.bashrc.ext" "$HOME/.bash_profile.ext"; do
+    [ -f "$ext" ] || continue
+    warn "$ext exists and is deprecated by NERSC -- move its contents into"
+    warn "  the matching standard dotfile and delete it. See"
+    warn "  https://docs.nersc.gov/environment/#customizing-your-shell-environment"
+done
 echo
 
 # --- 2. shared Jupyter kernels ----------------------------------------------
