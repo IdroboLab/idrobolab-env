@@ -61,7 +61,7 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 | `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | GPU-parallel GPAW, distributed torch |
 | `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | Smoke tests before a long run |
 | `interactive_gpu.sh` | `gpu` / `interactive` | 1 node, ≤4 h | 1 GPU node-hr | Shell in the container (helper, not sbatch) |
-| `interactive_jupyter.sh` | `gpu` / `shared` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
+| `interactive_jupyter.sh` | `gpu` / `shared_interactive` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
 
 ## Node hardware
 
@@ -93,6 +93,19 @@ Perlmutter's charge factor is **1.0** for both node types.
 | `preempt` | 128 | 48 h | 5000 / — | 0.25 GPU, 0.5 CPU (min 2 h guaranteed) |
 | `overrun` | unlimited | 48 h | 5000 / — | 0 (only when out of allocation) |
 | `jupyter` | 4 | 6 h | 1 / 1 | 1.0 |
+
+**`shared` is a batch QOS; `shared_interactive` is its interactive twin.** Both
+give you a fraction of a node charged by the fraction held, but a session
+submitted to `shared` waits behind regular batch work — which is exactly what
+makes an interactive notebook or GUI unusable. Use `shared` from `sbatch`,
+`shared_interactive` from `salloc`. `interactive_jupyter.sh` and the nionswift
+launcher both default to `shared_interactive`; its own limits are not tabulated
+here because they have not been checked against `sacctmgr` on-cluster.
+
+When an allocation does not start, `squeue --me -o "%i %q %P %T %r"` shows the
+QOS it landed in and the pending reason, and `scontrol show job <id>` gives the
+full picture. A session that ends up in an unexpected QOS is worth stopping
+rather than waiting out.
 
 **Use `shared` for 1–2 GPU jobs.** NERSC policy asks for it, and it is 4×
 cheaper: a 1-GPU shared job gets 16 physical cores + 64 GB and is charged
@@ -147,8 +160,8 @@ podman-hpc run --rm -it --gpu -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage
 Notebook in the browser on your laptop:
 
 ```bash
-./interactive_jupyter.sh              # 1 A100 on a shared node, 2 h — 0.25 node-hr/h
-QOS=interactive GPUS=4 ./interactive_jupyter.sh    # whole node, starts sooner, 4x the charge
+./interactive_jupyter.sh              # 1 A100 slice, shared_interactive, 2 h — 0.25 node-hr/h
+QOS=interactive GPUS=4 ./interactive_jupyter.sh    # whole node, 4x the charge
 # paste the ssh -L line it prints on your laptop, open the URL with its host
 # replaced by localhost, token unchanged
 ```
