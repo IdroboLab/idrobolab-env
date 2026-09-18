@@ -120,10 +120,19 @@ add_mount() {
 }
 # Broad filesystems first, so the working directory collapses into whichever
 # one holds it instead of adding a redundant nested mount.
-for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "${SLURM_SUBMIT_DIR:-$PWD}"; do
+#
+# Plain $PWD, not ${SLURM_SUBMIT_DIR:-$PWD}: SLURM only sets SLURM_SUBMIT_DIR
+# once, at salloc time, to wherever salloc was invoked from -- it does not
+# track cd afterward. Trusting it here silently resolved every later
+# invocation in the same interactive session back to that original directory
+# (usually $HOME) regardless of where the script was actually run from.
+# $PWD is always correct in both the sbatch case (SLURM starts the batch
+# script's cwd at the submission directory, so $PWD already equals
+# SLURM_SUBMIT_DIR there) and the salloc+bash case this silently broke.
+for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "$PWD"; do
     add_mount "$p"
 done
-WORKDIR=$(cd "${SLURM_SUBMIT_DIR:-$PWD}" && pwd -P)
+WORKDIR=$(pwd -P)
 
 # Run a cluster checkout instead of the baked-in code:
 # MOUNTS="$MOUNTS -v $SCRATCH/code/gpaw:/opt/src/gpaw"

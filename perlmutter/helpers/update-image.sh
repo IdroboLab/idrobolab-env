@@ -347,7 +347,7 @@ cat <<EOF
    export PODMANHPC_ADDITIONAL_STORES=$STORE_RO     # or: source env.sh
    srun ... podman-hpc run --rm --gpu \\
        -v \$SCRATCH:\$SCRATCH -v \$CFS:\$CFS -v \$HOME:\$HOME \\
-       --workdir "\$SLURM_SUBMIT_DIR" \\
+       --workdir "\$PWD" \\
        $REF python script.py
 
    \$HOME is mounted because podman-hpc bind-mounts nothing by default and
