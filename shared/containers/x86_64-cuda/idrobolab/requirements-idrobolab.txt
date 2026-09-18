@@ -23,6 +23,7 @@ ptyrad==1.0.0            # torch>=2.4
 nionswift==16.18.1       # library imports headlessly; GUI needs the Qt backend
 nionswift-tool           # bundled-Qt launcher for the GUI (alongside PySide6)
 PySide6                  # Qt6 backend for the nionswift GUI (needs a display/xvfb)
+hyperspy                 # multidimensional (S)TEM/EELS data analysis
 
 # materials / phonons
 pymatgen==2026.5.4
