@@ -9,7 +9,7 @@ interconnect; Slurm + Cray MPICH; containers via Apptainer).
 | Path | Purpose |
 |---|---|
 | [../shared/containers/x86_64-cuda/otherimage/](../shared/containers/x86_64-cuda/otherimage/) | The container recipe (shared with Perlmutter) — build & publish instructions in its README |
-| [get-image.sh](get-image.sh) | Materialize the Delta `.sif` from the published registry image |
+| [get-image.sh](get-image.sh) | Materialize the Delta `.sif` from the published registry image (from a login node it queues itself on `cpu-interactive`; needs `ACCOUNT=<project>-delta-cpu`) |
 | [jobs/](jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper) — see its README for the partition matrix and MPI launch guide |
 | [verification/](verification/) | On-node checks (e.g. multi-GPU abTEM) |
 
