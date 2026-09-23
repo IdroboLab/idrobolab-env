@@ -122,6 +122,17 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     : "${UV_PYTHON_INSTALL_DIR:=/global/common/software/${NERSC_PROJECT}/uv/pythons}"
     export UV_PYTHON_INSTALL_DIR
 
+    # uv's cache must not live under $HOME: the home filesystem does not
+    # support the lock uv takes, and every `uv run`/`uvx` on a compute node
+    # then dies with "Could not acquire lock ... Unknown error 524" before
+    # doing anything. $SCRATCH is per-user and lock-capable. Guarded: unset
+    # $SCRATCH would expand to /uv-cache at the filesystem root. Note the
+    # purge caveat above applies to this cache too; it is only a cache.
+    if [ -n "${SCRATCH:-}" ]; then
+        : "${UV_CACHE_DIR:=${SCRATCH}/uv-cache}"
+        export UV_CACHE_DIR
+    fi
+
     # Shared project bin dir (the uv binary, small wrappers). Prepended so
     # project tools win over system ones; guarded so re-sourcing never grows
     # PATH, and skipped entirely until the directory exists.
@@ -182,6 +193,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
         echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES" >&2
         echo "  PODMANHPC_GRAPH_ROOT        ${PODMANHPC_GRAPH_ROOT:-<unset: node-local default>}" >&2
         echo "  UV_PYTHON_INSTALL_DIR       $UV_PYTHON_INSTALL_DIR" >&2
+        echo "  UV_CACHE_DIR                ${UV_CACHE_DIR:-<unset: no \$SCRATCH>}" >&2
     fi
 fi
 
