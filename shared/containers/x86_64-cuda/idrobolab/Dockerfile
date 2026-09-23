@@ -371,7 +371,7 @@ RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        python3.12 python3.12-venv ca-certificates \
+        python3.12 python3.12-venv ca-certificates git \
         libpython3.12t64 \
         libgfortran5 libquadmath0 libgomp1 \
         libopenblas0-pthread \
