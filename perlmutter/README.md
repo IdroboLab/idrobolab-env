@@ -8,6 +8,7 @@ via podman-hpc, OCI/Docker images only).
 
 | Path | Purpose |
 |---|---|
+| [local-setup.md](local-setup.md) | **Start here if you're connecting from your own laptop for the first time** — SSH config (Windows/macOS/Linux paths), `sshproxy` MFA setup, login, and why file transfers go through `nersc-dtn` not the login node |
 | [../shared/containers/x86_64-cuda/otherimage/](../shared/containers/x86_64-cuda/otherimage/) | The container recipe (shared with Delta) — build & publish in its README |
 | [podman-hpc.md](podman-hpc.md) | Perlmutter run notes: `podman-hpc pull`/`run`, MPI, GPU |
 | [jupyter.md](jupyter.md) | Notebooks: jupyter.nersc.gov via a registered kernel, or your own allocation + `ssh -L`. Knobs, gotchas, troubleshooting |
