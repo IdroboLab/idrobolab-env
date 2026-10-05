@@ -18,6 +18,7 @@ via podman-hpc, OCI/Docker images only).
 | [helpers/setup-user.sh](helpers/setup-user.sh) | **Start here as a new group member** — one command sets up your shell, Jupyter kernels, and checks what silently breaks later |
 | [helpers/](helpers/) | Scripts run by hand on a login node: image pulls, store permissions, shared uv, the Nion Swift launcher |
 | [helpers/update-image.sh](helpers/update-image.sh) | Pull/refresh an image into the shared CFS store (`/global/cfs/cdirs/<project>/podman-hpc`). Login nodes only |
+| [claude-machine.md](claude-machine.md) | Claude Code's machine rules for sessions on a Perlmutter login node; linked as `~/.claude-machine.md` |
 | [env.sh](env.sh) | Source from `~/.bashrc`: `PODMANHPC_ADDITIONAL_STORES` and friends, plus interactive aliases (`cds` `cdp` `q` `sr` `sp`). Silent, idempotent, inert off Perlmutter |
 
 ## Conventions
