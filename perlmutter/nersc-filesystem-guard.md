@@ -83,21 +83,19 @@ column is the hook's decision:
 | `find "$(pwd)" -name x` | blocked: "cannot determine traversal root" |
 | `find $PSCRATCH/abtem-git -name '*.py'` | allowed (the `$VAR` expands) |
 
-To search a bounded tree with a regex containing `$`, `[`, `*`, `?` or `{`, attach the
-pattern to the option with `--regexp='…'`, or use `rg` without `--files`. Write a
+These are false alarms: the directory searched is one the hook allows, and only the
+pattern sets it off. For them alone, the pattern may be attached to its option
+(`--regexp='…'`), so that the hook evaluates the directory actually searched. The test is
+that the same command with a plain pattern (`grep -rn 'x' src/`) is allowed. A command
+blocked because of the directory it searches is narrowed, never rewritten. Write a
 directory as a literal path or `$VAR`, not as `$(...)`.
 
-## Broad scans it does not catch
+## What it does not do
 
-It recognises only the command names listed above, and it does not follow `cd`. In the
-same test, these went through although they scan broad roots: `rg -l pattern
-/global/common` (`rg` is only checked with `--files`), `cd / && find .`,
-`echo / | xargs find`, `uv run python -c "…os.walk('/')"` (the `uv` launcher is not
-looked through), `locate`, and commands inside `podman-hpc run`.
-
-The hook does not make a scan acceptable. These gaps are listed so nobody mistakes "not
-blocked" for "fine". A blocked command is narrowed to a bounded directory, never
-rewritten to get past the hook.
+It recognises only the command names listed above, and it does not follow `cd` or look
+inside other launchers, so it misses some broad scans. A command the hook allows is
+therefore not shown to be harmless: the scope of every search is the user's (or the
+agent's) responsibility, checked or not. Keep each search to the directory the task needs.
 
 ## Software discovery
 
