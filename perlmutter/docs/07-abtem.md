@@ -98,10 +98,10 @@ Print `abtem.__file__` in your script (it must start with the checkout's path in
 ## Route 2: your own uv environment
 
 Create it once, **on a login node** (compute nodes should not download anything). It
-uses Python 3.13, the interpreter in the group's uv folder, and the CuPy of the
-container (13.5.1) with the CUDA 12.8 libraries as wheels. CuPy 13.5.1 has no `[ctk]`
-extra, so the libraries are listed in the example script's header; installing from the
-script pulls in all of it:
+uses Python 3.13, the interpreter in the group's uv folder. CuPy here is version 14,
+newer than the container's 13.5.1; its `[ctk]` extra installs the CUDA 12.8 libraries
+as wheels, which CuPy finds on its own. The requirements are in the example script's
+header, and installing from the script pulls in all of them:
 
 ```bash
 # on a login node
@@ -124,9 +124,6 @@ the 1.1.0 development version in the container. The environment lives in `$HOME`
 
 The first GPU run shows whether the libraries are in order: the example prints the
 abTEM and CuPy versions and the CUDA runtime and driver versions before it computes.
-If CuPy reports cuFFT or cuSOLVER as unloadable or with a `None` version, a CUDA toolkit
-from a loaded module may be shadowing CuPy's own libraries: try `module unload
-cudatoolkit` in that shell and run again.
 
 **Interactively:**
 

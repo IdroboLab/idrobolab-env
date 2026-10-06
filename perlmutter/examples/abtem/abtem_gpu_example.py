@@ -2,13 +2,9 @@
 # requires-python = ">=3.10"
 # dependencies = [
 #     "abtem", "ase", "numpy",
-#     # CuPy as in the idrobolab container, with the CUDA 12.8 libraries (the container's CUDA)
-#     # as wheels. CuPy 13.5.1 has no [ctk] extra, so they are listed here.
-#     "cupy-cuda12x==13.5.1",
-#     "nvidia-cuda-runtime-cu12==12.8.*", "nvidia-cuda-nvrtc-cu12==12.8.*",
-#     "nvidia-cublas-cu12==12.8.*", "nvidia-nvjitlink-cu12==12.8.*",
-#     "nvidia-cufft-cu12==11.3.*", "nvidia-curand-cu12==10.3.*",
-#     "nvidia-cusolver-cu12==11.7.*", "nvidia-cusparse-cu12==12.5.*",
+#     # CuPy 14 finds the CUDA libraries in wheels ([ctk] installs them); the toolkit is kept on
+#     # CUDA 12.8, the line the idrobolab container uses.
+#     "cupy-cuda12x[ctk]>=14,<15", "cuda-toolkit==12.8.*",
 # ]
 # ///
 """Small abTEM STEM simulation on one GPU: an annular-detector (HAADF-type) scan of Si [001].
