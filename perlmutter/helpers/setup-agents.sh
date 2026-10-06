@@ -23,8 +23,9 @@
 #                below the heading, so nothing you wrote is lost. Re-run after a
 #                `git pull`; --check says when the copy is stale.
 #
-# Before it changes an existing file it saves a timestamped copy
-# (<file>.bak-<UTC time>) and prints the path. A file with unbalanced markers
+# When your own text or the file's layout changes (not on a plain refresh of the
+# managed text) it first saves a copy, <file>.bak-<UTC time>, and prints the path;
+# edits made inside a pasted copy of NERSC's file are kept only there. A file with unbalanced markers
 # (a begin without an end, an end without a begin, a marker twice) is refused,
 # in every mode, with the line numbers. A file inside a git work tree (after
 # resolving symlinks) is never written: for Claude the lines to add are

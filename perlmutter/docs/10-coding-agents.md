@@ -61,8 +61,10 @@ every `git pull` of `~/idrobolab-env`:
   when the copy is stale). Your text below the heading is kept. So is text outside the
   markers that is not under the heading, and a file without markers: it moves below the
   heading, except a pasted copy of NERSC's file, which the managed part replaces.
-- **Safety:** before changing an existing file the script saves a copy next to it
-  (`<file>.bak-<UTC time>`) and prints the path. A file with unbalanced markers (one
+- **Safety:** when your own text or the file's layout changes (not on a plain refresh
+  of NERSC's or the group's text), the script first saves a copy next to the file
+  (`<file>.bak-<UTC time>`) and prints the path. Edits made inside a pasted copy of
+  NERSC's file are kept only in that copy. A file with unbalanced markers (one
   without its partner, or repeated) is refused in every mode, with the line numbers,
   and left as it is: fix it by hand. A file inside a git work tree (symlinks
   resolved) is never written: for Claude the script prints the lines to add; for Codex
