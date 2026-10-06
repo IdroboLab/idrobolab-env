@@ -44,15 +44,9 @@ SCRIPT=${1:?usage: sbatch abtem_uv_gpu_shared.sbatch script.py [args]}
 shift
 [ -x "$VENV/bin/python" ] || { echo "no environment at $VENV: create it as described in docs/07-abtem.md" >&2; exit 1; }
 
-# The environment's CuPy brings its own CUDA 12 libraries (the cupy-cuda12x[ctk]
-# extra). A CUDA toolkit from a loaded module on PATH can shadow them, and then
-# cuFFT/cuSOLVER report no version or NVRTC fails; so keep it out of the way.
-module unload cudatoolkit 2>/dev/null || true
-unset CUDA_PATH CUDA_HOME
-
 # One process: the threads it paid for (2 logical CPUs per physical core).
 export OMP_NUM_THREADS=$((SLURM_CPUS_PER_TASK / 2)) OPENBLAS_NUM_THREADS=$((SLURM_CPUS_PER_TASK / 2))
 export PYTHONUNBUFFERED=1
 
 echo "python=$VENV/bin/python  gpus=${SLURM_GPUS:-?}  script=$SCRIPT"
-time srun --cpu-bind=cores "$VENV/bin/python" "$SCRIPT" "$@"
+time srun -c "$SLURM_CPUS_PER_TASK" --cpu-bind=cores "$VENV/bin/python" "$SCRIPT" "$@"

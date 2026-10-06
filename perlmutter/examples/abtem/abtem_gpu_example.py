@@ -1,6 +1,15 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["abtem", "ase", "numpy", "cupy-cuda12x[ctk]"]
+# dependencies = [
+#     "abtem", "ase", "numpy",
+#     # CuPy as in the idrobolab container, with the CUDA 12.8 libraries (the container's CUDA)
+#     # as wheels. CuPy 13.5.1 has no [ctk] extra, so they are listed here.
+#     "cupy-cuda12x==13.5.1",
+#     "nvidia-cuda-runtime-cu12==12.8.*", "nvidia-cuda-nvrtc-cu12==12.8.*",
+#     "nvidia-cublas-cu12==12.8.*", "nvidia-nvjitlink-cu12==12.8.*",
+#     "nvidia-cufft-cu12==11.3.*", "nvidia-curand-cu12==10.3.*",
+#     "nvidia-cusolver-cu12==11.7.*", "nvidia-cusparse-cu12==12.5.*",
+# ]
 # ///
 """Small abTEM STEM simulation on one GPU: an annular-detector (HAADF-type) scan of Si [001].
 
@@ -38,6 +47,8 @@ def main():
     parser.add_argument("--device", choices=["gpu", "cpu"], default="gpu")
     parser.add_argument("--cells", type=int, default=2,
                         help="lateral repeats of the 5.43 A cubic cell (default 2)")
+    parser.add_argument("--energy", type=float, default=200,
+                        help="electron energy in keV (default 200)")
     parser.add_argument("--scan", type=int, default=16,
                         help="probe positions per side of the scanned unit cell (default 16)")
     parser.add_argument("--out", type=Path,
@@ -56,11 +67,11 @@ def main():
     cell = bulk("Si", cubic=True)
     atoms = cell.repeat((args.cells, args.cells, 4))
     potential = abtem.Potential(atoms, sampling=0.05, slice_thickness=2.0)
-    probe = abtem.Probe(energy=200e3, semiangle_cutoff=20)
+    probe = abtem.Probe(energy=args.energy * 1e3, semiangle_cutoff=20)
     detector = abtem.AnnularDetector(inner=70, outer=150)
     a = cell.cell[0, 0]
     scan = abtem.GridScan(start=(0, 0), end=(a, a), gpts=args.scan, endpoint=False)
-    print(f"device {args.device} | {len(atoms)} atoms | potential grid {potential.gpts} "
+    print(f"device {args.device} | {args.energy:g} keV | {len(atoms)} atoms | potential grid {potential.gpts} "
           f"| {args.scan}x{args.scan} probe positions")
 
     start = time.perf_counter()

@@ -7,7 +7,7 @@
 # Four tasks, each started by srun with one GPU of its own (--gpus-per-task=1).
 # They differ by SLURM_PROCID (0..3), which the srun line below turns into the
 # swept parameter and the output directory. The line is written for
-# examples/abtem/abtem_gpu_example.py (--cells, --out): edit it for your script.
+# examples/abtem/abtem_gpu_example.py (--energy, --out): edit it for your script.
 #
 # ONE abTEM calculation spread over the four GPUs needs dask-cuda, whose
 # cuda-bindings dependency is fragile to resolve outside the container: run that
@@ -41,17 +41,13 @@ shift
 [ -x "$VENV/bin/python" ] || { echo "no environment at $VENV: create it as described in docs/07-abtem.md" >&2; exit 1; }
 export OUT=${OUT:-${SCRATCH:?SCRATCH is not set}/abtem-sweep-$SLURM_JOB_ID}   # read by the srun line below
 
-# The environment's CuPy brings its own CUDA 12 libraries (the cupy-cuda12x[ctk]
-# extra). A CUDA toolkit from a loaded module on PATH can shadow them, and then
-# cuFFT/cuSOLVER report no version or NVRTC fails; so keep it out of the way.
-module unload cudatoolkit 2>/dev/null || true
-unset CUDA_PATH CUDA_HOME
-
 export OMP_NUM_THREADS=16 OPENBLAS_NUM_THREADS=16
 export PYTHONUNBUFFERED=1
 
 echo "python=$VENV/bin/python  script=$SCRIPT  out=$OUT"
-# The sweep: task i runs the script with --cells i+1 and its own output directory.
+# The sweep: task i runs the script at the i-th electron energy (keV; the work per
+# task is the same) and writes to its own output directory.
 time srun --ntasks=4 --cpus-per-task=32 --gpus-per-task=1 --cpu-bind=cores \
-    bash -c 'point=$((SLURM_PROCID + 1)); exec "$@" --cells "$point" --out "$OUT/cells$point"' \
+    bash -c 'energies=(60 100 150 200); energy=${energies[SLURM_PROCID]}
+             exec "$@" --energy "$energy" --out "$OUT/energy${energy}keV"' \
     _ "$VENV/bin/python" "$SCRIPT" "$@"
