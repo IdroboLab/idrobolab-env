@@ -48,8 +48,9 @@ def main():
     print("abtem", abtem.__version__, "| cupy", cupy.__version__)
     if args.device == "gpu":
         runtime = cupy.cuda.runtime
+        properties = runtime.getDeviceProperties(0)
         print("CUDA runtime", runtime.runtimeGetVersion(), "| driver", runtime.driverGetVersion(),
-              "|", runtime.getDeviceProperties(0)["name"].decode())
+              "|", properties["name"].decode(), "| PCI bus", properties["pciBusID"])
     abtem.config.set({"device": args.device})
 
     cell = bulk("Si", cubic=True)
