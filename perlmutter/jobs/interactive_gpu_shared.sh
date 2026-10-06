@@ -149,6 +149,6 @@ fi
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=shared_interactive \
     --nodes=1 --ntasks=1 --cpus-per-task="$CPUS" $GPU_FLAGS --time="$TIME" \
     srun $SRUN_FLAGS podman-hpc run --rm $GROUP_FLAGS $TTY_FLAGS --gpu \
-        $MOUNTS --workdir "$WORKDIR" -e HOME="$HOME" \
+        $MOUNTS --workdir "$WORKDIR" -e HOME="$HOME" -e SCRATCH="${SCRATCH:-}" \
         "$IMAGE" "${CMD[@]}"
 
