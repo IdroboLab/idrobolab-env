@@ -57,7 +57,7 @@ EOF
 
 Don't use `danger-full-access` or a flag that skips approvals.
 
-## 4. Instructions: NERSC's baseline, the group's, the project's
+## 4. Instructions: NERSC's baseline and the project's
 
 Codex reads instruction files called `AGENTS.md` and puts them all into its context:
 
