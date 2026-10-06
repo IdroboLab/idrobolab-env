@@ -40,8 +40,9 @@ authenticated". The first time, confirm GitHub's host key with `yes`.
 
 ## 3. GitHub from Perlmutter
 
-There are two ways. Start with A. Switch to B if you work from ThinLinc or run git
-inside jobs.
+There are two ways. Start with A; switch to B if you work from ThinLinc. Under both,
+git that needs your key runs on a login node: compute nodes have neither your key nor
+your agent.
 
 **A. Forward your laptop's key (no key stored at NERSC).** The `ForwardAgent yes` line
 in your SSH config ([page 1](01-login.md#4-ssh-config)) lets git on Perlmutter use the
@@ -65,8 +66,7 @@ acceptable at NERSC, but don't forward your agent to machines you don't trust.
 
 **B. A separate key on Perlmutter.** Run the same `ssh-keygen` command on a Perlmutter
 login node, **with a passphrase**, and register that public key on GitHub too, with a
-title such as "perlmutter". Compute nodes can't reach GitHub with it either: git that
-needs your key runs on login nodes.
+title such as "perlmutter".
 
 **Tokens instead of keys.** GitHub also accepts HTTPS with a personal access token
 (**Settings → Developer settings → Personal access tokens**). We use SSH; a token is a
@@ -116,7 +116,8 @@ git -C ~/idrobolab-env push -u origin fix-jupyter-docs
 ```
 
 GitHub prints a link to open a **pull request**. Someone reviews it and merges it.
-Afterwards, go back to `main` with `git switch main && git pull`.
+Afterwards, go back to `main`:
+`git -C ~/idrobolab-env switch main && git -C ~/idrobolab-env pull`.
 
 Your own projects (analysis code, job scripts) belong in git too. Create them under
 your GitHub account or in IdroboLab (ask first). Keep data out of git: large files,

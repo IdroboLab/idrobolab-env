@@ -16,7 +16,7 @@ does, so don't let it do anything you wouldn't do yourself.
 |---|---|---|
 | Account | Claude Pro, Max, Team, Enterprise or Console (not the free plan) | ChatGPT account (the free plan includes limited use) |
 | Install | `curl -fsSL https://claude.ai/install.sh \| bash` | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` |
-| Log in | run `claude`, press `c` to copy the login URL, open it in your laptop's browser, paste the code back | `codex login` with the device-code flow; or connect with `ssh -L 1455:localhost:1455 perlmutter` and open the printed URL locally |
+| Log in | run `claude`, press `c` to copy the login URL, open it in your laptop's browser, paste the code back | `codex login --device-auth`; or connect with `ssh -L 1455:localhost:1455 perlmutter` and open the printed URL locally |
 | Start | `claude` in your project folder | `codex` in your project folder |
 
 Both also have editor and desktop-app versions that connect to Perlmutter over SSH.

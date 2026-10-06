@@ -47,7 +47,7 @@ Stage the context on the dev machine, then build either on Perlmutter or on
 any docker/podman host:
 
 ```bash
-cd shared/containers/x86_64-cuda/otherimage
+cd shared/containers/x86_64-cuda/otherimage   # in the hpcenvs repo
 ./prepare_build_context.sh        # regenerates pins + stages ./src
 
 # Option A — on a Perlmutter login node (rsync this directory over first):

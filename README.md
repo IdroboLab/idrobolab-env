@@ -26,7 +26,7 @@ git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
 
 ## Contributing
 
-`main` is protected: make a branch, push it, open a pull request. Fixes to the
+Changes go through pull requests: make a branch, push it, open a pull request. Fixes to the
 docs are as welcome as fixes to the scripts.
 
 ## History

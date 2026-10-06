@@ -8,13 +8,11 @@ hpcenvs repo in text, never a relative link.
 
 ## Git workflow
 
-- Several people work on this repo. `main` is protected: change it through a branch and a
-  pull request, never a direct push.
+- Several people work on this repo: change `main` through a branch and a pull request,
+  never a direct push.
 - Each member works from their own clone (`~/idrobolab-env`, or wherever they cloned it);
   nothing reads a shared checkout. Scripts locate their siblings relative to their own
   file, and docs give paths as `~/idrobolab-env/...`.
-- Commit only your own paths (`git commit -m ... -- <paths>`); a clone on a login node may
-  hold someone's uncommitted work.
 - `git config pull.rebase true` in each clone; keep history linear.
 
 ## perlmutter/env.sh and setup-user.sh

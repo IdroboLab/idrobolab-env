@@ -22,8 +22,11 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/mast
   `ls ~/.oh-my-bash/themes`), then run `source ~/.bashrc`. Themes such as `agnoster`
   need a Powerline font in your *local* terminal.
 - The new `~/.bashrc` begins with a `case $- in` block that stops non-interactive
-  shells (scripts, `scp`, `rsync`) from reading the rest. Settings a script needs must
-  go above that block.
+  shells (scripts, `scp`, `rsync`, `ssh perlmutter <command>`, coding agents) from
+  reading the rest, including the group block that section 2 appends at the end. If you
+  need the group environment there, move that block (from `# >>> hpcenvs` to
+  `# <<< hpcenvs`) above the `case` line. Batch jobs are unaffected: they inherit the
+  environment of the shell you submit from.
 - If the prompt becomes slow inside large git repositories, switch to a theme that
   doesn't show git status.
 - To undo: run `uninstall_oh_my_bash`, which restores the backup.
@@ -34,7 +37,6 @@ Run the group setup script once:
 
 ```bash
 ~/idrobolab-env/perlmutter/helpers/setup-user.sh
-source ~/.bashrc
 ```
 
 The script:
@@ -47,7 +49,7 @@ The script:
    that you can read the shared container store, and that `$SCRATCH` exists.
 
 On the first run, a warning that `PODMANHPC_ADDITIONAL_STORES` is unset is expected:
-the new settings only apply to shells started afterwards. After `source ~/.bashrc`,
+the new settings only apply to shells started afterwards. Log out, log in again, and
 confirm with `--check`, which only reports and changes nothing:
 
 ```bash
@@ -55,6 +57,14 @@ confirm with `--check`, which only reports and changes nothing:
 ```
 
 Re-run the script any time; it is safe to repeat. `--undo` removes the block again.
+
+**If you used the old shared checkout** (`/global/cfs/cdirs/<project>/env`), the script
+reports that your `~/.bashrc` block points "somewhere else". Switch it to your clone:
+
+```bash
+~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo
+~/idrobolab-env/perlmutter/helpers/setup-user.sh
+```
 
 After the setup, every shell has:
 
@@ -83,12 +93,3 @@ git -C ~/idrobolab-env pull
 
 To change something for everyone, use a branch and a pull request
 ([page 2](02-github.md#6-everyday-git)).
-
-**If you used the old shared checkout** (`/global/cfs/cdirs/<project>/env`): the setup
-script reports that your `~/.bashrc` block points "somewhere else". Switch to your
-clone:
-
-```bash
-~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo
-~/idrobolab-env/perlmutter/helpers/setup-user.sh
-```
