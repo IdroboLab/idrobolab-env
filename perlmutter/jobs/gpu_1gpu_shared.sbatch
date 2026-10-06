@@ -144,5 +144,4 @@ time srun --cpu-bind=cores \
         $THREAD_ENV \
         "$IMAGE" python "$SCRIPT" "$@"
 
-# For 2 GPUs in the same QOS: --gpus=2 --cpus-per-task=64 (no --mem -- see
-# the header). Still one process; let the code see both devices.
+# For 2 GPUs in the same QOS, use gpu_2gpu_shared.sbatch.
