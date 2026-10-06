@@ -17,7 +17,7 @@ set -euo pipefail
 
 REPO=https://github.com/NERSC/coding-agents
 FILES="LICENSE claude/.claude/CLAUDE.md codex/.codex/AGENTS.md"
-DEST=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/nersc
+DEST=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/nersc
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
