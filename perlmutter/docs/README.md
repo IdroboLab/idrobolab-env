@@ -11,15 +11,15 @@ instructions.
 | # | Page | What you set up or learn |
 |---|---|---|
 | 1 | [Account and login](01-login.md) | NERSC account, MFA, `sshproxy` (Windows / macOS / Linux), SSH config |
-| 2 | [GitHub and git](02-github.md) | GitHub account, SSH key, your clone of `idrobolab-env`, branches and pull requests |
-| 3 | [Shell and group setup](03-shell-setup.md) | oh-my-bash, the group environment |
-| 4 | [Storage and data transfer](04-storage-and-transfer.md) | which file system for what, quotas, rsync, Globus, HPSS |
-| 5 | [Jobs and queues](05-jobs.md) | accounts and cost, `salloc`, `sbatch`, job templates, watching jobs |
-| 6 | [Python with uv](06-python-uv.md) | scripts, projects and environments |
-| 7 | [The idrobolab container](07-containers.md) | the ready-made GPU software stack |
-| 8 | [Jupyter](08-jupyter.md) | notebooks on jupyter.nersc.gov or on your own node |
-| 9 | [ThinLinc and Nion Swift](09-thinlinc-nionswift.md) | remote desktop, Nion Swift on a compute node |
-| 10 | [Coding agents](10-coding-agents.md) | Claude Code and Codex on Perlmutter |
+| → | [GitHub and git](../../docs/github.md) | GitHub account, SSH key, your clone of `idrobolab-env` (repo-wide page) |
+| 2 | [Shell and group setup](02-shell-setup.md) | oh-my-bash, the group environment |
+| 3 | [Storage and data transfer](03-storage-and-transfer.md) | which file system for what, quotas, rsync, Globus, HPSS |
+| 4 | [Jobs and queues](04-jobs.md) | accounts and cost, `salloc`, `sbatch`, job templates, watching jobs |
+| 5 | [Python with uv](05-python-uv.md) | scripts, projects and environments |
+| 6 | [The idrobolab container](06-containers.md) | the ready-made GPU software stack |
+| 7 | [Jupyter](07-jupyter.md) | notebooks on jupyter.nersc.gov or on your own node |
+| 8 | [ThinLinc and Nion Swift](08-thinlinc-nionswift.md) | remote desktop, Nion Swift on a compute node |
+| 9 | [Coding agents](09-coding-agents.md) | Claude Code and Codex on Perlmutter |
 
 How we work together (data layout, compute etiquette, provenance) is collected in the
 **[group conventions](conventions.md)**, a first draft.

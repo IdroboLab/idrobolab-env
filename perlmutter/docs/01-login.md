@@ -83,14 +83,14 @@ Host nersc-dtn dtn.nersc.gov
   other key you have, and NERSC may disconnect you with "Too many authentication
   failures".
 - `ForwardAgent yes` lets git on Perlmutter use the GitHub key on your laptop
-  ([page 2](02-github.md#3-github-from-perlmutter)).
+  ([the GitHub page](../../docs/github.md#3-github-from-perlmutter)).
 - `ServerAliveInterval` keeps an idle connection from being dropped.
 - Listing the full hostname on the `Host` line means `ssh perlmutter.nersc.gov`
   gets the same settings as `ssh perlmutter`.
 - X11 forwarding (`ForwardX11`) is left out on purpose: use ThinLinc for graphical
-  programs ([page 9](09-thinlinc-nionswift.md)). For an occasional X window, use
+  programs ([page 8](08-thinlinc-nionswift.md)). For an occasional X window, use
   `ssh -Y perlmutter`. On Windows this also needs a local X server.
-- `nersc-dtn` is for file transfers ([page 4](04-storage-and-transfer.md)).
+- `nersc-dtn` is for file transfers ([page 3](03-storage-and-transfer.md)).
 
 **Windows: Notepad silently saves `config` as `config.txt`**, and OpenSSH then ignores
 it. The safest way is to open the exact path from PowerShell:
@@ -113,7 +113,7 @@ On the first connection, ssh shows the server's key fingerprint. Compare it with
 fingerprints NERSC publishes at <https://docs.nersc.gov/connect/> before you type
 `yes`. You land on a **login node**: a machine shared with every other user. Use it
 to edit, submit and run short tests, and do the real work on compute nodes
-([page 5](05-jobs.md)).
+([page 4](04-jobs.md)).
 
 ## 6. VS Code (optional)
 

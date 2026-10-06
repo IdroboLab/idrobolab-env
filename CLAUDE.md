@@ -9,7 +9,10 @@ hpcenvs repo in text, never a relative link.
 ## Git workflow
 
 - Several people work on this repo: change `main` through a branch and a pull request,
-  never a direct push.
+  never a direct push; admins merge. The member-facing workflow is `docs/CONTRIBUTING.md`.
+- Repo-wide pages live in `docs/`; the Perlmutter introduction in `perlmutter/docs/` is
+  numbered in reading order, so renaming or adding a page means updating every
+  `[page N]` link and the table in `perlmutter/docs/README.md`.
 - Each member works from their own clone (`~/idrobolab-env`, or wherever they cloned it);
   nothing reads a shared checkout. Scripts locate their siblings relative to their own
   file, and docs give paths as `~/idrobolab-env/...`.

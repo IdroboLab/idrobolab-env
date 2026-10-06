@@ -2,13 +2,13 @@
 
 How we work on Perlmutter as a group. This is a **first draft**, collected from what we
 already do; it will change. Propose changes with a pull request
-([page 2](02-github.md#6-everyday-git)), and raise the open points below at the next
+([contributing](../../docs/CONTRIBUTING.md)), and raise the open points below at the next
 group meeting.
 
 ## Settings and code
 
 - Everyone works in their **own clone** of `idrobolab-env` at `~/idrobolab-env`, with
-  the group setup sourced from it ([page 3](03-shell-setup.md)). Changes go through a
+  the group setup sourced from it ([page 2](02-shell-setup.md)). Changes go through a
   branch and a pull request, not straight to `main`.
 - Shared software is installed by the maintainer: the container image, the shared
   Python interpreters and `uv`, the Nion Swift install, the shared Jupyter kernels.
@@ -40,19 +40,19 @@ group meeting.
 - End interactive sessions, Jupyter servers and Nion Swift when you're done: idle time
   is charged.
 - Nothing heavy on the login nodes, for you and for any coding agent you run
-  ([page 10](10-coding-agents.md)).
+  ([page 9](09-coding-agents.md)).
 
 ## Software and provenance
 
 - GPU and simulation work runs in the **idrobolab container**
-  ([page 7](07-containers.md)). Your own analysis environments use **uv**
-  ([page 6](06-python-uv.md)).
+  ([page 6](06-containers.md)). Your own analysis environments use **uv**
+  ([page 5](05-python-uv.md)).
 - **Record what produced a result:** keep the job script, its output file and the
   image digest (`podman-hpc images --digests | grep idrobolab`) with the results. When
   you use your own checkout of a package (e.g. abTEM), record its commit too
   (`git -C <checkout> rev-parse HEAD`).
 - Python scripts carry their dependencies in a PEP 723 header and run with
-  `uv run --script` ([page 6](06-python-uv.md#three-ways-to-use-it)).
+  `uv run --script` ([page 5](05-python-uv.md#three-ways-to-use-it)).
 - Scripts that write atomic structures (extxyz, traj, POSCAR, …) also write a `.cif`,
   so the structure can be checked in VESTA.
 

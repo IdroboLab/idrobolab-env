@@ -8,6 +8,7 @@ Swift setup, and the introduction for new group members.
 
 | Path | What |
 |---|---|
+| [docs/](docs/) | Repo-wide pages: [GitHub and git](docs/github.md), [contributing](docs/CONTRIBUTING.md) |
 | [perlmutter/](perlmutter/) | Everything for Perlmutter: `env.sh`, helpers, job templates, reference notes, the step-by-step docs |
 | [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/<username>/idrobolab`) |
 | [shared/verification/multigpu_abtem/](shared/verification/multigpu_abtem/) | Payloads for the abTEM multi-GPU verification launched from `perlmutter/verification/` |
@@ -22,12 +23,13 @@ git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
 ```
 
 `git -C ~/idrobolab-env pull` brings in updates. GitHub access and SSH keys:
-[perlmutter/docs/02-github.md](perlmutter/docs/02-github.md).
+[docs/github.md](docs/github.md).
 
 ## Contributing
 
-Changes go through pull requests: make a branch, push it, open a pull request. Fixes to the
-docs are as welcome as fixes to the scripts.
+Every change reaches `main` through a pull request, which an admin reviews and merges.
+Fixes to the docs are as welcome as fixes to the scripts: see
+[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## History
 

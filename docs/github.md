@@ -1,9 +1,11 @@
-# 2. GitHub and git
+# GitHub and git
 
 The group keeps its settings, job templates and these pages in the git repository
 **[IdroboLab/idrobolab-env](https://github.com/IdroboLab/idrobolab-env)** on GitHub.
 Each member works in their own copy (a *clone*) and proposes changes through pull
-requests. This page sets up GitHub access from your laptop and from Perlmutter.
+requests ([contributing](CONTRIBUTING.md)). This page sets up GitHub access from your
+laptop and from Perlmutter; do it after logging in to Perlmutter the first time
+([Perlmutter page 1](../perlmutter/docs/01-login.md)).
 
 ## 1. Account and the IdroboLab organisation
 
@@ -45,7 +47,7 @@ git that needs your key runs on a login node: compute nodes have neither your ke
 your agent.
 
 **A. Forward your laptop's key (no key stored at NERSC).** The `ForwardAgent yes` line
-in your SSH config ([page 1](01-login.md#4-ssh-config)) lets git on Perlmutter use the
+in your SSH config ([Perlmutter page 1](../perlmutter/docs/01-login.md#4-ssh-config)) lets git on Perlmutter use the
 laptop's key while you are connected. Load the key into your laptop's agent once per
 login session:
 
@@ -85,7 +87,7 @@ git config --global init.defaultBranch main
 
 ## 5. Your copy of idrobolab-env
 
-On Perlmutter (the next page uses it):
+On Perlmutter ([shell setup](../perlmutter/docs/02-shell-setup.md) uses it next):
 
 ```bash
 git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
@@ -105,22 +107,11 @@ git push                           # publish your commits
 git log --oneline -10              # recent history
 ```
 
-**Changing idrobolab-env: branch and pull request.** Don't push straight to `main`;
-propose the change instead:
-
-```bash
-git -C ~/idrobolab-env switch -c fix-jupyter-docs     # a branch for your change
-# edit, then:
-git -C ~/idrobolab-env commit -am "jupyter: explain the GPU kernel"
-git -C ~/idrobolab-env push -u origin fix-jupyter-docs
-```
-
-GitHub prints a link to open a **pull request**. Someone reviews it and merges it.
-Afterwards, go back to `main`:
-`git -C ~/idrobolab-env switch main && git -C ~/idrobolab-env pull`.
+To change `idrobolab-env` itself, open a pull request: see
+[contributing](CONTRIBUTING.md).
 
 Your own projects (analysis code, job scripts) belong in git too. Create them under
 your GitHub account or in IdroboLab (ask first). Keep data out of git: large files,
 simulation output and raw microscope data stay on CFS
-([page 4](04-storage-and-transfer.md)), and a `.gitignore` file keeps them from being
+([Perlmutter page 3](../perlmutter/docs/03-storage-and-transfer.md)), and a `.gitignore` file keeps them from being
 committed by accident.

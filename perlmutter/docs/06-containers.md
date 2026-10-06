@@ -1,4 +1,4 @@
-# 7. The idrobolab container
+# 6. The idrobolab container
 
 A container is a complete, frozen software installation that runs the same way for
 everyone. The group image **idrobolab** holds the whole microscopy and simulation
@@ -13,7 +13,7 @@ stack, so for most GPU work there is nothing to install.
 | Analysis | nionswift, jupyterlab |
 
 Perlmutter runs containers with **podman-hpc** (Docker-compatible). The image is
-already in the group's shared image store; `env.sh` ([page 3](03-shell-setup.md))
+already in the group's shared image store; `env.sh` ([page 2](02-shell-setup.md))
 tells podman-hpc where to find it. Check on a login node:
 
 ```bash
@@ -25,7 +25,7 @@ shared copy with `helpers/update-image.sh`.
 
 ## Batch job
 
-The job templates ([page 5](05-jobs.md#batch-jobs-sbatch)) run `python <your script>`
+The job templates ([page 4](04-jobs.md#batch-jobs-sbatch)) run `python <your script>`
 inside the container:
 
 ```bash

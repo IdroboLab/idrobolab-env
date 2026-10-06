@@ -1,7 +1,7 @@
-# 3. Shell and group setup
+# 2. Shell and group setup
 
 One-time setup on a Perlmutter login node, after cloning `idrobolab-env`
-([page 2](02-github.md#5-your-copy-of-idrobolab-env)): a nicer prompt (optional), then
+([the GitHub page](../../docs/github.md#5-your-copy-of-idrobolab-env)): a nicer prompt (optional), then
 the group environment. **Do them in this order.** The oh-my-bash installer replaces `~/.bashrc`,
 which would remove the line the group setup adds. If you did it the other way round,
 just re-run the group setup.
@@ -44,7 +44,7 @@ The script:
 1. Adds a short, marked block to `~/.bashrc` that sources the group's
    [`env.sh`](../env.sh).
 2. Links the group's shared Jupyter kernels into your account
-   ([page 8](08-jupyter.md)).
+   ([page 7](07-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
    that you can read the shared container store, and that `$SCRATCH` exists.
 
@@ -70,9 +70,9 @@ After the setup, every shell has:
 
 | What | Use |
 |---|---|
-| `uv` on `PATH` | Python environments ([page 6](06-python-uv.md)) |
+| `uv` on `PATH` | Python environments ([page 5](05-python-uv.md)) |
 | `UV_CACHE_DIR`, `UV_PYTHON_INSTALL_DIR` | uv's cache on `$SCRATCH`, Python interpreters in the group software dir |
-| `PODMANHPC_ADDITIONAL_STORES`, `$IDROBOLAB_IMAGE` | the group container store and image ([page 7](07-containers.md)) |
+| `PODMANHPC_ADDITIONAL_STORES`, `$IDROBOLAB_IMAGE` | the group container store and image ([page 6](06-containers.md)) |
 | `cds` / `cdp` | `cd` to your `$SCRATCH` / the group project dir `/global/cfs/cdirs/<project>/projects` |
 | `q` / `sr` / `sp` | your jobs: all / running / pending |
 
@@ -83,7 +83,7 @@ about one, move its contents into `~/.bashrc`.
 ## 3. Keeping your clone current
 
 Everything in these pages (job templates, helper scripts, `env.sh`, the container
-recipe) lives in your clone `~/idrobolab-env` ([page 2](02-github.md#5-your-copy-of-idrobolab-env)),
+recipe) lives in your clone `~/idrobolab-env` ([the GitHub page](../../docs/github.md#5-your-copy-of-idrobolab-env)),
 and your shell reads `env.sh` from there. Update it now and then, and when someone
 announces a change:
 
@@ -92,4 +92,4 @@ git -C ~/idrobolab-env pull
 ```
 
 To change something for everyone, use a branch and a pull request
-([page 2](02-github.md#6-everyday-git)).
+([contributing](../../docs/CONTRIBUTING.md)).
