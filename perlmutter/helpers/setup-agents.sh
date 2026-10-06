@@ -120,17 +120,30 @@ replace_region() {
         { print }' "$1"
 }
 
-# $1 target, $2 file with its new content. An existing target that changes is
-# saved first; the rewrite goes through the target so a symlink stays one.
+# $1 target, $2 file with its new content, $3 $4 the markers. An existing target
+# is saved first (never over an earlier backup) unless only the managed region
+# changes; the rewrite goes through the target so a symlink stays one.
 write_file() {
-    local backup
+    local n=0 base
+    BACKUP=
     if [ -f "$1" ]; then
         cmp -s "$2" "$1" && return 0
-        backup="$1.bak-$(date -u +%Y%m%dT%H%M%SZ)"
-        cp -p "$1" "$backup"
-        act "saved the previous file as $backup"
+        if ! cmp -s <(replace_region "$1" "$3" "$4" "") <(replace_region "$2" "$3" "$4" ""); then
+            base="$1.bak-$(date -u +%Y%m%dT%H%M%SZ)"
+            BACKUP=$base
+            while [ -e "$BACKUP" ]; do n=$((n + 1)); BACKUP=$base.$n; done
+            cp -p "$1" "$BACKUP"
+            act "saved the previous file as $BACKUP"
+        fi
     fi
     cat "$2" > "$1"
+}
+
+# A pasted copy of NERSC's file next to our managed text loads twice.
+pasted_warn() {
+    warn "the file also holds a pasted copy of NERSC's text, which now loads twice."
+    more "Delete it by hand: from the line '# NERSC Agent Guidance' to the end of the copy;"
+    more "keep what you wrote."
 }
 
 # --- Claude Code -------------------------------------------------------------
@@ -145,7 +158,8 @@ claude_block() {
 claude() {
     echo "Claude Code: $CLAUDE_FILE"
     markers_ok "$CLAUDE_FILE" "$CL_BEGIN" "$CL_END" || return 0
-    local want have="" state
+    local want have="" state AGENTS_REAL
+    AGENTS_REAL=$(readlink -f -- "$AGENTS")
     claude_block > "$TMPD/block"
     want=$(cat "$TMPD/block")
     [ -f "$CLAUDE_FILE" ] && have=$(awk -v b="$CL_BEGIN" -v e="$CL_END" \
@@ -159,7 +173,7 @@ claude() {
             more "'$CL_BEGIN' to '$CL_END' by hand"
         else
             replace_region "$CLAUDE_FILE" "$CL_BEGIN" "$CL_END" "" > "$TMPD/claude"
-            write_file "$CLAUDE_FILE" "$TMPD/claude"
+            write_file "$CLAUDE_FILE" "$TMPD/claude" "$CL_BEGIN" "$CL_END"
             act "removed the block (everything else is kept)"
         fi
         return
@@ -173,8 +187,9 @@ claude() {
     else
         state=stale
         while IFS= read -r line; do
-            case $line in "@$(tilde "$AGENTS")/"*) ;; @*) state=elsewhere ;; esac
-        done <<< "$have"
+            case $line in @*) case $(readlink -f -- "${line#@}") in
+                "$AGENTS_REAL"/*) ;; *) state=elsewhere ;; esac ;; esac
+        done <<< "${have//@\~/@$HOME}"
     fi
 
     case $state in
@@ -195,15 +210,13 @@ claude() {
                 else
                     replace_region "$CLAUDE_FILE" "$CL_BEGIN" "$CL_END" "$TMPD/block" > "$TMPD/claude"
                 fi
-                write_file "$CLAUDE_FILE" "$TMPD/claude"
+                write_file "$CLAUDE_FILE" "$TMPD/claude" "$CL_BEGIN" "$CL_END"
                 act "block written to $CLAUDE_FILE; restart Claude Code to pick it up"
             fi ;;
     esac
 
     if [ -f "$CLAUDE_FILE" ] && grep -qx '# NERSC Agent Guidance' "$CLAUDE_FILE"; then
-        warn "the file also holds a pasted copy of NERSC's text, which now loads twice."
-        more "Delete it by hand: from the line '# NERSC Agent Guidance' down to the line"
-        more "above '$HEADING'; keep what you wrote below that heading."
+        pasted_warn
     fi
 }
 
@@ -214,7 +227,7 @@ claude() {
 # heading unless that is a pasted copy of NERSC's file). Without markers or
 # heading, the whole file. Blank lines at the edges are dropped.
 user_text() {
-    awk -v b="$CX_BEGIN" -v e="$CX_END" -v h="$HEADING" -v n="# NERSC Agent Guidance" '
+    awk -v b="$CX_BEGIN" -v e="$CX_END" -v h="$HEADING" -v n="# NERSC Agent Guidance" -v drop="$TMPD/dropped" '
         function emit(from, to,    i, j) {
             while (from <= to && l[from] == "") from++
             while (to >= from && l[to] == "") to--
@@ -233,6 +246,7 @@ user_text() {
             } else if (hi) {
                 for (i = 1; i < hi && l[i] == ""; i++) ;
                 if (l[i] != n) emit(1, hi - 1)
+                else for (j = 1; j < hi; j++) print l[j] > drop
             } else {
                 emit(1, NR)
             }
@@ -267,7 +281,7 @@ codex() {
             more "'$CX_BEGIN' to '$CX_END' by hand"
         else
             replace_region "$CODEX_FILE" "$CX_BEGIN" "$CX_END" "" > "$TMPD/codex"
-            write_file "$CODEX_FILE" "$TMPD/codex"
+            write_file "$CODEX_FILE" "$TMPD/codex" "$CX_BEGIN" "$CX_END"
             act "removed the managed part (everything else is kept)"
         fi
         return
@@ -287,10 +301,14 @@ codex() {
             warn "not set up (run without --check)"
         fi
     else
-        write_file "$CODEX_FILE" "$TMPD/codex"
+        write_file "$CODEX_FILE" "$TMPD/codex" "$CX_BEGIN" "$CX_END"
         act "managed part written to $CODEX_FILE; restart Codex to pick it up"
+        if [ -s "$TMPD/dropped" ] && grep -vxFf "$NERSC_CODEX" "$TMPD/dropped" | grep -q .; then
+            more "note: lines not in NERSC's current text are kept only in $BACKUP"
+        fi
     fi
 
+    grep -qx '# NERSC Agent Guidance' "$TMPD/user" && pasted_warn
     size=$(wc -c < "$TMPD/codex")
     if [ "$size" -gt "$MAX_BYTES" ]; then
         warn "the file would be $size bytes; Codex reads at most $MAX_BYTES bytes of AGENTS.md text in total"
