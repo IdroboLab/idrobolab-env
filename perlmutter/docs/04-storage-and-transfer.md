@@ -1,4 +1,4 @@
-# 3. Where data goes, and moving it
+# 4. Where data goes, and moving it
 
 ## The file systems
 

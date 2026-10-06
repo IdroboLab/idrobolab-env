@@ -24,7 +24,7 @@ Register a kernel once, on a login node. It then appears in the JupyterHub
 launcher.
 
 ```bash
-cd $CFS/$NERSC_PROJECT/env/perlmutter/helpers
+cd ~/idrobolab-env/perlmutter/helpers
 
 # a shared uv/virtualenv venv
 ./install-jupyter-kernel.sh --venv /global/common/software/<project>/venvs/analysis \
@@ -56,7 +56,7 @@ Kernels are written to `~/.local/share/jupyter/kernels/<name>/kernel.json`.
 ### Moving a personal kernel to the shared tree
 
 ```bash
-cd $CFS/$NERSC_PROJECT/env/perlmutter/helpers
+cd ~/idrobolab-env/perlmutter/helpers
 . ../env.sh                                   # container kernels need the image store
 
 ./install-jupyter-kernel.sh --remove idrobolab                       # 1. drop the personal copy
@@ -78,7 +78,7 @@ that has since been removed. `--link` prunes those too.
 The maintainer installs into the project tree on `/global/common`, once:
 
 ```bash
-. $CFS/$NERSC_PROJECT/env/perlmutter/env.sh
+. ~/idrobolab-env/perlmutter/env.sh
 ./install-jupyter-kernel.sh --image idrobolab --name idrobolab --gpu --shared
 ```
 
@@ -89,7 +89,7 @@ reason: a file left at the default `0600` is useless to everyone else.
 Jupyter does not search that location, so each user runs this once:
 
 ```bash
-$CFS/$NERSC_PROJECT/env/perlmutter/helpers/install-jupyter-kernel.sh --link
+~/idrobolab-env/perlmutter/helpers/install-jupyter-kernel.sh --link
 ```
 
 `~/.local/share/jupyter/kernels` is always searched, so a symlink there needs
@@ -199,8 +199,8 @@ shared image store is baked in — the hub launches kernels without a login
 shell, so `~/.bashrc` never runs:
 
 ```bash
-. $CFS/$NERSC_PROJECT/env/perlmutter/env.sh
-$CFS/$NERSC_PROJECT/env/perlmutter/helpers/install-jupyter-kernel.sh \
+. ~/idrobolab-env/perlmutter/env.sh
+~/idrobolab-env/perlmutter/helpers/install-jupyter-kernel.sh \
     --image idrobolab --name idrobolab --gpu --force
 ```
  <https://jupyter.nersc.gov> → start a Perlmutter
@@ -231,7 +231,7 @@ the node the hub gave you can see the image —
 
 ```bash
 cd <your work dir>                       # the notebook starts here
-$CFS/$NERSC_PROJECT/env/perlmutter/jobs/interactive_jupyter.sh
+~/idrobolab-env/perlmutter/jobs/interactive_jupyter.sh
 ```
 
 It allocates a node, starts JupyterLab in the container, and prints the tunnel

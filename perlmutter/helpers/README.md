@@ -6,7 +6,7 @@ in [`../verification/`](../verification/).
 
 | Script | Purpose | How often |
 |---|---|---|
-| [setup-user.sh](setup-user.sh) | Per-user setup: sources `env.sh` from your shell startup file, links the shared Jupyter kernels, and checks group membership / image-store readability / `$SCRATCH`. `--check` reports only; `--publish` (maintainer) puts it on the shared PATH as `hpcenvs-setup` | Once per user; re-run any time |
+| [setup-user.sh](setup-user.sh) | Per-user setup: sources `env.sh` from your shell startup file, links the shared Jupyter kernels, and checks group membership / image-store readability / `$SCRATCH`. `--check` reports only, `--undo` removes the block; run it from your own clone | Once per user; re-run any time |
 | [update-image.sh](update-image.sh) | Pull/refresh an image into the shared CFS store and fix its permissions. Login nodes only — compute nodes cannot write the store | Whenever a new image is published |
 | [fix-store-perms.sh](fix-store-perms.sh) | Make the shared CFS store group-readable and verify it; `--check` reports only, exit 1 if broken (cron-safe) | Called by `update-image.sh` after every pull; by hand after a direct `podman-hpc pull --squash-dir` |
 | [install-uv.sh](install-uv.sh) | Install or update `uv` in the shared project bin dir with group-correct permissions | Once, then to update uv — **instead of `uv self update`**, which cuts the rest of the project off |

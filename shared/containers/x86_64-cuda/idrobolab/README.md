@@ -6,7 +6,7 @@ analysis), ML interatomic potentials (**fairchem**, **orb-models**), phonons
 (**phonopy**, **hiphive**), **pymatgen**, **dask**, **jupyterlab** — on CUDA
 12.8 / Python 3.12 / x86_64.
 
-Sibling of [`../otherimage/`](../otherimage/): it reuses the **identical
+Sibling of `otherimage` (in the hpcenvs repo, `shared/containers/x86_64-cuda/otherimage/`): it reuses the **identical
 compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdwxc + GPAW) and
 swaps the Python stack. Builds and distributes the same way (one image for
 Delta via Apptainer and Perlmutter via podman-hpc).
@@ -43,7 +43,7 @@ loudly, not as a silent fall back to one GPU.
 the `to_zarr` regression. `requirements-idrobolab.txt` therefore also carries
 abTEM's exclusion set so the resolve lands correctly the first time. The full
 analysis, including the Plan B downgrade, is in
-[`delta/verification/multigpu_abtem/README.md`](../../../../delta/verification/multigpu_abtem/README.md).
+the hpcenvs repo's `delta/verification/multigpu_abtem/README.md`.
 The Dockerfile block lists which package supplies each skipped dependency; the
 build fails loudly if the install moves `torch` off the fairchem 2.8 ceiling.
 
@@ -121,7 +121,7 @@ Common uses:
 ```bash
 apptainer exec --nv idrobolab.sif python script.py        # GPU compute
 apptainer exec --nv idrobolab.sif jupyter lab --no-browser --ip=0.0.0.0
-# GAP/DFT MPI (single node, in-container): see ../otherimage jobs for the
+# GAP/DFT MPI (single node, in-container): see that image's jobs (hpcenvs repo) for the
 # mpiexec -bootstrap fork / srun --mpi=pmi2 patterns (same MPICH).
 ```
 

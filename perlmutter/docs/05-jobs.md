@@ -1,4 +1,4 @@
-# 4. Jobs and queues
+# 5. Jobs and queues
 
 ## Login nodes vs compute nodes
 
@@ -68,13 +68,13 @@ inside the session with `srun`, e.g. `srun python script.py`. Careful: `salloc
 ## Batch jobs (`sbatch`)
 
 Ready-made templates are in
-[`/global/cfs/cdirs/<project>/env/perlmutter/jobs/`](../jobs/). Most run your script
-inside the group container ([page 6](06-containers.md)) and take the script as an
+[`~/idrobolab-env/perlmutter/jobs/`](../jobs/). Most run your script
+inside the group container ([page 7](07-containers.md)) and take the script as an
 argument:
 
 ```bash
 cd /global/cfs/cdirs/<project>/projects/<dir>        # output files land here
-sbatch /global/cfs/cdirs/<project>/env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
+sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 ```
 
 | Template | Resources |
@@ -89,7 +89,7 @@ To change the time, name or resources, copy a template into your project folder 
 edit its `#SBATCH` lines, or override them on the command line
 (`sbatch -t 08:00:00 -J myrun ...`). Details and pitfalls: [`../jobs/README.md`](../jobs/README.md).
 
-A minimal job of your own, here a uv script ([page 5](05-python-uv.md)) on part of a
+A minimal job of your own, here a uv script ([page 6](06-python-uv.md)) on part of a
 CPU node:
 
 ```bash
@@ -123,7 +123,7 @@ the request against the queue rules without submitting it.
 | Cancel one / all of mine | `scancel <jobid>` / `scancel -u $USER` |
 | Finished jobs of the last week | `sacct -X --starttime=now-7days --format=JobID,JobName%20,QOS,State,Elapsed,ExitCode` |
 | Hours left | <https://iris.nersc.gov> → project <project> |
-| Disk usage | `showquota` ([page 3](03-storage-and-transfer.md#checking-usage)) |
+| Disk usage | `showquota` ([page 4](04-storage-and-transfer.md#checking-usage)) |
 | Outages and maintenance | <https://www.nersc.gov/live-status/motd/> |
 
 Perlmutter's clock, and every time it prints, is **US Pacific time**.

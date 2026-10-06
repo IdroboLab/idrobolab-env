@@ -64,35 +64,13 @@ Notes:
 
 ## 4. One-time: Python environment (uv; do this on a Perlmutter login node)
 
-**Group members**: this directory is already available on Perlmutter in
-the shared project checkout at `/global/cfs/cdirs/<project>/env` (sparse
-checkout of `perlmutter/` + `shared/`) — use it directly, no GitHub
-access needed:
+This directory is part of the group repository `IdroboLab/idrobolab-env`;
+everyone works from their own clone at `~/idrobolab-env` (set up in
+[docs/02-github.md](docs/02-github.md)):
 
 ```bash
-ls /global/cfs/cdirs/<project>/env/perlmutter/
+git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
 ```
-
-**Maintainers** (or for a personal copy): the repo is private, so cloning
-needs collaborator access and a GitHub personal access token (fine-grained,
-"Contents: Read-only"; used as the https password — account passwords are
-rejected). Sparse checkout of `perlmutter/` only (portable sequence; the
-shorter `git clone --sparse` is broken on older gits such as the ThinLinc
-hosts' 2.25):
-
-```bash
-git clone --filter=blob:none --no-checkout https://github.com/<username>/hpcenvs.git
-cd hpcenvs
-git sparse-checkout init --cone
-git sparse-checkout set perlmutter
-git checkout main
-git config pull.rebase true    # repo convention; see top-level CLAUDE.md
-```
-
-(`--filter=blob:none` downloads file contents only as needed;
-`sparse-checkout set` restricts the working tree to the named dirs plus
-top-level files, and a later `git sparse-checkout set <dirs...>` widens
-it.)
 
 Install into `/global/common/software/<project>/` — read-optimized for software,
 mounted read-only on compute nodes (so install/update from a *login* node), and
@@ -107,7 +85,7 @@ also only changes when *you* update it, unlike venvs seeded from the NERSC
 `python` module, which NERSC replaces on upgrades.
 
 ```bash
-source /global/cfs/cdirs/<project>/env/perlmutter/env.sh   # sets UV_PYTHON_INSTALL_DIR
+source ~/idrobolab-env/perlmutter/env.sh   # sets UV_PYTHON_INSTALL_DIR
                                                        # (normally in ~/.bashrc already)
 
 # install (or update) uv into the shared project bin dir — env.sh puts
@@ -116,7 +94,7 @@ source /global/cfs/cdirs/<project>/env/perlmutter/env.sh   # sets UV_PYTHON_INST
 # with the personal group/umask mode, which locks the rest of the
 # project out (observed 2026-08: group member got "permission denied").
 # The script chgrp's + setgids everything and verifies group access.
-/global/cfs/cdirs/<project>/env/perlmutter/helpers/install-uv.sh
+~/idrobolab-env/perlmutter/helpers/install-uv.sh
 
 # python 3.13 pin: nionui 10.2.2/11.1.0 crashes on Python 3.14
 # (asyncio.get_event_loop() implicit-loop removal) — verified 2026-08.
@@ -228,11 +206,11 @@ same script detects which machine it is on:
 ```bash
 # 1. MAINTAINER, once, on a Perlmutter login node — installs the shared
 #    job script, desktop entry, and icon under /global/common:
-/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-nionswift-launcher.sh
+~/idrobolab-env/perlmutter/helpers/setup-nionswift-launcher.sh
 
 # 2. EACH group member, once, in a terminal INSIDE the ThinLinc desktop
 #    (separate home — fetch the script from Perlmutter, then run it):
-scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-nionswift-launcher.sh ~
+scp perlmutter.nersc.gov:idrobolab-env/perlmutter/helpers/setup-nionswift-launcher.sh ~
 ~/setup-nionswift-launcher.sh
 ```
 

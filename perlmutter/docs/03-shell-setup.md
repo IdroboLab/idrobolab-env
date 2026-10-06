@@ -1,7 +1,8 @@
-# 2. Shell and group setup
+# 3. Shell and group setup
 
-One-time setup on a Perlmutter login node: a nicer prompt (optional), then the group
-environment. **Do them in this order.** The oh-my-bash installer replaces `~/.bashrc`,
+One-time setup on a Perlmutter login node, after cloning `idrobolab-env`
+([page 2](02-github.md#5-your-copy-of-idrobolab-env)): a nicer prompt (optional), then
+the group environment. **Do them in this order.** The oh-my-bash installer replaces `~/.bashrc`,
 which would remove the line the group setup adds. If you did it the other way round,
 just re-run the group setup.
 
@@ -32,7 +33,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/mast
 Run the group setup script once:
 
 ```bash
-/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-user.sh
+~/idrobolab-env/perlmutter/helpers/setup-user.sh
 source ~/.bashrc
 ```
 
@@ -41,7 +42,7 @@ The script:
 1. Adds a short, marked block to `~/.bashrc` that sources the group's
    [`env.sh`](../env.sh).
 2. Links the group's shared Jupyter kernels into your account
-   ([page 7](07-jupyter.md)).
+   ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
    that you can read the shared container store, and that `$SCRATCH` exists.
 
@@ -50,7 +51,7 @@ the new settings only apply to shells started afterwards. After `source ~/.bashr
 confirm with `--check`, which only reports and changes nothing:
 
 ```bash
-/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-user.sh --check
+~/idrobolab-env/perlmutter/helpers/setup-user.sh --check
 ```
 
 Re-run the script any time; it is safe to repeat. `--undo` removes the block again.
@@ -59,9 +60,9 @@ After the setup, every shell has:
 
 | What | Use |
 |---|---|
-| `uv` on `PATH` | Python environments ([page 5](05-python-uv.md)) |
+| `uv` on `PATH` | Python environments ([page 6](06-python-uv.md)) |
 | `UV_CACHE_DIR`, `UV_PYTHON_INSTALL_DIR` | uv's cache on `$SCRATCH`, Python interpreters in the group software dir |
-| `PODMANHPC_ADDITIONAL_STORES`, `$IDROBOLAB_IMAGE` | the group container store and image ([page 6](06-containers.md)) |
+| `PODMANHPC_ADDITIONAL_STORES`, `$IDROBOLAB_IMAGE` | the group container store and image ([page 7](07-containers.md)) |
 | `cds` / `cdp` | `cd` to your `$SCRATCH` / the group project dir `/global/cfs/cdirs/<project>/projects` |
 | `q` / `sr` / `sp` | your jobs: all / running / pending |
 
@@ -69,32 +70,25 @@ The script doesn't touch anything else in `~/.bashrc`, so you can keep your own
 additions there. NERSC's old `~/.bashrc.ext` files are deprecated; if the script warns
 about one, move its contents into `~/.bashrc`.
 
-## 3. The settings repository
+## 3. Keeping your clone current
 
-Everything in these pages (job templates, helper scripts, `env.sh`, container
-recipes) lives in the git repository **hpcenvs**. The `perlmutter/` and `shared/`
-folders are checked out for the whole group at
-
-```
-/global/cfs/cdirs/<project>/env
-```
-
-That checkout is all most people need. You can read, run and copy from it, but **don't
-edit, commit or `git pull` there**: it is shared, and the maintainer updates it.
-
-**Your own clone** is only needed if you want to propose changes. The GitHub
-repository (`<username>/hpcenvs`) is private, so ask the maintainer for access first. Then, with
-GitHub access set up ([page 1, §6](01-login.md#6-github-from-perlmutter-optional)):
+Everything in these pages (job templates, helper scripts, `env.sh`, the container
+recipe) lives in your clone `~/idrobolab-env` ([page 2](02-github.md#5-your-copy-of-idrobolab-env)),
+and your shell reads `env.sh` from there. Update it now and then, and when someone
+announces a change:
 
 ```bash
-git clone --filter=blob:none --sparse git@github.com:<username>/hpcenvs.git ~/hpcenvs
-git -C ~/hpcenvs sparse-checkout set shared perlmutter
-git -C ~/hpcenvs config pull.rebase true
+git -C ~/idrobolab-env pull
 ```
 
-To make your shell use your clone instead of the shared checkout:
+To change something for everyone, use a branch and a pull request
+([page 2](02-github.md#6-everyday-git)).
+
+**If you used the old shared checkout** (`/global/cfs/cdirs/<project>/env`): the setup
+script reports that your `~/.bashrc` block points "somewhere else". Switch to your
+clone:
 
 ```bash
-/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-user.sh --undo
-~/hpcenvs/perlmutter/helpers/setup-user.sh
+~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo
+~/idrobolab-env/perlmutter/helpers/setup-user.sh
 ```

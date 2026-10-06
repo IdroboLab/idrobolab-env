@@ -1,12 +1,12 @@
-# 5. Python with uv
+# 6. Python with uv
 
 **First choice for GPU work and the big science stack (abTEM, GPAW, torch, CuPy, …):
-the group container** ([page 6](06-containers.md)), where everything is already
+the group container** ([page 7](07-containers.md)), where everything is already
 installed and tested. Use uv for your own analysis code, small tools, and anything the
 container doesn't have.
 
 [uv](https://docs.astral.sh/uv/) installs Python itself and packages, much faster than
-pip or conda. After the group setup ([page 2](02-shell-setup.md#2-group-environment))
+pip or conda. After the group setup ([page 3](03-shell-setup.md#2-group-environment))
 it is on your `PATH` and already configured: Python interpreters come from a group
 folder everyone can read, and the cache goes on `$SCRATCH`. Check with `uv --version`.
 
@@ -74,4 +74,4 @@ Because the cache (on `$SCRATCH`) and environments in `$HOME` are on different f
 systems, uv prints *"Failed to hardlink files; falling back to full copy"*. This is
 harmless. Silence it with `export UV_LINK_MODE=copy` in `~/.bashrc`.
 
-To use an environment in Jupyter, see [page 7](07-jupyter.md).
+To use an environment in Jupyter, see [page 8](08-jupyter.md).

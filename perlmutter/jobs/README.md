@@ -123,7 +123,7 @@ a supported first-class feature rather than something to be hand-wired:
   Slingshot-optimised build and form one `MPI_COMM_WORLD`.
 - This means **none of Delta's hybrid library-injection machinery is needed
   here** — no `APPTAINER_CONTAINLIBS`, no manual `/opt/cray` binds, no
-  `LD_LIBRARY_PATH` surgery. Compare `delta/jobs/gpaw_cpu_multinode.sbatch`
+  `LD_LIBRARY_PATH` surgery. Compare the hpcenvs repo's `delta/jobs/gpaw_cpu_multinode.sbatch`
   to see what that saves.
 - Single-node and multi-node use the **same** mechanism, so unlike on Delta
   there is no riskier multi-node code path.

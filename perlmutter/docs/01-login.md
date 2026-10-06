@@ -1,7 +1,7 @@
 # 1. Account and login
 
 From no account to `ssh perlmutter` on your laptop (Windows, macOS or Linux). Do the
-steps in order; steps 1–4 are one-time, step 3 is repeated every day.
+steps in order. All of them are one-time except step 3, which you repeat every day.
 
 ## 1. NERSC account and MFA
 
@@ -82,15 +82,15 @@ Host nersc-dtn dtn.nersc.gov
 - `IdentitiesOnly yes` offers only the NERSC key. Without it, ssh also tries every
   other key you have, and NERSC may disconnect you with "Too many authentication
   failures".
-- `ForwardAgent yes` lets git on Perlmutter use the GitHub key on your laptop (§6).
-  Leave it out if you don't need that.
+- `ForwardAgent yes` lets git on Perlmutter use the GitHub key on your laptop
+  ([page 2](02-github.md#3-github-from-perlmutter)).
 - `ServerAliveInterval` keeps an idle connection from being dropped.
 - Listing the full hostname on the `Host` line means `ssh perlmutter.nersc.gov`
   gets the same settings as `ssh perlmutter`.
 - X11 forwarding (`ForwardX11`) is left out on purpose: use ThinLinc for graphical
-  programs ([page 8](08-thinlinc-nionswift.md)). For an occasional X window, use
+  programs ([page 9](09-thinlinc-nionswift.md)). For an occasional X window, use
   `ssh -Y perlmutter`. On Windows this also needs a local X server.
-- `nersc-dtn` is for file transfers ([page 3](03-storage-and-transfer.md)).
+- `nersc-dtn` is for file transfers ([page 4](04-storage-and-transfer.md)).
 
 **Windows: Notepad silently saves `config` as `config.txt`**, and OpenSSH then ignores
 it. The safest way is to open the exact path from PowerShell:
@@ -113,30 +113,9 @@ On the first connection, ssh shows the server's key fingerprint. Compare it with
 fingerprints NERSC publishes at <https://docs.nersc.gov/connect/> before you type
 `yes`. You land on a **login node**: a machine shared with every other user. Use it
 to edit, submit and run short tests, and do the real work on compute nodes
-([page 4](04-jobs.md)).
+([page 5](05-jobs.md)).
 
-## 6. GitHub from Perlmutter (optional)
-
-With `ForwardAgent yes`, git on Perlmutter can use the GitHub key on your laptop, so
-no key is stored at NERSC. Load the key into your laptop's agent:
-
-```bash
-ssh-add ~/.ssh/id_ed25519                          # Linux; macOS: add --apple-use-keychain
-```
-
-```powershell
-# Windows, once, in an *administrator* PowerShell: start the agent service
-Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent
-# then, as yourself
-ssh-add $env:USERPROFILE\.ssh\id_ed25519
-```
-
-Then check from Perlmutter: `ssh -T git@github.com` should greet you by your GitHub
-name. While you are connected, anyone with root on the remote machine could use your
-forwarded agent. That is acceptable at NERSC, but don't forward your agent to machines
-you don't trust.
-
-## 7. VS Code (optional)
+## 6. VS Code (optional)
 
 The **Remote - SSH** extension works with the `perlmutter` alias from §4. It runs a
 server process on the login node, so close the remote window when you are done. Like

@@ -1,4 +1,4 @@
-# 8. ThinLinc and Nion Swift
+# 9. ThinLinc and Nion Swift
 
 Graphical programs over plain `ssh -Y` are painfully slow. **ThinLinc** gives you a
 remote Linux desktop at NERSC instead; from there, Nion Swift runs on a Perlmutter
@@ -45,7 +45,7 @@ In a **ThinLinc terminal** (not the Perlmutter one):
 
 ```bash
 sshproxy -u <username>        # if you haven't today in this ThinLinc session
-scp perlmutter.nersc.gov:/global/cfs/cdirs/<project>/env/perlmutter/helpers/setup-nionswift-launcher.sh ~
+scp perlmutter.nersc.gov:idrobolab-env/perlmutter/helpers/setup-nionswift-launcher.sh ~
 bash ~/setup-nionswift-launcher.sh
 ```
 
@@ -64,7 +64,7 @@ node. Once the job starts, Nion Swift opens.
   the job is still waiting cancels it.
 - The allocation is charged while Swift sits idle, so close it when you're done.
 - Put the Swift library and working data on `$SCRATCH` for speed. Keep the master
-  copies of your raw data on CFS ([page 3](03-storage-and-transfer.md)).
+  copies of your raw data on CFS ([page 4](04-storage-and-transfer.md)).
 
 **Without the launcher**, from the Perlmutter terminal in ThinLinc:
 

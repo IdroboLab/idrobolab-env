@@ -1,4 +1,4 @@
-# 7. Jupyter
+# 8. Jupyter
 
 There are two ways to run notebooks on Perlmutter, and they complement each other:
 
@@ -16,13 +16,13 @@ There are two ways to run notebooks on Perlmutter, and they complement each othe
    job; pick a GPU node to use the GPU kernel below.
 3. Pick a kernel in the launcher.
 
-**Kernels.** The group setup ([page 2](02-shell-setup.md#2-group-environment))
+**Kernels.** The group setup ([page 3](03-shell-setup.md#2-group-environment))
 linked any shared group kernels into your account. To add your own uv
-environment ([page 5](05-python-uv.md)), on a login node:
+environment ([page 6](06-python-uv.md)), on a login node:
 
 ```bash
 uv pip install -p ~/venvs/analysis ipykernel           # the env needs ipykernel
-/global/cfs/cdirs/<project>/env/perlmutter/helpers/install-jupyter-kernel.sh \
+~/idrobolab-env/perlmutter/helpers/install-jupyter-kernel.sh \
     --venv ~/venvs/analysis --name analysis --display "Analysis (venv)"
 ```
 
@@ -30,7 +30,7 @@ To add a kernel that runs in the group container (if the shared kernels don't al
 include one):
 
 ```bash
-/global/cfs/cdirs/<project>/env/perlmutter/helpers/install-jupyter-kernel.sh \
+~/idrobolab-env/perlmutter/helpers/install-jupyter-kernel.sh \
     --image idrobolab --name idrobolab --display "idrobolab (GPU)" --gpu
 ```
 
@@ -45,7 +45,7 @@ default:
 
 ```bash
 cd /global/cfs/cdirs/<project>/projects/<dir>      # notebooks start here
-/global/cfs/cdirs/<project>/env/perlmutter/jobs/interactive_jupyter.sh
+~/idrobolab-env/perlmutter/jobs/interactive_jupyter.sh
 ```
 
 When the server is up, the script prints an `ssh -L` line naming the node. Run that
