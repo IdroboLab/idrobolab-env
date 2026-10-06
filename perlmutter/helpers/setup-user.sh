@@ -65,7 +65,7 @@ if [ "$UNDO" = 1 ]; then
     exit 0
 fi
 
-echo "hpcenvs user setup — project $PROJECT"
+echo "idrobolab-env user setup — project $PROJECT"
 [ "$CHECK" = 1 ] && echo "(--check: reporting only, nothing will be changed)"
 echo
 

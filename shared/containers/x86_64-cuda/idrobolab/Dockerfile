@@ -214,7 +214,7 @@ RUN uv pip install -r /opt/build/requirements-idrobolab.txt
 # without this abTEM raises "The dask-cuda package is required to distribute
 # computations across multiple GPUs" the moment dask.multi-gpu is enabled.
 # Same pairing as another image -- see
-# delta/verification/multigpu_abtem/README.md for the full analysis.
+# the hpcenvs repo's delta/verification/multigpu_abtem/README.md for the full analysis.
 #
 # --no-deps is NOT optional. dask-cuda 26.6.0 requires
 # rapids-dask-dependency==26.6.*, which pins dask==2026.1.1 -- one of the exact

@@ -13,7 +13,7 @@
 # `abtem.__file__` can, which is what setup_env.sh and the precheck below
 # assert on.
 #
-# Perlmutter counterpart of delta/verification/multigpu_abtem/multigpu_verify.sbatch.
+# Perlmutter counterpart of the hpcenvs repo's delta/verification/multigpu_abtem/multigpu_verify.sbatch.
 # Same payload, byte for byte; only the launcher differs. The two differences
 # that matter:
 #   * the runtime is podman-hpc, not Apptainer -- there is no .sif, and
