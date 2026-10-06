@@ -197,10 +197,6 @@ srun -N 4 --ntasks-per-node=64 \
 srun -N 2 --ntasks-per-node=16 -c 8 \
     podman-hpc run --rm --mpi -e OMP_NUM_THREADS=8 \
     otherimage:latest python gpaw_script.py
-
-# GPAW test suite (container fs is writable per-instance under podman)
-podman-hpc run --rm otherimage:latest \
-    bash -c 'cd /opt/src/gpaw && pytest gpaw/test/extra-module/'
 ```
 
 Check the current NERSC podman-hpc docs for the exact `--mpi`/`--gpu` flag

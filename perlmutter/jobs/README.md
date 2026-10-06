@@ -5,7 +5,9 @@ arguments (`sbatch <script>.sbatch my_script.py [args...]`), locate the image
 via `$IMAGE` (default `idrobolab`; a bare name resolves against
 `ghcr.io/<username>/`, a value containing `/` is used verbatim — overridable at
 submit time with `IMAGE=... sbatch ...`), and mount `$SCRATCH`, `$CFS`, and
-`$HOME` when present.
+`$HOME` when present. The exceptions are `abtem_uv_gpu_shared.sbatch` and
+`abtem_uv_gpu_node.sbatch`, which run abTEM from a uv environment on the host
+(`~/venvs/abtem`) and use no container.
 
 The `--account` lines are set to **<project>** (CPU templates) and **<project>_g** (GPU
 templates); `sbatch -A <other>` overrides per submission.
@@ -56,12 +58,33 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 | `gpaw_cpu_singlenode.sbatch` | `cpu` / `regular` | 1 node, 128 ranks, 512 GB | 1 CPU node-hr | GPAW MPI on one node |
 | `gpaw_cpu_multinode.sbatch` | `cpu` / `regular` | 4 nodes × 128 ranks | 4 CPU node-hr | Large GPAW SCF |
 | `gpu_1gpu_shared.sbatch` | `gpu` / `shared` | 1 A100, 32 logical cores | **0.25** GPU node-hr | **Default for GPU work** — dev, abTEM, orb, torch |
+| `gpu_2gpu_shared.sbatch` | `gpu` / `shared` | 2 A100, 64 logical cores | **0.5** GPU node-hr | One process, or one abTEM calculation over 2 GPUs (dask-cuda) |
+| `abtem_uv_gpu_shared.sbatch` | `gpu` / `shared` | 1 or 2 A100 (two `#SBATCH` lines), 32 or 64 logical cores | **0.25** / **0.5** GPU node-hr | abTEM from your own uv environment (`~/venvs/abtem`), no container |
+| `abtem_uv_gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4 tasks × 1 A100 | 1 GPU node-hr | Four independent single-GPU abTEM runs (a sweep) from `~/venvs/abtem` |
 | `gpu_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | One process driving 4 GPUs |
 | `gpu_4gpu_hbm80g.sbatch` | `gpu&hbm80g` / `regular` | 1 node, 4×A100 **80 GB** | 1 GPU node-hr | complex128 EMCD, exact-S₂, big S-matrix budgets |
 | `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | GPU-parallel GPAW, distributed torch |
 | `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | Smoke tests before a long run |
 | `interactive_gpu.sh` | `gpu` / `interactive` | 1 node, ≤4 h | 1 GPU node-hr | Shell in the container (helper, not sbatch) |
+| `interactive_gpu_shared.sh` | `gpu` / `shared_interactive` | 1 or 2 A100 (`GPUS=`), 32 or 64 logical cores, ≤4 h | **0.25** / **0.5** GPU node-hr | Shell in the container (helper, not sbatch) |
 | `interactive_jupyter.sh` | `gpu` / `shared_interactive` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
+
+## abTEM: which template for which GPU count
+
+One row per GPU count and queue; the columns name the script that runs abTEM in the
+container and the one that runs it from your own uv environment
+([docs/07-abtem.md](../docs/07-abtem.md)). A calculation spread over several GPUs
+needs dask-cuda and stays a container job.
+
+| GPUs | Queue | Container | Own uv environment |
+|---|---|---|---|
+| 1 | `shared_interactive` | `interactive_gpu_shared.sh` | `salloc`, then `srun ~/venvs/abtem/bin/python ...` |
+| 1 | `shared` | `gpu_1gpu_shared.sbatch` | `abtem_uv_gpu_shared.sbatch` |
+| 2 | `shared_interactive` | `GPUS=2 interactive_gpu_shared.sh` | `salloc`, then `srun ...` |
+| 2 | `shared` | `gpu_2gpu_shared.sbatch` (incl. one calculation over both GPUs) | `abtem_uv_gpu_shared.sbatch` with `--gpus=2 --cpus-per-task=64` (one process, two devices) |
+| 4 | `interactive` | `interactive_gpu.sh` | `salloc`, then `srun ...` |
+| 4 | `regular` | `gpu_4gpu_node.sbatch` / `gpu_4gpu_hbm80g.sbatch` (one calculation over 4 GPUs) | `abtem_uv_gpu_node.sbatch` (four independent single-GPU runs) |
+| 8 (2 nodes) | `regular` | `gpu_multinode_mpi.sbatch` (MPI ranks, not abTEM dask) | none |
 
 ## Node hardware
 
@@ -145,16 +168,16 @@ podman-hpc images --digests          # record the digest with your results
 #  on compute nodes; pulled images are migrated automatically)
 
 sbatch debug_gpu.sbatch              # runs the built-in smoke test:
-                                     #   imports + versions, torch sees the A100,
-                                     #   4-rank Cray-MPICH world, extra-module pytest
+                                     #   GPUs visible, abtem/cupy/torch/gpaw versions,
+                                     #   a small abTEM multislice on the GPU,
+                                     #   4-rank Cray-MPICH world
 ```
 
-Interactive equivalent:
+Interactive equivalent (a shell in the container on the compute node):
 
 ```bash
-salloc -A <project>_g -C gpu -q interactive -N 1 --gpus-per-node=4 -t 01:00:00
-podman-hpc run --rm -it --gpu -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage:latest /bin/bash
-# or just: ./interactive_gpu.sh
+./interactive_gpu_shared.sh          # 1 A100 slice, 1 h; GPUS=2 for two
+./interactive_gpu.sh                 # a whole node, 4 A100
 ```
 
 Notebook in the browser on your laptop:
@@ -277,11 +300,33 @@ inside the container looks like host networking but is not. See
   backgrounds the job.
 - **Always set `--time`.** The default is short and jobs die without warning.
 
-## Status
+## Testing status
 
-These templates follow the current NERSC documentation for podman-hpc, QOS
-policy, and Perlmutter affinity, but **none has been run yet** — the image
-itself is still the untested Dockerfile translation of the verified Delta
-build (see `../podman-hpc.md`). Treat the first run of each as a test:
-start with `debug_gpu.sbatch`, and confirm the GPU-binding probe in
-`gpu_multinode_mpi.sbatch` before trusting a long multi-node run.
+One row per template or script; the second column is what the repository records about
+running it on Perlmutter: a job ID and date where the repo has one, "run, not recorded"
+where it only says the script was run, otherwise "not yet run". The group should test
+every template systematically (short time limit, e.g. `sbatch -t 00:10:00`; note the job
+ID, date, image digest and result in the PR) and update this table.
+
+| Template / script | Recorded on Perlmutter |
+|---|---|
+| `debug_gpu.sbatch` | not yet run (the 2026-08-19 jobs <jobid> and <jobid> were `--wrap=true` tests of the account mapping) |
+| `gpu_1gpu_shared.sbatch` | not yet run (its `--mem` removal of 2026-08-27 is recorded as "not yet run on-cluster") |
+| `gpu_2gpu_shared.sbatch` | not yet run |
+| `gpu_4gpu_node.sbatch` | not yet run |
+| `gpu_4gpu_hbm80g.sbatch` | not yet run |
+| `gpu_multinode_mpi.sbatch` | not yet run (confirm its GPU-binding probe first) |
+| `gpaw_cpu_singlenode.sbatch` | not yet run |
+| `gpaw_cpu_multinode.sbatch` | not yet run |
+| `abtem_uv_gpu_shared.sbatch` | not yet run |
+| `abtem_uv_gpu_node.sbatch` | not yet run |
+| `examples/abtem/abtem_gpu_example.py` | not yet run on Perlmutter (only `--device cpu`, on a workstation, 2026-10-06) |
+| `interactive_gpu.sh` | not yet run since its `srun` fix of 2026-08-27 |
+| `interactive_gpu_shared.sh` | not yet run |
+| `interactive_jupyter.sh` | run 2026-08-27 on nid001012, no job ID recorded (commit 4322e26) |
+| `../verification/multigpu_abtem/benchmark_haadf_auto.sbatch` | job <jobid>, 2026-08-19, 4 A100: scaling at <efficiency> and invariant image (log in that folder) |
+| `../verification/multigpu_abtem/multigpu_verify.sbatch`, `benchmark_haadf.sbatch` | not yet run |
+
+Job <jobid> (2026-08-19, 4 A100) was a real GPU run, and a multi-GPU run without the
+`__main__` guard failed that day (see Gotchas, commit 46938b2); the repo does not say
+which template either used, so the rows above stay "not yet run".
