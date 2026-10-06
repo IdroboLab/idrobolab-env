@@ -65,6 +65,10 @@ salloc -C cpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32
 inside the session with `srun`, e.g. `srun python script.py`. Careful: `salloc
 <command>` (a command on the same line) runs that command on the **login node**.
 
+For a shell inside the group container on 1 or 2 GPUs, `interactive_gpu_shared.sh` does
+the `salloc` and starts the container ([page 6](06-containers.md#interactive-shell-in-the-container));
+`interactive_gpu.sh` does the same on a whole node. Running abTEM this way: [page 7](07-abtem.md).
+
 ## Batch jobs (`sbatch`)
 
 Ready-made templates are in
@@ -81,9 +85,12 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 |---|---|
 | `debug_gpu.sbatch` | 1 GPU for up to 20 min, but billed as a whole node. For a quick first test of your script |
 | `gpu_1gpu_shared.sbatch` | 1 GPU, shared, 4 h. **The default for GPU work** |
+| `gpu_2gpu_shared.sbatch` | 2 GPUs, shared, 4 h |
 | `gpu_4gpu_node.sbatch` / `gpu_4gpu_hbm80g.sbatch` | a whole node, 4×A100 40 GB / 80 GB |
 | `gpu_multinode_mpi.sbatch` | 2 nodes, one MPI rank per GPU |
 | `gpaw_cpu_singlenode.sbatch` / `gpaw_cpu_multinode.sbatch` | GPAW with MPI on 1 / 4 CPU nodes |
+| `abtem_uv_gpu_shared.sbatch` | 1 or 2 GPUs, shared: abTEM from your own uv environment instead of the container ([page 7](07-abtem.md)) |
+| `abtem_uv_gpu_node.sbatch` | a whole node: four independent single-GPU abTEM runs (a sweep) from your uv environment |
 
 To change the time, name or resources, copy a template into your project folder and
 edit its `#SBATCH` lines, or override them on the command line

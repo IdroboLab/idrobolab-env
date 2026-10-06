@@ -17,6 +17,7 @@ instructions.
 | 4 | [Jobs and queues](04-jobs.md) | accounts and cost, `salloc`, `sbatch`, job templates, watching jobs |
 | 5 | [Python with uv](05-python-uv.md) | scripts, projects and environments |
 | 6 | [The idrobolab container](06-containers.md) | the ready-made GPU software stack |
+| 7 | [abTEM on Perlmutter](07-abtem.md) | run abTEM on 1–4 GPUs: in the container, or from your own uv environment |
 | 8 | [Jupyter](08-jupyter.md) | notebooks on jupyter.nersc.gov or on your own node |
 | 9 | [ThinLinc and Nion Swift](09-thinlinc-nionswift.md) | remote desktop, Nion Swift on a compute node |
 | 10 | [Coding agents](10-coding-agents.md) | Claude Code and Codex on Perlmutter |
