@@ -30,7 +30,7 @@ done
 
 # The clone's path as the user reaches it (/global/homes/..., not the physical
 # home path), so the block keeps working if NERSC moves the home directory.
-HELPERS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 PERLMUTTER=$(dirname "$HELPERS")
 PROJECT="${NERSC_PROJECT:-<project>}"
 SHARED_JUPYTER="${HPCENVS_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
