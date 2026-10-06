@@ -193,7 +193,7 @@ EOF
     [ "$ICON_NAME" = nionswift ] && echo "  $ICON_SRC"
     echo
     echo "Next: EACH group member, in a terminal INSIDE the ThinLinc desktop:"
-    echo "  scp perlmutter.nersc.gov:$SELF ~"
+    echo "  scp perlmutter.nersc.gov:idrobolab-env/perlmutter/helpers/$(basename "$SELF") ~"
     echo "  ~/$(basename "$SELF")"
     echo "(runbook §5.2)"
 else

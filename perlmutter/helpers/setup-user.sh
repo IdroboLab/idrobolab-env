@@ -28,10 +28,9 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# Resolve symlinks, so the block and the helper calls below point into the
-# clone itself.
-SELF=$(readlink -f "${BASH_SOURCE[0]}")
-HELPERS=$(dirname "$SELF")
+# The clone's path as the user reaches it (/global/homes/..., not the physical
+# home path), so the block keeps working if NERSC moves the home directory.
+HELPERS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PERLMUTTER=$(dirname "$HELPERS")
 PROJECT="${NERSC_PROJECT:-<project>}"
 SHARED_JUPYTER="${HPCENVS_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
@@ -50,10 +49,10 @@ if [ "$UNDO" = 1 ]; then
         [ -f "$rc" ] || continue
         grep -qF "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
         cp -p "$rc" "$rc.hpcenvs-backup"
-        sed -i "/^# >>> hpcenvs (${PROJECT}) >>>$/,/^# <<< hpcenvs (${PROJECT}) <<<$/d" "$rc"
+        sed -i --follow-symlinks "/^# >>> hpcenvs (${PROJECT}) >>>$/,/^# <<< hpcenvs (${PROJECT}) <<<$/d" "$rc"
         # ...including the blank line we wrote before it, so the file comes back
         # byte-identical when ours was the only addition.
-        sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$rc"
+        sed -i --follow-symlinks -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$rc"
         echo ">> removed the hpcenvs block from $rc (backup: $rc.hpcenvs-backup)"
         removed=1
     done
@@ -77,7 +76,7 @@ echo "1. shell startup"
 RC="$HOME/.bashrc"
 MARK="# >>> hpcenvs (${PROJECT}) >>>"
 ENDMARK="# <<< hpcenvs (${PROJECT}) <<<"
-LINE=". ${PERLMUTTER}/env.sh"
+ENVSH="${PERLMUTTER}/env.sh"
 
 # An account created before February 2020 may still have a .ext file, and an
 # earlier version of this script wrote the block there. Find it wherever it is,
@@ -88,7 +87,7 @@ for rc in "$RC" "$HOME/.bashrc.ext"; do
 done
 
 if [ -n "$FOUND_IN" ]; then
-    if grep -qF "$LINE" "$FOUND_IN"; then
+    if grep -qF "$ENVSH" "$FOUND_IN"; then
         ok "$FOUND_IN already sources env.sh"
         [ "$FOUND_IN" = "$HOME/.bashrc.ext" ] && \
             warn "  that is a deprecated .ext file -- see the note below"
@@ -104,7 +103,7 @@ else
         echo "$MARK"
         echo "# Added by setup-user.sh. Safe to source anywhere: it is silent,"
         echo "# idempotent, and does nothing off Perlmutter."
-        echo "[ -r \"${PERLMUTTER}/env.sh\" ] && $LINE"
+        echo "if [ -r \"$ENVSH\" ]; then . \"$ENVSH\"; fi"
         echo "$ENDMARK"
     } >> "$RC"
     act "added env.sh to $RC"
