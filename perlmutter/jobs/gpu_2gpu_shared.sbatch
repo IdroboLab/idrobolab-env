@@ -145,7 +145,7 @@ WORKDIR=$(pwd -P)
 THREAD_ENV="-e OMP_NUM_THREADS=32 -e OPENBLAS_NUM_THREADS=32"
 
 echo "IMAGE=$IMAGE  gpus=2  mounts=$MOUNTS"
-time srun --cpu-bind=cores \
+time srun -c "$SLURM_CPUS_PER_TASK" --cpu-bind=cores \
     podman-hpc run --rm $GROUP_FLAGS --gpu \
         $MOUNTS --workdir "$WORKDIR" \
         $THREAD_ENV \
