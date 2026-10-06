@@ -9,8 +9,9 @@ run it here:
 | Use it when | almost always | the container's abTEM (or a package) is not recent enough, e.g. you need a branch or a newer release |
 | Several GPUs for **one** calculation | yes (dask-cuda is in the image) | no: run those in the container |
 
-Every command below is typed on a login node, in a clone of this repository at
-`~/idrobolab-env`. A small example script,
+The commands assume your clone of this repository at `~/idrobolab-env` and run on a
+login node, unless a comment in the block says otherwise (compute-node shell, or inside
+the container). A small example script,
 [`abtem_gpu_example.py`](../examples/abtem/abtem_gpu_example.py), runs a HAADF-type probe
 scan of Si on one GPU (`--device cpu` for a CPU test) and writes `haadf.npy` and
 `structure.cif`. Use it to try each route before you run your own script.
@@ -18,6 +19,7 @@ scan of Si on one GPU (`--device cpu` for a CPU test) and writes `haadf.npy` and
 ## Check which abTEM the container has
 
 ```bash
+# on a login node
 podman-hpc run --rm "$IDROBOLAB_IMAGE" python -P -c "import abtem; print(abtem.__version__, abtem.__file__)"
 ```
 
@@ -30,6 +32,7 @@ the development branch the image was built from. Note the image digest instead
 **Interactively** (1 or 2 GPUs, up to 4 h, charged by the fraction of the node):
 
 ```bash
+# on a login node
 ~/idrobolab-env/perlmutter/jobs/interactive_gpu_shared.sh              # 1 GPU, 1 h
 GPUS=2 TIME=02:00:00 ~/idrobolab-env/perlmutter/jobs/interactive_gpu_shared.sh
 ```
@@ -37,6 +40,7 @@ GPUS=2 TIME=02:00:00 ~/idrobolab-env/perlmutter/jobs/interactive_gpu_shared.sh
 You get a shell inside the container on the compute node. Run the example there:
 
 ```bash
+# inside the container shell
 python ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
 exit
 ```
@@ -46,6 +50,7 @@ exit
 **In a batch job**, from the folder where the log file should go:
 
 ```bash
+# on a login node
 cd $SCRATCH
 sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch \
     ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
@@ -53,8 +58,8 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch \
 
 | Template | GPUs |
 |---|---|
-| `gpu_1gpu_shared.sbatch` | 1, shared queue, up to 48 h |
-| `gpu_2gpu_shared.sbatch` | 2, shared queue |
+| `gpu_1gpu_shared.sbatch` | 1, shared queue, 4 h by default (the QOS allows 48 h) |
+| `gpu_2gpu_shared.sbatch` | 2, shared queue, 4 h by default |
 | `gpu_4gpu_node.sbatch` | 4, a whole node (`gpu_4gpu_hbm80g.sbatch`: the 80 GB nodes) |
 
 **Several GPUs for one calculation.** abTEM starts one dask-cuda worker per visible GPU
@@ -83,6 +88,7 @@ For a batch job, copy the template, uncomment its
 checkout:
 
 ```bash
+# on a login node
 cp ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch $SCRATCH/my_job.sbatch
 ```
 
@@ -92,42 +98,41 @@ Print `abtem.__file__` in your script (it must start with the checkout's path in
 ## Route 2: your own uv environment
 
 Create it once, **on a login node** (compute nodes should not download anything). It
-uses Python 3.12, like the container; `uv python list --only-installed` shows which
-interpreters the group folder has, and 3.13 resolves to the same packages if 3.12 is
-missing. CuPy brings its CUDA 12 libraries as wheels (`[ctk]`), so no CUDA module is
-needed:
+uses Python 3.13, the interpreter in the group's uv folder, and the CuPy of the
+container (13.5.1) with the CUDA 12.8 libraries as wheels. CuPy 13.5.1 has no `[ctk]`
+extra, so the libraries are listed in the example script's header; installing from the
+script pulls in all of it:
 
 ```bash
-uv venv --python 3.12 ~/venvs/abtem
-uv pip install -p ~/venvs/abtem "cupy-cuda12x[ctk]"
+# on a login node
+uv venv --python 3.13 ~/venvs/abtem
+uv pip install -p ~/venvs/abtem -r ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py
 ```
 
-Then abTEM, from your own checkout (a branch you work on) or from PyPI:
+That also installs the PyPI release of abTEM. To use your own checkout (a branch you
+work on) instead, replace it:
 
 ```bash
+# on a login node
 git clone https://github.com/abTEM/abTEM ~/code/abTEM
-uv pip install -p ~/venvs/abtem -e ~/code/abTEM         # your checkout, editable
-# or:  uv pip install -p ~/venvs/abtem abtem            # the PyPI release
+uv pip install -p ~/venvs/abtem -e ~/code/abTEM
 ```
 
 Compare before you choose: on 2026-10-06 the PyPI release was abTEM 1.0.10, older than
 the 1.1.0 development version in the container. The environment lives in `$HOME`
 ([page 5](05-python-uv.md#where-environments-live)).
 
-A CUDA module on `PATH` can shadow CuPy's own libraries (cuFFT or cuSOLVER then report
-no version, or NVRTC fails). Remove it before you run anything, in the shell and in
-job scripts:
-
-```bash
-module unload cudatoolkit
-unset CUDA_PATH CUDA_HOME
-```
+The first GPU run shows whether the libraries are in order: the example prints the
+abTEM and CuPy versions and the CUDA runtime and driver versions before it computes.
+If CuPy reports cuFFT or cuSOLVER as unloadable or with a `None` version, a CUDA toolkit
+from a loaded module may be shadowing CuPy's own libraries: try `module unload
+cudatoolkit` in that shell and run again.
 
 **Interactively:**
 
 ```bash
+# on a login node; the shell that salloc gives you is on the compute node
 salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
-module unload cudatoolkit; unset CUDA_PATH CUDA_HOME
 srun ~/venvs/abtem/bin/python ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
 exit
 ```
@@ -135,6 +140,7 @@ exit
 **In a batch job:**
 
 ```bash
+# on a login node
 cd $SCRATCH
 sbatch ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_shared.sbatch \
     ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
@@ -145,8 +151,8 @@ sbatch ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_node.sbatch ~/idrobolab-env/
 The first runs the example on 1 GPU. The second is a script of your own on 2 GPUs (the
 process sees both; the example uses one). The third books a whole node and runs four
 independent single-GPU copies of the script, one per GPU, as a four-point sweep
-(`--cells 1` to `4` for the example; edit the `srun` line of a copy for your own
-parameters). The job scripts run `~/venvs/abtem/bin/python`; `VENV=<path> sbatch ...`
+(electron energies 60, 100, 150 and 200 keV for the example; edit the `srun` line of a
+copy for your own parameters). The job scripts run `~/venvs/abtem/bin/python`; `VENV=<path> sbatch ...`
 selects another environment.
 
 ## Good habits

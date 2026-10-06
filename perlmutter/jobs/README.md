@@ -69,22 +69,8 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 | `interactive_gpu_shared.sh` | `gpu` / `shared_interactive` | 1 or 2 A100 (`GPUS=`), 32 or 64 logical cores, ≤4 h | **0.25** / **0.5** GPU node-hr | Shell in the container (helper, not sbatch) |
 | `interactive_jupyter.sh` | `gpu` / `shared_interactive` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
 
-## abTEM: which template for which GPU count
-
-One row per GPU count and queue; the columns name the script that runs abTEM in the
-container and the one that runs it from your own uv environment
-([docs/07-abtem.md](../docs/07-abtem.md)). A calculation spread over several GPUs
-needs dask-cuda and stays a container job.
-
-| GPUs | Queue | Container | Own uv environment |
-|---|---|---|---|
-| 1 | `shared_interactive` | `interactive_gpu_shared.sh` | `salloc`, then `srun ~/venvs/abtem/bin/python ...` |
-| 1 | `shared` | `gpu_1gpu_shared.sbatch` | `abtem_uv_gpu_shared.sbatch` |
-| 2 | `shared_interactive` | `GPUS=2 interactive_gpu_shared.sh` | `salloc`, then `srun ...` |
-| 2 | `shared` | `gpu_2gpu_shared.sbatch` (incl. one calculation over both GPUs) | `abtem_uv_gpu_shared.sbatch` with `--gpus=2 --cpus-per-task=64` (one process, two devices) |
-| 4 | `interactive` | `interactive_gpu.sh` | `salloc`, then `srun ...` |
-| 4 | `regular` | `gpu_4gpu_node.sbatch` / `gpu_4gpu_hbm80g.sbatch` (one calculation over 4 GPUs) | `abtem_uv_gpu_node.sbatch` (four independent single-GPU runs) |
-| 8 (2 nodes) | `regular` | `gpu_multinode_mpi.sbatch` (MPI ranks, not abTEM dask) | none |
+Which of these to use for abTEM, in the container or from your own uv environment, is
+the subject of [docs/07-abtem.md](../docs/07-abtem.md).
 
 ## Node hardware
 
