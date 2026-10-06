@@ -14,7 +14,8 @@
 #   GPUS=2 TIME=02:00:00 ./interactive_gpu_shared.sh
 #   ./interactive_gpu_shared.sh python -P -c "import abtem; print(abtem.__version__)"
 #
-# GPUS is 1 or 2, TIME is HH:MM:SS and at most 04:00:00; anything else is refused.
+# GPUS is 1 or 2; anything else is refused. TIME is passed to salloc as it is
+# (HH:MM:SS; shared_interactive allows at most 4 h and Slurm reports its own limit).
 set -euo pipefail
 
 # Preserve supplementary group membership inside the container. podman runs
@@ -46,15 +47,7 @@ case "$GPUS" in
     *) echo "GPUS must be 1 or 2 (got '$GPUS'); use interactive_gpu.sh for a whole node" >&2; exit 2 ;;
 esac
 CPUS=$((32 * GPUS))
-case "$TIME" in
-    [0-9]:[0-5][0-9]:[0-5][0-9] | [0-9][0-9]:[0-5][0-9]:[0-5][0-9]) ;;
-    *) echo "TIME must be HH:MM:SS (got '$TIME')" >&2; exit 2 ;;
-esac
-IFS=: read -r _h _m _s <<< "$TIME"
-if [ $((10#$_h * 3600 + 10#$_m * 60 + 10#$_s)) -gt 14400 ]; then
-    echo "TIME $TIME exceeds the 4 h limit of shared_interactive" >&2
-    exit 2
-fi
+
 # Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
 # (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
 # verification launchers and `update-image.sh <name>`. A value containing "/"
