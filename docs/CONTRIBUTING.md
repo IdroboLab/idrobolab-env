@@ -2,8 +2,9 @@
 
 Everyone in the group can improve this environment: a clearer page, a fixed job
 template, a new helper script, a setting that should change for everyone. **Every change
-reaches `main` through a pull request (PR).** Only the repository admins push to `main`
-and merge PRs. Everything in `main` reaches every member's shell and jobs on their next
+reaches `main` through a pull request (PR).** Nobody pushes to `main` directly, admins
+included; admins merge the PRs. GitHub cannot enforce this on our plan, so it is a rule we
+keep ourselves: everything in `main` reaches every member's shell and jobs on their next
 `git pull`, so each change is read by someone else first.
 
 ## How to propose a change

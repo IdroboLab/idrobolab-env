@@ -11,8 +11,11 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 
 ## Git workflow
 
-- Several people work on this repo: change `main` through a branch and a pull request,
-  never a direct push; admins merge. The member-facing workflow is `docs/CONTRIBUTING.md`.
+- **Never push to `main`, and never commit on it.** Every change (feature, addition, fix,
+  docs) goes on a branch and reaches `main` through a pull request that an admin merges.
+  GitHub does not enforce this (the organisation's free plan has no branch protection),
+  so this rule is the only guard: an unreviewed push to `main` reaches every member's
+  shell on their next pull. The member-facing workflow is `docs/CONTRIBUTING.md`.
 - Repo-wide pages live in `docs/`; the Perlmutter introduction in `perlmutter/docs/` is
   numbered in reading order, so renaming or adding a page means updating every
   `[page N]` link and the table in `perlmutter/docs/README.md`.
