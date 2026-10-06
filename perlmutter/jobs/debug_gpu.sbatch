@@ -13,8 +13,8 @@
 #SBATCH --constraint=gpu
 #SBATCH --qos=debug
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=32
+#SBATCH --ntasks-per-node=4             # the 4-rank MPI check; the other steps run one task of 32 CPUs
+#SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=220G                     # whole node in debug QOS
 #SBATCH --time=00:20:00                # debug hard limit is 00:30:00
@@ -119,7 +119,7 @@ WORKDIR=$(pwd -P)
 
 if [ $# -gt 0 ]; then
     SCRIPT=$1; shift
-    time srun podman-hpc run --rm $GROUP_FLAGS --gpu \
+    time srun --ntasks=1 --cpus-per-task=32 podman-hpc run --rm $GROUP_FLAGS --gpu \
         $MOUNTS --workdir "$WORKDIR" \
         "$IMAGE" python "$SCRIPT" "$@"
     exit 0
@@ -132,7 +132,7 @@ echo "== image identity =="
 podman-hpc images --digests | grep -E "REPOSITORY|${IMAGE%%:*}" || true
 
 echo "== GPUs, imports and versions =="
-srun podman-hpc run --rm $GROUP_FLAGS --gpu $MOUNTS "$IMAGE" python -P -c "
+srun --ntasks=1 --cpus-per-task=32 podman-hpc run --rm $GROUP_FLAGS --gpu $MOUNTS "$IMAGE" python -P -c "
 import abtem, cupy, gpaw, torch
 print('abtem      ', abtem.__version__, abtem.__file__)
 print('cupy       ', cupy.__version__, 'CUDA runtime', cupy.cuda.runtime.runtimeGetVersion())
@@ -145,7 +145,7 @@ for i in range(n):
 "
 
 echo "== abTEM plane-wave multislice on the GPU =="
-srun podman-hpc run --rm $GROUP_FLAGS --gpu $MOUNTS "$IMAGE" python -P -c "
+srun --ntasks=1 --cpus-per-task=32 podman-hpc run --rm $GROUP_FLAGS --gpu $MOUNTS "$IMAGE" python -P -c "
 import abtem
 from ase.build import bulk
 abtem.config.set({'device': 'gpu'})
