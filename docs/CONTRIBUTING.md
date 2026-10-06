@@ -69,5 +69,6 @@ Not sure how to change something, or only want to point out a problem? Open an
 - Personal settings that only make sense for you. Put those in your own `~/.bashrc`.
 
 Code written with a coding agent is welcome; you are responsible for it like any other
-code, so read it before opening the PR
+code, so read it before opening the PR. Agents working in this repo follow its
+[AGENTS.md](../AGENTS.md); add rules for them there
 ([Perlmutter page 9](../perlmutter/docs/09-coding-agents.md)).
