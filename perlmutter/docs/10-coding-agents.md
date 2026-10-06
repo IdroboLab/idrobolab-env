@@ -30,14 +30,16 @@ An agent follows three layers of written instructions, each adding to the one be
 
 1. **NERSC's baseline**: what an agent must know about Perlmutter (login nodes vs
    jobs, Slurm approval, file systems, the filesystem guard). It is kept in this repo
-   under `perlmutter/agents/nersc/`. NERSC's updates arrive as a pull request from a
-   weekly workflow, and an admin reads them before they reach you.
+   under `perlmutter/agents/nersc/` (BSD-3, see the `LICENSE` there). NERSC's updates
+   arrive as a pull request from a weekly workflow, and an admin reads them before
+   they reach you.
 2. **The group's rules**: [`perlmutter/agents/group.md`](../agents/group.md): accounts,
    queues, container, data and provenance. They never relax NERSC's.
 3. **The project's own**: a `CLAUDE.md` or `AGENTS.md` in the project folder (`/init`
    inside the agent drafts one) with what the agent should know about that project.
 
-One command sets up layers 1 and 2 for both agents; run it once, and again after
+Start each agent once first (log in; [Codex](codex.md#2-log-in)), which creates its
+config directory. Then one command sets up layers 1 and 2; run it once, and again after
 every `git pull` of `~/idrobolab-env`:
 
 ```bash
@@ -46,6 +48,9 @@ every `git pull` of `~/idrobolab-env`:
 ~/idrobolab-env/perlmutter/helpers/setup-agents.sh --undo    # remove what it added
 ```
 
+- **Which agents:** an agent is handled only if its directory exists, `~/.claude`
+  (or `$CLAUDE_CONFIG_DIR`) and `~/.codex` (or `$CODEX_HOME`). If you use only one, the
+  other is skipped.
 - **Claude Code**: a marked block at the top of `~/.claude/CLAUDE.md` imports the two
   files from your clone, so a `git pull` is all an update needs. Your own text goes
   below the block. If you pasted NERSC's file into `CLAUDE.md` earlier, the script
@@ -53,11 +58,16 @@ every `git pull` of `~/idrobolab-env`:
 - **Codex** cannot import files, so the script writes a copy of both between markers
   at the top of `~/.codex/AGENTS.md`, then a `## Local additions` heading and your own
   text. After a `git pull`, run the script again (`--check` and `setup-user.sh` say
-  when the copy is stale). Text you already had below `## Local additions` is kept, and
-  a file with no such heading moves below one; the first time, the old file is backed up
-  next to it.
-- `CLAUDE_CONFIG_DIR` and `CODEX_HOME` are honoured. A Claude config file inside a git
-  work tree is never edited: the script prints the lines to add by hand.
+  when the copy is stale). Your text below the heading is kept. So is text outside the
+  markers that is not under the heading, and a file without markers: it moves below the
+  heading, except a pasted copy of NERSC's file, which the managed part replaces.
+- **Safety:** before changing an existing file the script saves a copy next to it
+  (`<file>.bak-<UTC time>`) and prints the path. A file with unbalanced markers (one
+  without its partner, or repeated) is refused in every mode, with the line numbers,
+  and left as it is: fix it by hand. A file inside a git work tree (symlinks
+  resolved) is never written: for Claude the script prints the lines to add; for Codex
+  use a `CODEX_HOME` outside the tree. `--undo` removes the block or managed part and
+  keeps everything else.
 - Restart the agent afterwards.
 
 For Codex, NERSC recommends this `~/.codex/config.toml`:

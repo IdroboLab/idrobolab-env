@@ -66,20 +66,17 @@ Codex reads instruction files called `AGENTS.md` and puts them all into its cont
 | `~/.codex/AGENTS.md` | your personal file: NERSC's baseline and the group's rules (managed by a script), then your own preferences |
 | `AGENTS.md` at the top of a git repository, and in subfolders down to where you start Codex | project rules; files closer to your folder come later and so take precedence |
 
-Set up the personal file with the group's script, from your clone of `idrobolab-env`:
+Set up the personal file with the group's script, from your clone of `idrobolab-env`
+and after your first login (which creates `~/.codex`):
 
 ```bash
 ~/idrobolab-env/perlmutter/helpers/setup-agents.sh
 ```
 
-It writes NERSC's baseline (kept in the repo, updated through reviewed pull requests)
-and [the group's rules](../agents/group.md) between markers, then a
-`## Local additions` heading. Your own preferences always go **below that heading**;
-anything you already had there survives a re-run. Codex cannot import files, so after
-each `git pull` of `~/idrobolab-env` run the script again: `setup-agents.sh --check`
-tells you when the copy is stale. The script also handles Claude Code; see
-[page 10](10-coding-agents.md#instructions-three-layers) for both agents, `--undo` and
-the details.
+Your own preferences always go **below the `## Local additions` heading**. Codex cannot
+import files, so run the script again after each `git pull` of `~/idrobolab-env`.
+[Page 10](10-coding-agents.md#instructions-three-layers) describes what it does, for
+both agents.
 
 For a project, put an `AGENTS.md` in the repository root: what the project is, how to
 run its tests, which data it must not touch. Inside a session, `/init` drafts one. Keep

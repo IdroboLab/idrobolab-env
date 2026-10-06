@@ -79,7 +79,9 @@ it by pull request like anything else. NERSC's own baseline is vendored in
 admin reads the diff before merging it, because every member's agents follow that text.
 For an admin: the workflow needs "Allow GitHub Actions to create and approve pull
 requests" switched on (repository or organisation *Settings → Actions → General →
-Workflow permissions*). It can also be started from the Actions tab.
+Workflow permissions*). It can also be started from the Actions tab. GitHub disables a
+scheduled workflow after 60 days without repository activity; re-enable it under
+Actions.
 
 Code written with a coding agent is welcome; you are responsible for it like any other
 code, so read it before opening the PR. Agents working in this repo follow its
