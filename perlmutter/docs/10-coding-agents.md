@@ -1,4 +1,4 @@
-# 9. Coding agents: Claude Code and Codex
+# 10. Coding agents: Claude Code and Codex
 
 NERSC supports two AI coding agents on Perlmutter and documents both:
 

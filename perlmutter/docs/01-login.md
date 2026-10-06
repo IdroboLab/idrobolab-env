@@ -88,7 +88,7 @@ Host nersc-dtn dtn.nersc.gov
 - Listing the full hostname on the `Host` line means `ssh perlmutter.nersc.gov`
   gets the same settings as `ssh perlmutter`.
 - X11 forwarding (`ForwardX11`) is left out on purpose: use ThinLinc for graphical
-  programs ([page 8](08-thinlinc-nionswift.md)). For an occasional X window, use
+  programs ([page 9](09-thinlinc-nionswift.md)). For an occasional X window, use
   `ssh -Y perlmutter`. On Windows this also needs a local X server.
 - `nersc-dtn` is for file transfers ([page 3](03-storage-and-transfer.md)).
 

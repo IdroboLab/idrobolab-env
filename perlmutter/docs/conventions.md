@@ -40,7 +40,7 @@ group meeting.
 - End interactive sessions, Jupyter servers and Nion Swift when you're done: idle time
   is charged.
 - Nothing heavy on the login nodes, for you and for any coding agent you run
-  ([page 9](09-coding-agents.md)).
+  ([page 10](10-coding-agents.md)).
 
 ## Software and provenance
 

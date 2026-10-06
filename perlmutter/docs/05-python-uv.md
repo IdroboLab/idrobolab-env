@@ -74,4 +74,4 @@ Because the cache (on `$SCRATCH`) and environments in `$HOME` are on different f
 systems, uv prints *"Failed to hardlink files; falling back to full copy"*. This is
 harmless. Silence it with `export UV_LINK_MODE=copy` in `~/.bashrc`.
 
-To use an environment in Jupyter, see [page 7](07-jupyter.md).
+To use an environment in Jupyter, see [page 8](08-jupyter.md).

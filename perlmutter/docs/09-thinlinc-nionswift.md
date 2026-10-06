@@ -1,4 +1,4 @@
-# 8. ThinLinc and Nion Swift
+# 9. ThinLinc and Nion Swift
 
 Graphical programs over plain `ssh -Y` are painfully slow. **ThinLinc** gives you a
 remote Linux desktop at NERSC instead; from there, Nion Swift runs on a Perlmutter
