@@ -2,57 +2,44 @@
 # setup-user.sh — one-shot per-user setup for this project on Perlmutter.
 # Idempotent: re-run it after the repo changes, or any time you are unsure.
 #
-# Published into the shared bin dir, so for most people it is simply:
+# Run it from your own clone of idrobolab-env:
 #
-#     hpcenvs-setup            # do it
-#     hpcenvs-setup --check    # report only, change nothing
-#     hpcenvs-setup --undo     # remove the block it added from your startup file
+#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh           # do it
+#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --check   # report only, change nothing
+#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo    # remove the block it added
+#
+# The block sources env.sh from the clone the script runs from. A block written
+# from another checkout is reported, not replaced: --undo, then run it again.
 #
 # What it does:
 #   1. sources env.sh from your shell startup file (image store, aliases, PATH)
 #   2. links the project's shared Jupyter kernels into your own kernel dir
 #   3. checks the things that silently break later: project group membership,
 #      whether the shared image store is actually readable by you, $SCRATCH
-#
-# Maintainer, once:  ./setup-user.sh --publish
-#   symlinks it into /global/common/software/<project>/bin as `hpcenvs-setup`.
 set -euo pipefail
 
-CHECK=0 PUBLISH=0 UNDO=0
+CHECK=0 UNDO=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --check)   CHECK=1;   shift ;;
-        --publish) PUBLISH=1; shift ;;
         --undo)    UNDO=1;    shift ;;
         -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
         *) echo "unknown option: $1 (try --help)" >&2; exit 1 ;;
     esac
 done
 
-# Resolve through the published symlink, or --publish and the helper calls
-# below would resolve relative to the bin dir instead of the checkout.
+# Resolve symlinks, so the block and the helper calls below point into the
+# clone itself.
 SELF=$(readlink -f "${BASH_SOURCE[0]}")
 HELPERS=$(dirname "$SELF")
 PERLMUTTER=$(dirname "$HELPERS")
 PROJECT="${NERSC_PROJECT:-<project>}"
 SHARED_JUPYTER="${HPCENVS_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
-BIN_DIR="/global/common/software/${PROJECT}/bin"
 
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }
 warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
 act()  { printf '  \033[36mdid\033[0m   %s\n' "$*"; }
 WARNINGS=0
-
-# --- maintainer: publish into the shared bin ---------------------------------
-if [ "$PUBLISH" = 1 ]; then
-    [ -d "$BIN_DIR" ] || { echo "ERROR: $BIN_DIR does not exist" >&2; exit 1; }
-    ln -sfn "$SELF" "$BIN_DIR/hpcenvs-setup"
-    chgrp "$PROJECT" "$BIN_DIR/hpcenvs-setup" 2>/dev/null || true
-    chmod g+rX "$BIN_DIR/hpcenvs-setup" 2>/dev/null || true
-    echo ">> published $BIN_DIR/hpcenvs-setup -> $SELF"
-    echo "   Group members with env.sh sourced have that on PATH already."
-    exit 0
-fi
 
 # --- undo: remove our block, leave everything else alone ---------------------
 # Only the marked block, never the whole file: people put their own things in

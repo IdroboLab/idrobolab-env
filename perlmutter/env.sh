@@ -1,7 +1,9 @@
 # Perlmutter shell environment for the <project> container stack.
 # Source it from ~/.bashrc:
 #
-#     [ -r "$HOME/hpcenvs/perlmutter/env.sh" ] && . "$HOME/hpcenvs/perlmutter/env.sh"
+#     [ -r "$HOME/idrobolab-env/perlmutter/env.sh" ] && . "$HOME/idrobolab-env/perlmutter/env.sh"
+#
+# perlmutter/helpers/setup-user.sh writes that line for you.
 #
 # Safe to source unconditionally: it is silent, idempotent, does nothing off
 # Perlmutter, and never sets `set -e` or calls `exit` (either would kill the
@@ -188,7 +190,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # written to stdout there corrupts the protocol stream and the transfer
     # fails with a confusing "protocol error".
     if [ "${HPCENVS_ENV_VERBOSE:-0}" = "1" ] && [ -n "${PS1:-}" ]; then
-        echo "hpcenvs/perlmutter: project=$NERSC_PROJECT" >&2
+        echo "idrobolab-env/perlmutter: project=$NERSC_PROJECT" >&2
         echo "  PODMAN_STORE                $PODMAN_STORE" >&2
         echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES" >&2
         echo "  PODMANHPC_GRAPH_ROOT        ${PODMANHPC_GRAPH_ROOT:-<unset: node-local default>}" >&2
