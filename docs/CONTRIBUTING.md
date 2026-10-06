@@ -69,6 +69,18 @@ Not sure how to change something, or only want to point out a problem? Open an
 - Passwords, tokens, private keys, the `sshproxy` key, anything from `~/.ssh`.
 - Personal settings that only make sense for you. Put those in your own `~/.bashrc`.
 
+## Rules for members' coding agents
+
+`perlmutter/agents/group.md` holds the group's rules for Claude Code and Codex: change
+it by pull request like anything else. NERSC's own baseline is vendored in
+`perlmutter/agents/nersc/` and is never edited by hand: a weekly workflow
+(`nersc-agents-sync`) opens one pull request when NERSC's
+[coding-agents](https://github.com/NERSC/coding-agents) repository changes, and an
+admin reads the diff before merging it, because every member's agents follow that text.
+For an admin: the workflow needs "Allow GitHub Actions to create and approve pull
+requests" switched on (repository or organisation *Settings → Actions → General →
+Workflow permissions*). It can also be started from the Actions tab.
+
 Code written with a coding agent is welcome; you are responsible for it like any other
 code, so read it before opening the PR. Agents working in this repo follow its
 [AGENTS.md](../AGENTS.md); add rules for them there
