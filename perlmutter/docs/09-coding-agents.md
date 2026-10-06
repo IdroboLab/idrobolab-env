@@ -19,6 +19,8 @@ does, so don't let it do anything you wouldn't do yourself.
 | Log in | run `claude`, press `c` to copy the login URL, open it in your laptop's browser, paste the code back | `codex login --device-auth`; or connect with `ssh -L 1455:localhost:1455 perlmutter` and open the printed URL locally |
 | Start | `claude` in your project folder | `codex` in your project folder |
 
+For Codex, [codex.md](codex.md) walks through every step.
+
 Both also have editor and desktop-app versions that connect to Perlmutter over SSH.
 On Perlmutter, the terminal version is the simplest.
 
