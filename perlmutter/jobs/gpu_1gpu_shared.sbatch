@@ -131,7 +131,7 @@ done
 WORKDIR=$(pwd -P)
 
 # Run a cluster checkout instead of the baked-in code:
-# MOUNTS="$MOUNTS -v $SCRATCH/code/otherimage:/opt/src/otherimage"
+# MOUNTS="$MOUNTS -v $SCRATCH/code/abTEM:/opt/src/abTEM"
 
 # Single process, no MPI launcher -> GPAW_MPI_BACKEND is not needed here.
 # Give the one process the threads it paid for (16 physical cores).
@@ -144,5 +144,4 @@ time srun --cpu-bind=cores \
         $THREAD_ENV \
         "$IMAGE" python "$SCRIPT" "$@"
 
-# For 2 GPUs in the same QOS: --gpus=2 --cpus-per-task=64 (no --mem -- see
-# the header). Still one process; let the code see both devices.
+# For 2 GPUs in the same QOS, use gpu_2gpu_shared.sbatch.

@@ -44,7 +44,7 @@ The script:
 1. Adds a short, marked block to `~/.bashrc` that sources the group's
    [`env.sh`](../env.sh).
 2. Links the group's shared Jupyter kernels into your account
-   ([page 7](07-jupyter.md)).
+   ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
    that you can read the shared container store, and that `$SCRATCH` exists.
 

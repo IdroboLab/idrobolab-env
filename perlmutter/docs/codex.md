@@ -1,7 +1,7 @@
 # Codex on Perlmutter
 
 A step-by-step guide to OpenAI's Codex CLI on a Perlmutter login node. The rules on the
-[coding-agents page](09-coding-agents.md#rules) apply to Codex as to any agent; NERSC's
+[coding-agents page](10-coding-agents.md#rules) apply to Codex as to any agent; NERSC's
 own page is <https://docs.nersc.gov/development/coding-agents/codex/>.
 
 ## 1. Install

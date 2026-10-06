@@ -26,7 +26,7 @@ shared copy with `helpers/update-image.sh`.
 ## Batch job
 
 The job templates ([page 4](04-jobs.md#batch-jobs-sbatch)) run `python <your script>`
-inside the container:
+inside the container (abTEM in particular: [page 7](07-abtem.md)):
 
 ```bash
 sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
@@ -44,10 +44,11 @@ srun --pty podman-hpc run --rm -it --gpu --group-add keep-groups \
     --workdir "$PWD" "$IDROBOLAB_IMAGE" bash
 ```
 
-For a whole node with 4 GPUs,
-`~/idrobolab-env/perlmutter/jobs/interactive_gpu.sh` does both steps
-([source](../jobs/interactive_gpu.sh)). It always books a full node, even with
-`GPUS=1`, so use the commands above for 1–2 GPUs.
+`~/idrobolab-env/perlmutter/jobs/interactive_gpu_shared.sh` does both steps for 1 or 2
+GPUs (`GPUS=2` for two, `TIME=02:00:00` for the time; [source](../jobs/interactive_gpu_shared.sh)).
+For a whole node with 4 GPUs, `~/idrobolab-env/perlmutter/jobs/interactive_gpu.sh`
+does both steps ([source](../jobs/interactive_gpu.sh)); it always books a full node,
+even with `GPUS=1`.
 
 What the flags do:
 
@@ -73,7 +74,9 @@ podman-hpc run ... -v $SCRATCH/code/abTEM:/opt/src/abTEM ... "$IDROBOLAB_IMAGE" 
 ```
 
 Check which copy you got with
-`python -c "import abtem; print(abtem.__file__, abtem.__version__)"`. A package
+`python -P -c "import abtem; print(abtem.__file__, abtem.__version__)"`. For abTEM in
+particular, [page 7](07-abtem.md) covers this and the alternative of your own uv
+environment. A package
 with compiled parts (GPAW) needs to be rebuilt if you change its C code. If you need a
 package the image lacks, ask the maintainer to add it to the recipe
 (`shared/containers/x86_64-cuda/idrobolab/`).

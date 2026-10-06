@@ -1,4 +1,4 @@
-# 7. Jupyter
+# 8. Jupyter
 
 There are two ways to run notebooks on Perlmutter, and they complement each other:
 

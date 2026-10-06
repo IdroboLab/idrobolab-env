@@ -3,7 +3,7 @@
 **First choice for GPU work and the big science stack (abTEM, GPAW, torch, CuPy, …):
 the group container** ([page 6](06-containers.md)), where everything is already
 installed and tested. Use uv for your own analysis code, small tools, and anything the
-container doesn't have.
+container doesn't have (abTEM from your own environment: [page 7](07-abtem.md#route-2-your-own-uv-environment)).
 
 [uv](https://docs.astral.sh/uv/) installs Python itself and packages, much faster than
 pip or conda. After the group setup ([page 2](02-shell-setup.md#2-group-environment))
@@ -74,4 +74,4 @@ Because the cache (on `$SCRATCH`) and environments in `$HOME` are on different f
 systems, uv prints *"Failed to hardlink files; falling back to full copy"*. This is
 harmless. Silence it with `export UV_LINK_MODE=copy` in `~/.bashrc`.
 
-To use an environment in Jupyter, see [page 7](07-jupyter.md).
+To use an environment in Jupyter, see [page 8](08-jupyter.md).

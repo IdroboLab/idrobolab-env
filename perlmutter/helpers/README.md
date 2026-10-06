@@ -30,7 +30,7 @@ Not in this directory, deliberately:
 
 - [`../env.sh`](../env.sh) — sourced from `~/.bashrc`, not executed. It stays at
   `perlmutter/env.sh` so the source line people already have keeps working.
-- `../jobs/interactive_gpu.sh`, `../jobs/interactive_jupyter.sh` — helpers
+- `../jobs/interactive_gpu.sh`, `../jobs/interactive_gpu_shared.sh`, `../jobs/interactive_jupyter.sh` — helpers
   rather than `sbatch` templates, but they share the mount/image/QOS
   conventions of the templates they sit beside, and `jobs/README.md`
   documents them in the same matrix.
