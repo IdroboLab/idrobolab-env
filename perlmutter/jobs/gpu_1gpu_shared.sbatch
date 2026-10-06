@@ -131,7 +131,7 @@ done
 WORKDIR=$(pwd -P)
 
 # Run a cluster checkout instead of the baked-in code:
-# MOUNTS="$MOUNTS -v $SCRATCH/code/otherimage:/opt/src/otherimage"
+# MOUNTS="$MOUNTS -v $SCRATCH/code/abTEM:/opt/src/abTEM"
 
 # Single process, no MPI launcher -> GPAW_MPI_BACKEND is not needed here.
 # Give the one process the threads it paid for (16 physical cores).
