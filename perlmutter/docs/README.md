@@ -65,20 +65,15 @@ Six things to remember:
 ## Acknowledging NERSC
 
 Every publication (papers, theses, posters) with results computed at NERSC acknowledges
-it. NERSC's preferred wording:
+it, in the wording NERSC gives for our allocation:
 
 > This research used resources of the National Energy Research Scientific Computing
-> Center (NERSC), a Department of Energy User Facility using NERSC award
-> [award].
+> Center, a DOE Office of Science User Facility supported by the Office of Science of the
+> U.S. Department of Energy under Contract No. DE-AC02-05CH11231 using NERSC award
+> BES-ERCAP0038959.
 
-`[award]` is the program acronym and ERCAP request number of the allocation you used
-(for example `BES-ERCAP0012345`); ask the maintainer for it. Without it, NERSC accepts
-the project and allocation year instead:
-
-> This research used resources of the National Energy Research Scientific Computing
-> Center (NERSC), a Department of Energy User Facility (project <project>-2026).
-
-Source: <https://www.nersc.gov/users/become-a-nersc-user/acknowledgement>.
+BES-ERCAP0038959 is the award for project <project>. Source:
+<https://www.nersc.gov/users/become-a-nersc-user/acknowledgement>.
 
 ## Help
 
