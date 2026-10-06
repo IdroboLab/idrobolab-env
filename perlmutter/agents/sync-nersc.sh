@@ -11,8 +11,8 @@
 # request on a change. It is the only thing that edits nersc/.
 #
 # UPSTREAM is rewritten only when a vendored file changed, so an upstream commit
-# that touches only NERSC's READMEs causes no change here. It then names the
-# upstream commit at which the files last changed.
+# that touches only NERSC's READMEs causes no change here. It names the upstream
+# commit seen at the last sync that changed the vendored files.
 set -euo pipefail
 
 REPO=https://github.com/NERSC/coding-agents
