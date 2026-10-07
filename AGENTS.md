@@ -46,7 +46,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 - The job templates default `SIF` to `$PROJECTS_BASE/software/containers/idrobolab.sif`
   (`get-image.sh` pulls `ghcr.io/idrobolab/idrobolab` into it; that image has not been
   run on Delta yet) and carry the placeholder `<project>-delta-{cpu,gpu}` in their `--account` lines, which
-  the user replaces (the verification launchers still carry a concrete account there).
+  the user replaces (the verification launchers too).
 - The Python payloads of the multi-GPU verification are shared with Perlmutter in
   `shared/verification/multigpu_abtem/`; the launchers in `delta/verification/` and
   `perlmutter/verification/` locate them relative to themselves. Change a payload once,
