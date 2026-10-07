@@ -24,6 +24,10 @@ When adding or editing a script that references the image, use
 `${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif`
 as the default.
 
+## Environment file
+
+Delta has no `env.sh` yet; one in the shape of `perlmutter/env.sh` is wanted.
+
 ## What lives where
 
 - **Container images** → `$PROJECTS_BASE/software/containers/` (shared, provenance
@@ -33,7 +37,7 @@ as the default.
 - **Apptainer caches** → `$SCRATCH_BASE/$USER/.apptainer` (keep off `$HOME`;
   do not move to projects).
 - **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on
-  /projects (e.g. `/projects/<project>/<username>/<campaign>/code/gpaw`),
+  /projects (e.g. `/projects/<project>/<user>/<campaign>/code/gpaw`),
   bound over the image's editable `/opt/src/<name>` — test code belongs to
   the campaign using it, never to a shared cross-project location. Job
   outputs and other regenerable bulk → `$SCRATCH_BASE/$USER/...`.
