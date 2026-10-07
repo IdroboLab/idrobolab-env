@@ -9,8 +9,8 @@ files without overwriting each other. GitHub hosts the shared copy of such a fol
 analysis code belongs in git too ([page 2](02-cloning.md#5-your-own-projects-and-your-data)).
 
 This page sets up what every later page assumes: a GitHub account, membership of the
-IdroboLab organisation, an SSH key that lets git on your laptop identify you, and git's
-one-time settings. Cloning repositories is the next page ([page 2](02-cloning.md)); getting
+IdroboLab organisation, an SSH key that lets git on your laptop identify you (with the config entry that goes with it),
+and git's one-time settings. Cloning repositories is the next page ([page 2](02-cloning.md)); getting
 the same access on Perlmutter is in
 [Perlmutter page 2](perlmutter/02-shell-setup.md#1-github-from-perlmutter).
 
@@ -67,7 +67,97 @@ access." means it works.
 (**Settings → Developer settings → Personal access tokens**). We use SSH; a token is a
 password, so never paste it into a file, a script or an AI prompt.
 
-## 3. git, once
+## 3. The SSH config entry for github.com
+
+ssh reads its per-user settings from a **config file**; one entry in it makes every git
+command that talks to `github.com` use the key from section 2, and load it into your SSH
+agent (below) so that you type the passphrase once per login session. Without the entry,
+ssh still tries the default key file `~/.ssh/id_ed25519`, so everything works, but the
+entry is what you want once you have more than one key.
+
+| OS | The config file |
+|---|---|
+| Linux / macOS | `~/.ssh/config` |
+| Windows | `C:\Users\<you>\.ssh\config` (`%USERPROFILE%\.ssh\config`; no file extension, see below) |
+| WSL | `~/.ssh/config` *inside* WSL; WSL has its own, separate from Windows' |
+
+The file may not exist yet; create it. Add:
+
+```
+Host github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    AddKeysToAgent yes
+    # macOS only: also keep the passphrase in the macOS keychain
+    #UseKeychain yes
+    # Networks that block port 22 (ssh -T hangs or times out): remove the # from these two lines
+    #Hostname ssh.github.com
+    #Port 443
+```
+
+- `User git`: GitHub's SSH user name is always `git` (it is the `git@` in the addresses).
+- `IdentityFile` names the private key; `~` stands for your home directory
+  (`C:\Users\<you>` on Windows; if Windows ssh reports that it cannot find the file,
+  write the path out: `IdentityFile C:/Users/<you>/.ssh/id_ed25519`).
+- `IdentitiesOnly yes` offers only that key. Without it, ssh also offers every key your
+  agent holds, one after the other, and a server may hang up with "Too many authentication
+  failures" before the right one is tried.
+- `AddKeysToAgent yes` adds the key to a running agent the first time it is used.
+- `UseKeychain yes` is an Apple extension; other systems reject it with "Bad
+  configuration option", so uncomment it on macOS only.
+- Port 443: GitHub also accepts SSH connections on port 443 at the host name
+  `ssh.github.com`, for networks that block port 22
+  ([GitHub's instructions](https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port)).
+  Addresses of the form `git@github.com:...` keep working, because the entry is matched by
+  the name `github.com` in the address. The first connection through port 443 asks about
+  the host key again: compare the fingerprint with GitHub's list as in section 2.
+
+Check what ssh will use with `ssh -G github.com | grep -iE "^(hostname|port|user|identityfile)"`
+(on Windows PowerShell: `ssh -G github.com | Select-String "^(hostname|port|user|identityfile)"`),
+then repeat `ssh -T git@github.com`.
+
+**Windows: Notepad silently saves `config` as `config.txt`**, and OpenSSH then ignores
+it. The safest way is to open the exact path from PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.ssh" | Out-Null
+notepad "$env:USERPROFILE\.ssh\config"
+```
+
+If you already have a `config.txt`, rename it:
+`Rename-Item "$env:USERPROFILE\.ssh\config.txt" config`.
+
+### The SSH agent
+
+The **agent** is a background program that holds your unlocked keys in memory, so that
+you type the passphrase once per login session instead of for every `git push`.
+`AddKeysToAgent` and, on Perlmutter, key forwarding
+([Perlmutter page 2](perlmutter/02-shell-setup.md#1-github-from-perlmutter)) need one running.
+
+- **macOS and most Linux desktops** start one at login. `ssh-add -l` lists the loaded
+  keys; "The agent has no identities." is fine, and "Could not open a connection to your
+  authentication agent" means none is running. Start one for the current terminal with
+  `eval "$(ssh-agent -s)"`.
+- **Windows** has the service but disabled by default. Once, in an *administrator*
+  PowerShell:
+
+  ```powershell
+  Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent
+  ```
+
+With the config entry, the `ssh -T git@github.com` test (or the first `git pull`) asks
+for the passphrase and loads the key. To load it by hand:
+
+```bash
+ssh-add ~/.ssh/id_ed25519            # Linux; macOS: ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+```
+
+```powershell
+ssh-add $env:USERPROFILE\.ssh\id_ed25519      # Windows
+```
+
+## 4. git, once
 
 On every machine where you use git (your laptop, and Perlmutter):
 

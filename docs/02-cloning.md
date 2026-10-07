@@ -62,7 +62,7 @@ git -C <clone> pull
 ```
 
 fetches what others have pushed and puts your own commits on top of it (with the
-`pull.rebase true` setting from [page 1](01-github.md#3-git-once)), which keeps the
+`pull.rebase true` setting from [page 1](01-github.md#4-git-once)), which keeps the
 history a straight line. Update before you start working, and when someone announces a
 change. `git pull` brings in the branch you are on. If it refuses because of
 uncommitted changes, commit them first (next section), or look at them with

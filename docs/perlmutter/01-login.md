@@ -53,13 +53,11 @@ asking for a password again, the key has expired: run `sshproxy` again.
 
 ## 4. SSH config
 
-Add these two entries to your **local** SSH config, with your NERSC username:
-
-| OS | File |
-|---|---|
-| Linux / macOS | `~/.ssh/config` |
-| Windows | `C:\Users\<you>\.ssh\config` (no file extension; see below) |
-| WSL | `~/.ssh/config` *inside* WSL; WSL has its own, separate from Windows' |
+Add these two entries to your **local** SSH config, with your NERSC username. It is the
+file you may already have made for GitHub: where it lives on each OS, and how to create
+it on Windows without Notepad turning it into `config.txt`, is described in
+[the GitHub page](../01-github.md#3-the-ssh-config-entry-for-githubcom). Keep the
+`Host github.com` entry from there; the entries below are separate and don't overlap.
 
 ```
 Host perlmutter perlmutter.nersc.gov
@@ -91,17 +89,6 @@ Host nersc-dtn dtn.nersc.gov
   programs ([page 9](09-thinlinc-nionswift.md)). For an occasional X window, use
   `ssh -Y perlmutter`. On Windows this also needs a local X server.
 - `nersc-dtn` is for file transfers ([page 3](03-storage-and-transfer.md)).
-
-**Windows: Notepad silently saves `config` as `config.txt`**, and OpenSSH then ignores
-it. The safest way is to open the exact path from PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.ssh" | Out-Null
-notepad "$env:USERPROFILE\.ssh\config"
-```
-
-If you already have a `config.txt`, rename it:
-`Rename-Item "$env:USERPROFILE\.ssh\config.txt" config`.
 
 ## 5. Log in
 

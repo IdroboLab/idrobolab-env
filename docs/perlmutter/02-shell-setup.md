@@ -14,31 +14,37 @@ your agent.
 
 **A. Forward your laptop's key (no key stored at NERSC).** The `ForwardAgent yes` line
 in your SSH config ([page 1](01-login.md#4-ssh-config)) lets git on Perlmutter use the
-laptop's key while you are connected. Load the key into your laptop's agent once per
-login session:
+laptop's key while you are connected. The key has to be loaded in your laptop's agent
+first, once per login session: with the `Host github.com` entry from the
+[GitHub page](../01-github.md#3-the-ssh-config-entry-for-githubcom) a `ssh -T git@github.com`
+on the laptop does it, and the same page explains the agent and `ssh-add`. Then log in to
+Perlmutter. `ssh-add -l` there lists the forwarded key, and `ssh -T git@github.com`
+should greet you. While you are connected, anyone with root on the remote machine could
+use your forwarded agent. That is acceptable at NERSC, but don't forward your agent to
+machines you don't trust.
 
-```bash
-ssh-add ~/.ssh/id_ed25519            # Linux; macOS: ssh-add --apple-use-keychain ~/.ssh/id_ed25519
-```
-
-```powershell
-# Windows, once, in an *administrator* PowerShell: start the agent service
-Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent
-# then, as yourself
-ssh-add $env:USERPROFILE\.ssh\id_ed25519
-```
-
-Then, on Perlmutter, `ssh -T git@github.com` should greet you. While you are connected,
-anyone with root on the remote machine could use your forwarded agent. That is
-acceptable at NERSC, but don't forward your agent to machines you don't trust.
+Under A, **do not add a `Host github.com` entry on Perlmutter**, and above all not the
+laptop's: `IdentitiesOnly yes` restricts ssh to the key files the entry names, even when
+the agent offers more (`man ssh_config`), and the laptop's `IdentityFile` does not exist on
+Perlmutter, so the forwarded key would never be offered. Without an entry, ssh offers
+the forwarded agent's keys.
 
 **B. A separate key on Perlmutter.** Run the same `ssh-keygen` command on a Perlmutter
 login node ([GitHub page](../01-github.md#2-an-ssh-key-for-github)), **with a
 passphrase**, and register that public key on GitHub too, with a title such as
-"perlmutter".
+"perlmutter". No config entry is needed: ssh tries `~/.ssh/id_ed25519` by default. If
+you keep several keys in `~/.ssh` on Perlmutter, add this to `~/.ssh/config` there, so
+that only the GitHub key is offered:
+
+```
+Host github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+```
 
 Set git's name and e-mail here as well, once
-([the GitHub page](../01-github.md#3-git-once)).
+([the GitHub page](../01-github.md#4-git-once)).
 
 ## 2. Your clone of idrobolab-env
 
