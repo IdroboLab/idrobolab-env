@@ -1,7 +1,6 @@
 #!/bin/bash
-# Materialize the Delta .sif from the shared image. Preferred path: convert the
-# registry image built+pushed by another image's recipe publish.sh (maintained by
-# The maintainer, not in this repo).
+# Materialize the Delta .sif by converting the registry image built+pushed by the
+# Another image's recipe publish.sh (maintained separately, not in this repo).
 #
 # Run on Delta (or any host with apptainer). On a Delta login node the script
 # re-launches itself on a compute node via srun (cpu-interactive by default) and
@@ -56,13 +55,8 @@ PROCS=${MKSQUASHFS_PROCS:-${SLURM_CPUS_PER_TASK:-}}
 echo ">> building $SIF on $(hostname -s): cache=${APPTAINER_CACHEDIR:-default}," \
      "tmp=${APPTAINER_TMPDIR:-default}, mksquashfs procs=${PROCS:-all}"
 
-# From the registry (fastest; no local build):
+# From the registry (no local build):
 apptainer build "${BUILD_ARGS[@]}" "$SIF" "docker://${IMAGE}:${TAG}"
 
 echo ">> $SIF ready. sha256 for provenance:"; sha256sum "$SIF"
 echo ">> run: apptainer exec --nv $SIF python script.py   (see jobs/ for Slurm)"
-
-# Alternatives (uncomment as needed):
-# --- local OCI build then convert (no registry): ------------------------------
-#   (cd <another image's recipe> && ./prepare_build_context.sh && podman build -t otherimage:latest .)
-#   apptainer build "$SIF" docker-daemon://otherimage:latest

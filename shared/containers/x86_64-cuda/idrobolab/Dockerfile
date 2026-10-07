@@ -4,9 +4,9 @@
 # + ML potentials (fairchem, orb-models) + phonons (phonopy, hiphive) +
 # pymatgen + dask + jupyterlab, on CUDA 12.8 / Python 3.12 / x86_64.
 #
-# Sibling of shared/containers/otherimage: it reuses the identical compiled
-# foundation (MPICH/FFTW/ScaLAPACK/libxc/libvdwxc + GPAW) and swaps the Python
-# stack. KEY DIFFERENCE: fairchem-core pins torch~=2.8, so this image uses
+# Sibling of another image's recipe (maintained separately, not in this repo): it
+# reuses the identical compiled foundation (MPICH/FFTW/ScaLAPACK/libxc/libvdwxc +
+# GPAW) and swaps the Python stack. KEY DIFFERENCE: fairchem-core pins torch~=2.8, so this image uses
 # torch 2.8.0 (NOT 2.13). fairchem v2 needs no torch-geometric wheels.
 #
 # Build (host with docker/podman, after ./prepare_build_context.sh):
