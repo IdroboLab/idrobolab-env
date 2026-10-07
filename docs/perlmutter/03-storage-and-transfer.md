@@ -47,7 +47,29 @@ transfers there. Use the data transfer nodes (`nersc-dtn` from
 NERSC suggests scp for files below about 10 GB and Globus above
 ([NERSC: scp](https://docs.nersc.gov/services/scp/)).
 Run these on your **laptop**, with a valid `sshproxy` key. Write the remote path out
-in full; on Perlmutter, `echo $SCRATCH` shows yours.
+in full; on Perlmutter, `echo $SCRATCH` shows yours. rsync and scp use the `nersc-dtn`
+alias from your SSH config ([page 1](01-login.md#4-ssh-config)) and need no other
+setup.
+
+#### Windows
+
+Windows has no built-in rsync, but its OpenSSH client includes `scp`, which does the same
+job for a copy to or from Perlmutter. The commands are the same in Command Prompt and
+PowerShell (`-r` copies a folder with everything in it; use paths relative to the
+current folder):
+
+```
+scp -r mydata nersc-dtn:/pscratch/sd/<x>/<username>/
+scp -r nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results .
+```
+
+The first line copies the folder `mydata` into your scratch directory; the second creates
+`results` in the current folder. (NERSC's scp page suggests the graphical WinSCP for
+Windows; the OpenSSH `scp` that comes with Windows works as well.) For rsync, use it
+inside WSL (the macOS and Linux instructions below, with the SSH config entries and an
+`sshproxy` key in WSL's own `~/.ssh`), or use Globus.
+
+#### macOS and Linux
 
 ```bash
 # laptop -> Perlmutter scratch
@@ -59,11 +81,8 @@ rsync -azPv nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results/ ./resu
 
 `-azPv`: keep times and permissions, compress, resume partial files, show progress.
 Re-running the same command copies only what changed. The trailing `/` on the source
-means "the contents of"; without it, rsync creates `mydata/mydata`.
-
-**Windows has no built-in rsync.** Use `scp` in PowerShell instead
-(`scp -r mydata nersc-dtn:/pscratch/sd/<x>/<username>/`), or rsync inside WSL, or
-Globus.
+means "the contents of"; without it, rsync creates `mydata/mydata`. `scp -r` as above
+works here too.
 
 ### Globus (large data, many files, or unattended)
 
