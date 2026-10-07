@@ -6,16 +6,48 @@ compute node with a one-click launcher.
 
 ## ThinLinc
 
-**Install the client** from <https://www.cendio.com/thinlinc/download> (Windows,
-macOS, Linux).
+### Install the client
 
-**Connect** with a fresh `sshproxy` key ([page 1, §3](01-login.md#3-get-todays-key-every-day)):
+Download the client from <https://www.cendio.com/thinlinc/download>. Cendio's
+installation instructions for each system:
+[Windows](https://www.cendio.com/resources/docs/tag/client_windows.html),
+[macOS](https://www.cendio.com/resources/docs/tag/client_macos.html),
+[Linux](https://www.cendio.com/resources/docs/tag/client_linux.html).
+
+#### Windows
+
+Download `tl-<version>-client-windows.exe` (x64), run it and follow the instructions.
+The client is added to the Start menu: start it from there.
+
+#### macOS
+
+Download `tl-<version>-client-macos.dmg`, double-click it, drag the ThinLinc client
+application to Applications (or another folder), and eject the volume. Start it by
+double-clicking the application.
+
+#### Linux
+
+Download the package for your distribution (`amd64` / `x86_64` or `arm64` / `aarch64`)
+and install it:
+
+```bash
+sudo dpkg -i thinlinc-client_<version>_amd64.deb        # Debian, Ubuntu
+sudo rpm -Uvh thinlinc-client-<version>.x86_64.rpm      # Fedora, Red Hat, SUSE
+```
+
+Start it from the ThinLinc client icon of your desktop menu (usually in the Internet
+category) or with `/opt/thinlinc/bin/tlclient`.
+
+### Connect
+
+Connect with a fresh `sshproxy` key ([page 1, §3](01-login.md#3-get-todays-key-every-day)):
 
 1. Server: `thinlinc.nersc.gov`. Username: your NERSC username.
 2. **Options… → Security → Authentication method: Public key.** Key: your `sshproxy`
-   key, `~/.ssh/nersc` (Windows: `C:\Users\<you>\.ssh\nersc`). On Windows, keys made
-   in WSL and PuTTY `.ppk` keys don't work; use the `sshproxy` you installed on Windows
-   itself.
+   key `nersc` in the `.ssh` folder of your home folder: `C:\Users\<you>\.ssh\nersc` on
+   Windows, `/Users/<you>/.ssh/nersc` on macOS, `/home/<you>/.ssh/nersc` on Linux. On
+   Windows, keys made in WSL and PuTTY `.ppk` keys don't work; use the `sshproxy` you
+   installed on Windows itself.
 3. Recommended: **Options… → Advanced → Reconnect policy → "Always ask how multiple
    sessions should be handled"**.
 4. On the first connection, compare the host key fingerprint with the ones on

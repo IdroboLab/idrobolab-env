@@ -33,7 +33,8 @@ Consequences:
 
 - NERSC account with a Perlmutter allocation (`mXXXX`; GPU allocations are the
   `mXXXX_g` variant).
-- ThinLinc client on the laptop: https://www.cendio.com/thinlinc/download
+- ThinLinc client on the laptop: https://www.cendio.com/thinlinc/download (install steps
+  for Windows, macOS and Linux: [page 9](../09-thinlinc-nionswift.md#install-the-client))
 - `sshproxy` set up (https://docs.nersc.gov/connect/mfa/#sshproxy). The generated
   key (`~/.ssh/nersc` by default) is valid 24 h and must be regenerated daily:
 
