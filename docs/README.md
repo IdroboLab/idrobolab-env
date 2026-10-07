@@ -1,8 +1,9 @@
 # Documentation
 
-Step-by-step introduction for members of the IdroboLab group (NERSC project **<project>**),
-written for people with little git, SSH or HPC experience. Work through the pages in
-order; each builds on the ones before. Everything lives in the group repository
+Documentation for members of the IdroboLab group: a step-by-step introduction for NERSC
+Perlmutter (project **<project>**), written for people with little git, SSH or HPC experience,
+and a page for NCSA Delta. Work through the pages in order; each builds on the ones before.
+Everything lives in the group repository
 [IdroboLab/idrobolab-env](https://github.com/IdroboLab/idrobolab-env).
 
 ## General pages
@@ -34,3 +35,12 @@ reference notes ([Jupyter](perlmutter/reference/jupyter.md),
 [Nion Swift over ThinLinc](perlmutter/reference/nionswift-perlmutter-thinlinc.md),
 [NERSC's filesystem guard](perlmutter/reference/nersc-filesystem-guard.md)), and
 [group conventions](perlmutter/conventions.md) and [Codex](perlmutter/codex.md) are there too.
+
+## Delta
+
+The [Delta page](delta/README.md) covers NCSA's Delta system: accounts and charging, getting
+the container image with `delta/get-image.sh`, the job templates per partition in
+[`delta/jobs/`](../delta/jobs/README.md) (partition matrix, how MPI is launched, a first-run
+checklist), the multi-GPU abTEM verification, and the conventions that avoid Delta's
+common traps. It is one page rather than a numbered series: the general pages above (GitHub,
+cloning) apply on Delta as they do on Perlmutter.

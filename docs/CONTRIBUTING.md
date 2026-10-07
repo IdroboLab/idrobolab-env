@@ -50,8 +50,8 @@ Not sure how to change something, or only want to point out a problem? Open an
 ## What makes a change easy to merge
 
 - **One topic per PR.** A page fix and a new job template are two PRs.
-- **Try it on Perlmutter** before opening the PR: run the script, or submit the job
-  template with a short time limit, and say in the PR what you ran. For a page, follow
+- **Try it on the cluster it is for** (Perlmutter or Delta) before opening the PR: run the
+  script, or submit the job template with a short time limit, and say in the PR what you ran. For a page, follow
   the commands you changed: they must be complete and pasteable.
 - **Keep pages short** and in the order a newcomer needs them. When you rename or add a
   page, update the links and the tables in [README.md](README.md) and
