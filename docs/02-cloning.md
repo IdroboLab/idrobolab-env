@@ -4,7 +4,7 @@ A **clone** is your own full copy of a repository on your machine: all files and
 history, plus a remembered address of the original on GitHub, called `origin`. You work in
 the clone and exchange commits with GitHub in both directions. This page covers cloning,
 keeping a clone up to date, the everyday commands, and how to put your own projects in git.
-It assumes the SSH key from [page 1](01-github.md).
+It assumes the SSH key from [general page 1](01-github.md).
 
 ## 1. Clone a repository
 
@@ -20,7 +20,7 @@ git clone git@github.com:<owner>/<repository>.git ~/code/x   # or into a folder 
 Three kinds of repository come up:
 
 - **The group's repositories** (owner `IdroboLab`, private; you need the invitation from
-  [page 1](01-github.md#1-account-and-the-idrobolab-organisation)). `idrobolab-env` holds the
+  [general page 1](01-github.md#1-account-and-the-idrobolab-organisation)). `idrobolab-env` holds the
   Perlmutter environment and these pages. On Perlmutter every member clones it to
   `~/idrobolab-env`
   ([Perlmutter page 2](perlmutter/02-shell-setup.md#2-your-clone-of-idrobolab-env)). To fix a page or a
@@ -62,7 +62,7 @@ git -C <clone> pull
 ```
 
 fetches what others have pushed and puts your own commits on top of it (with the
-`pull.rebase true` setting from [page 1](01-github.md#4-git-once)), which keeps the
+`pull.rebase true` setting from [general page 1](01-github.md#4-git-once)), which keeps the
 history a straight line. Update before you start working, and when someone announces a
 change. `git pull` brings in the branch you are on. If it refuses because of
 uncommitted changes, commit them first (next section), or look at them with

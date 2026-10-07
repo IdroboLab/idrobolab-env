@@ -13,15 +13,17 @@ Globus's own tutorials are at <https://docs.globus.org/guides/tutorials/>.
 Globus describes its transfers as "fire-and-forget": it manages the transfer, retries after
 network errors, and by default **verifies file integrity with checksums** after the copy
 ([File Transfer tutorial](https://docs.globus.org/guides/tutorials/manage-files/transfer-files/)).
-The data flows between the two storage systems; you can close the browser and the laptop.
+The data flows between the two storage systems, so you can close the browser. If one end
+is a laptop or instrument PC (section 6), the transfer is suspended while that machine is
+off or offline and resumes when it is back, unless three or more days have passed.
 Globus is free for researchers at non-profit institutions
 ([subscriptions FAQ](https://docs.globus.org/faq/subscriptions/)).
 
 | | `rsync` / `scp` | Globus |
 |---|---|---|
-| Good for | a few files or folders, up to a few tens of GB; anything you want to script quickly | many files, hundreds of GB and more, transfers that must survive a closed laptop |
+| Good for | a few files or folders, up to about 10 GB; anything you want to script quickly | many files, hundreds of GB and more, transfers that should run unattended |
 | Needs | ssh access to the machine | a *collection* (section 3) on both sides, and a Globus login |
-| If the connection drops | the command stops; re-run it | Globus retries and finishes by itself |
+| If the connection drops | the command stops; re-run it | Globus retries and finishes by itself (a laptop end pauses until the laptop is back) |
 | Checks the copy | compares size and time; `--checksum` compares content | by default, with checksums |
 
 Use rsync for the small everyday copy and Globus for the big or unattended one. Globus is
@@ -39,12 +41,14 @@ not a backup, and it cannot reach a machine that has no collection.
    transfers) on your behalf"). Consent.
 
 Your Globus account can hold several **identities**: your university login, and for
-example a NERSC login later on. Open the **Identities** page and
-click **Link Another Identity**, choose the organisation (here: NERSC) from the drop-down,
-and authenticate with it; Globus first asks you to authenticate with your primary
-identity ([how to link](https://docs.globus.org/guides/tutorials/manage-identities/link-to-existing/)).
-Linked identities are shown on the same page. Whether a collection needs the link depends
-on the collection; the NERSC specifics are in
+example a NERSC login later on. To link one, open the **Identities** page and click
+**Link Another Identity**, choose the organisation (here: NERSC) from the drop-down, and
+authenticate with it as you normally would; Globus then asks you to authenticate with your
+primary identity to complete the linking
+([how to link](https://docs.globus.org/guides/tutorials/manage-identities/link-to-existing/)).
+Linked identities are shown on the same page. If you have no NERSC account yet, come back to
+this paragraph after [Perlmutter page 1](perlmutter/01-login.md). Whether a collection
+needs the link depends on the collection; the NERSC specifics are in
 [Perlmutter page 3](perlmutter/03-storage-and-transfer.md#globus-large-data-many-files-or-unattended).
 
 Globus sends its notifications to the e-mail address of your identity, so check that it is
@@ -85,12 +89,9 @@ Click **File Manager** in the menu on the left. (The other entry you need is
 3. **Open the second panel.** Click **Transfer or Sync to...** in the panel on the right of
    the page. A second panel opens; choose the other collection and path there the same
    way. The two panels are the two ends of a transfer.
-4. **Bookmarks.** If you open the same collection and folder often, save them as a
-   *bookmark*: a private alias for a collection and path under a name you choose, which
-   Globus then offers when you search for collections. Each user can have up to 100
-   ([bookmarks](https://docs.globus.org/api/transfer/collection_bookmarks/)). In the web app
-   the bookmark control sits beside the collection and path; Globus's own tutorial does not
-   describe it, so look for the bookmark icon.
+4. **Bookmarks.** A *bookmark* saves a collection and path you open often under a name
+   you choose ([bookmarks](https://docs.globus.org/api/transfer/collection_bookmarks/));
+   look for the bookmark icon beside the collection and path.
 5. **Select what to copy.** Select each file or folder you want in the *source* panel.
    A folder is copied with everything in it.
 
@@ -99,21 +100,17 @@ Click **File Manager** in the menu on the left. (The other entry you need is
 Before you start, open the **Transfer & Timer Options** drop-down. By default, Globus
 "verifies file integrity after transfer using checksums", and the information icon next to
 each option explains it; the wording of the options in the app changes now and then, so
-read it there. The options are these (the second column names the setting in the Globus
-API and command line, [reference](https://docs.globus.org/cli/reference/transfer/)):
+read it there. The ones you will use (the second column names the setting in the Globus command line,
+[reference](https://docs.globus.org/cli/reference/transfer/)):
 
 | Option, in the app | Setting | What it does |
 |---|---|---|
-| **sync** (with a choice of when a file counts as different: it is missing on the destination, its size differs, the source is newer, or its checksum differs) | `--sync-level` | Copies only what is new or changed instead of everything. Use it to repeat or resume a copy |
-| **delete files on destination** that do not exist on the source | `--delete-destination-extra` | Makes the destination folder an exact mirror of the source, and **deletes** extra files there. Leave it off unless you mean it |
-| **preserve source file modification times** | `--preserve-timestamp` | Keeps the original "modified" dates on the copies |
+| **sync** | `--sync-level` (`exists`, `size`, `mtime`, `checksum`) | Copies only what is new or changed, by the rule you pick, instead of everything. Use it to repeat or resume a copy |
 | **verify file integrity after transfer** | `--verify-checksum` (default) | Compares checksums of the copy and the original |
 | **encrypt transfer** | `--encrypt` | Encrypts the file data in transit (TLS) |
-| **skip files on source with errors** and **fail on quota errors** | `--skip-source-errors`, `--fail-on-quota-errors` | By default a transfer pauses on files it cannot read; these make it skip them, or give up when the destination is full |
+| **delete files on destination** that do not exist on the source | `--delete-destination-extra` | Makes the destination folder an exact mirror of the source and **deletes** extra files there. Leave it off unless you mean it |
 | a **label** | `--label` | A name for the transfer in the Activity list. Use one |
 | e-mail notification | `--notify` | When the transfer succeeds, fails or needs attention |
-
-The same drop-down also holds the timer settings, for transfers that repeat.
 
 Then click **Start** (the button above the source panel; there is one for each direction).
 A green notice confirms that Globus accepted the request, and the transfer runs in the
@@ -125,10 +122,13 @@ what was transferred and has the **Cancel Task** button, and the **Event Log** t
 what happened, including permission errors, retries and pauses. A transfer that reports
 "permission denied" usually points to a folder or file the account at the other end may
 not read. When it is done, Globus e-mails you; the summary of a task is kept for 90 days
-and its details for 30 days ([FAQ](https://docs.globus.org/faq/transfer-sharing/)).
+and its details for 30 days. A user can have 3 active and 100 pending transfers; further
+ones wait in the queue ([FAQ](https://docs.globus.org/faq/transfer-sharing/)).
 
-To repeat a transfer that failed in part, start it again with **sync** on and the setting
-"checksum is different": it copies only the files that are missing or wrong.
+To restart a transfer that failed in part, submit it again with **sync** at the checksum
+level (on the command line, `--sync-level checksum`): it copies only the files that are
+missing or differ
+([FAQ](https://docs.globus.org/faq/transfer-sharing/)).
 
 ## 6. Globus Connect Personal
 
@@ -146,7 +146,10 @@ by name in the File Manager.
   restarting. Expose the folder you transfer from, and nothing more; an instrument PC
   should expose only the folder its data lands in.
 - **It must be running.** The collection is reachable only while the program runs and the
-  computer is on and online. For a long transfer, switch off sleep.
+  computer is on and online. A transfer that involves it is suspended while it is not, and
+  resumes when it is back unless three or more days have passed
+  ([tutorial](https://docs.globus.org/guides/tutorials/manage-files/transfer-files/)). For
+  a long transfer, switch off sleep.
 - **Free version.** A transfer between a Personal collection and a collection run by a site
   (a university, NERSC) needs no subscription
   ([FAQ](https://docs.globus.org/faq/globus-connect-endpoints/)). Sharing *from* a
@@ -169,24 +172,31 @@ create a **guest collection** on it
    (anonymous). Choose read-only or read and write; the **Path** field restricts the
    permission to a subfolder. **Send E-mail** notifies the person.
 
-The collaborator must log in to Globus to use it. One condition applies: **sharing works only on collections hosted on an endpoint
-that has a Globus subscription** ("Sharing with guest collections is available on Globus
-endpoints managed by an active Subscription"; on a Personal collection, you must be a
-member of a subscription group). So this depends on the site: whether it offers sharing,
-from which folders, and with which rights. For NERSC see
+Unless the share is public (anonymous), a collaborator must log in to Globus to use it.
+
+One condition applies: **sharing works only on collections hosted on an endpoint that has a
+Globus subscription** ("Sharing with guest collections is available on Globus endpoints
+managed by an active Subscription"; on a Personal collection, you must be a member of a
+subscription group). So this depends on the site: whether it offers sharing, from which
+folders, and with which rights. For NERSC see
 [Perlmutter page 3](perlmutter/03-storage-and-transfer.md#sharing-data-with-people-outside-nersc).
 
 ## 8. The command line
 
 Everything above also works from a terminal with the **Globus CLI**, which is the way to
 script or repeat transfers
-([documentation](https://docs.globus.org/cli/)). Install it with `uv`
-(Globus's own instructions use `pipx`, which does the same job):
+([documentation](https://docs.globus.org/cli/)). On your laptop, install it the way
+Globus's instructions say:
 
 ```bash
-uv tool install globus-cli      # installs the `globus` command
-uvx --from globus-cli globus whoami   # or run it once without installing
+pipx install globus-cli
 ```
+
+(`pipx` itself comes from your package manager or [pipx's installation
+page](https://pipx.pypa.io/stable/installation/). If you already use `uv`, which
+[Perlmutter page 5](perlmutter/05-python-uv.md) introduces, `uv tool install globus-cli`
+does the same.) On Perlmutter the CLI is already available: `module load globus-tools`
+([NERSC](https://docs.nersc.gov/services/globus/)). The commands are the same everywhere:
 
 ```bash
 globus login                                  # log in; follow what it prints
@@ -202,18 +212,7 @@ globus task wait <task-id>                    # block until it finishes
 Collections are named by their ID (a UUID) here; `globus ls`, `transfer` and the options of
 the table in section 5 are in the [command reference](https://docs.globus.org/cli/reference/).
 As in the documentation's example, write a folder's path with a trailing `/` and add
-`--recursive` to copy folders.
-The CLI keeps a login token on your machine: don't share it or put it in a repository.
-
-## 9. Limits
-
-- A user can have **3 active** and **100 pending** transfers; further ones wait in the queue.
-- One transfer may contain up to 100,000,000 files, and one folder up to 7,500,000.
-- A transfer has a deadline: 24 hours at the start, extended to 72 hours after each
-  successful batch of work.
-
-([Globus FAQ](https://docs.globus.org/faq/transfer-sharing/),
-[task behaviour](https://docs.globus.org/api/transfer/task_behavior/).)
+`--recursive` to copy folders. The CLI keeps a login token on your machine: don't share it or put it in a repository.
 
 **NERSC.** The collections, paths, sign-in and sharing rules for our Perlmutter data are in
 [Perlmutter page 3](perlmutter/03-storage-and-transfer.md#globus-large-data-many-files-or-unattended).

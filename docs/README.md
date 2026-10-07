@@ -24,8 +24,8 @@ The [Perlmutter section](perlmutter/README.md) takes a new member from the NERSC
 to running jobs, Python, the group container, Jupyter, Nion Swift and coding agents (ten
 numbered pages, a table of what each covers, and the everyday commands). It follows the
 general pages: [Perlmutter page 2](perlmutter/02-shell-setup.md) uses the GitHub access from
-page 1 above, and [Perlmutter page 3](perlmutter/03-storage-and-transfer.md) is the
-NERSC-specific counterpart of page 3 above. Start at
+general page 1, and [Perlmutter page 3](perlmutter/03-storage-and-transfer.md) is the
+NERSC-specific counterpart of general page 3. Start at
 [Perlmutter page 1](perlmutter/01-login.md) once you have done the general pages.
 
 Alongside the pages, [`perlmutter/reference/`](perlmutter/reference/) holds the long
