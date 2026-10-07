@@ -1,6 +1,7 @@
 #!/bin/bash
 # Materialize the Delta .sif from the shared image. Preferred path: convert the
-# registry image built+pushed by shared/containers/x86_64-cuda/otherimage/publish.sh.
+# registry image built+pushed by another image's recipe publish.sh (maintained by
+# The maintainer, not in this repo).
 #
 # Run on Delta (or any host with apptainer). On a Delta login node the script
 # re-launches itself on a compute node via srun (cpu-interactive by default) and
@@ -63,5 +64,5 @@ echo ">> run: apptainer exec --nv $SIF python script.py   (see jobs/ for Slurm)"
 
 # Alternatives (uncomment as needed):
 # --- local OCI build then convert (no registry): ------------------------------
-#   (cd ../shared/containers/x86_64-cuda/otherimage && ./prepare_build_context.sh && podman build -t otherimage:latest .)
+#   (cd <another image's recipe> && ./prepare_build_context.sh && podman build -t otherimage:latest .)
 #   apptainer build "$SIF" docker-daemon://otherimage:latest
