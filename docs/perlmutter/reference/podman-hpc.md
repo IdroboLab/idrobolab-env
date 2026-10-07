@@ -6,7 +6,7 @@ environment for Perlmutter's GPU nodes, consumed with **podman-hpc**
 supported at NERSC).
 
 This is the same recipe as the Apptainer definition proven for NCSA Delta
-(`shared/containers/x86_64-cuda/otherimage/` in the hpcenvs repo), translated to a Dockerfile: same
+(another image's recipe (maintained separately, not in this repo)), translated to a Dockerfile: same
 base image, same versions, same build steps. **Status: built and published.**
 `ghcr.io/<username>/otherimage` and `ghcr.io/<username>/idrobolab` both exist and are
 public, and idrobolab has been pulled and **verified end to end on Perlmutter**:
@@ -47,7 +47,7 @@ Stage the context on the dev machine, then build either on Perlmutter or on
 any docker/podman host:
 
 ```bash
-cd shared/containers/x86_64-cuda/otherimage   # in the hpcenvs repo
+cd <another image's recipe>            # maintained separately, not in this repo
 ./prepare_build_context.sh        # regenerates pins + stages ./src
 
 # Option A — on a Perlmutter login node (rsync this directory over first):

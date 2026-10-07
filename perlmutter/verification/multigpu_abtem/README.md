@@ -30,9 +30,8 @@ themselves:
 PAYLOAD_DIR=${PAYLOAD_DIR:-$HERE/../../../shared/verification/multigpu_abtem}
 ```
 
-`perlmutter/verification/multigpu_abtem/` here and `delta/verification/multigpu_abtem/`
-in the hpcenvs repo (which holds the same payload) sit at the same depth, so the
-same `../../../` works in both. Override
+`perlmutter/verification/multigpu_abtem/` and `delta/verification/multigpu_abtem/`
+sit at the same depth, so the same `../../../` works in both. Override
 `PAYLOAD_DIR` if you keep the payloads somewhere else. Note that `sbatch` executes
 a **spool copy** of the script, so `BASH_SOURCE` points into the spool directory
 where the payload is absent — the launchers use `$SLURM_SUBMIT_DIR` and only fall
@@ -45,8 +44,8 @@ A sparse checkout works as long as `shared/` is in the set:
 git sparse-checkout set shared perlmutter
 ```
 
-The only thing that set does not bring is the Delta README this file links to
-once (for the dask/dask-cuda analysis); add `delta` to the set if you want it
+The only thing that set does not bring is the [Delta README](../../../delta/verification/multigpu_abtem/README.md)
+this file links to (for the dask/dask-cuda analysis); add `delta` to the set if you want it
 locally.
 
 ## podman-hpc, not Apptainer — nothing is mounted by default
@@ -80,7 +79,7 @@ likely to bite.
 ## How the branch abTEM is injected (no venv)
 
 The container carries its own abTEM, installed **editable** from a checkout
-staged into the build context (hpcenvs repo, `shared/containers/x86_64-cuda/otherimage/Dockerfile`:
+staged into the build context (another image's recipe, maintained separately and not in this repo:
 `COPY src/abTEM /opt/src/abTEM` + `pip install -e /opt/src/abTEM`). Do **not**
 identify it by version: the Delta README called it 1.0.9, while the
 Dockerfile in this repo stages an abTEM main **1.1.0** checkout, so which abTEM a
@@ -162,7 +161,7 @@ The full analysis — why a plain `pip install dask-cuda` cannot resolve against
 this stack, why `dask==2026.1.1` must never be pinned (a `to_zarr` regression
 abTEM blacklists), and the Plan-B downgrade table if the `--no-deps` pairing ever
 misbehaves — is in
-the hpcenvs repo's `delta/verification/multigpu_abtem/README.md`.
+[`delta/verification/multigpu_abtem/README.md`](../../../delta/verification/multigpu_abtem/README.md).
 It is written once because the image is the same on both clusters; nothing in it
 is Delta-specific.
 
@@ -174,7 +173,7 @@ Perlmutter GPU nodes are **1× AMD EPYC 7763 (64 physical / 128 logical cores),
 
 - **GPU-count sweeps top out at 4** (`--gpu-counts 1,2,4`). Delta's launchers
   carry a commented-out `gpuA100x8` variant next to every `#SBATCH` block (and
-  the hpcenvs repo's `delta/jobs/` adds a `gpuH200x8` template on top of that); those blocks are
+  [`delta/jobs/`](../../../delta/jobs/) adds a `gpuH200x8` template on top of that); those blocks are
   **deliberately absent here** because Perlmutter has no 8-GPU node to switch
   to. Anything wider than 4 GPUs is a multi-node problem, and
   `dask_cuda.LocalCUDACluster` is single-node by construction — a multi-node
