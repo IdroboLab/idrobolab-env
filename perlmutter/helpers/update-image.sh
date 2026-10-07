@@ -301,10 +301,13 @@ fi
 probe_store=$STORE
 [ -d "$STORE_RO" ] && probe_store=$STORE_RO
 if probe_root=$(mktemp -d 2>/dev/null); then
-    if PODMANHPC_GRAPH_ROOT="$probe_root/storage" \
-       PODMANHPC_RUN_ROOT="$probe_root/run" \
-       PODMANHPC_ADDITIONAL_STORES="$probe_store" \
-       podman-hpc images 2>/dev/null | grep -qF "$IMAGE"; then
+    # Captured, then matched with a here-string: under pipefail a pipe into
+    # grep -q fails whenever podman-hpc takes SIGPIPE after the first match.
+    probe_list=$(PODMANHPC_GRAPH_ROOT="$probe_root/storage" \
+                 PODMANHPC_RUN_ROOT="$probe_root/run" \
+                 PODMANHPC_ADDITIONAL_STORES="$probe_store" \
+                 podman-hpc images 2>/dev/null || true)
+    if grep -qF "$IMAGE" <<<"$probe_list"; then
         echo ">> verified: $REF resolves from $probe_store with an empty graph root"
     else
         rm -rf "$probe_root"

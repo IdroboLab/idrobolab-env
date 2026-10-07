@@ -85,8 +85,8 @@ nionswift-tool, nionswift-usim, nionswift-eels-analysis and nionswift-experiment
 The first time, you have no terminal icon yet. Open a terminal on the ThinLinc
 machine through the run dialog: press `Alt+F2` (if your own computer grabs it, press
 `F8` first and choose *Grab keyboard*), tick **Run in terminal** on MATE, and run
-`bash` (this route has not been tested on NERSC's ThinLinc desktop yet;
-[details](reference/nionswift-perlmutter-thinlinc.md#53-launching-from-the-keyboard-inside-thinlinc)).
+`bash` (the run dialog works there, but the *Run in terminal* box has not been tested
+yet; [details](reference/nionswift-perlmutter-thinlinc.md#53-launching-from-the-keyboard-inside-thinlinc)).
 Once the setup has run, use the **Terminal (ThinLinc host)** icon for every step on
 this page that says "in a ThinLinc terminal", such as `sshproxy -u <username>`.
 
@@ -108,7 +108,9 @@ duplicates nothing.
 
 ### Starting Nion Swift
 
-Click the icon on the desktop (or choose it in the applications menu). A terminal asks
+Click the icon on the desktop, choose it in the applications menu, or press `Alt+F2`
+and run `gtk-launch nionswift-perlmutter`; the last two work even when the desktop
+icon is missing. A terminal asks
 for the **memory** in GB (default 64) and the **wall time** in hours (default 4, also
 the maximum). Up to 256 GB it books a slice of a CPU node (`shared_interactive`,
 charged for the slice). Above that, it books a whole node. Once the job starts, Nion

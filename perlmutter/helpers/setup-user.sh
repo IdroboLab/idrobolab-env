@@ -155,7 +155,10 @@ fi
 # much later inside a job as "manifest ... file does not exist".
 if command -v podman-hpc >/dev/null 2>&1; then
     if [ -n "${PODMANHPC_ADDITIONAL_STORES:-}" ]; then
-        if podman-hpc images 2>/dev/null | grep -qE 'idrobolab'; then
+        # Captured, then matched with a here-string: under pipefail a pipe into
+        # grep -q fails whenever podman-hpc takes SIGPIPE after the first match.
+        images=$(podman-hpc images 2>/dev/null || true)
+        if grep -qE 'idrobolab' <<<"$images"; then
             ok "shared image store is readable ($PODMANHPC_ADDITIONAL_STORES)"
         else
             warn "no project images visible in $PODMANHPC_ADDITIONAL_STORES"
