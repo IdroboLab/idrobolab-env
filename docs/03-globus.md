@@ -245,8 +245,7 @@ In PowerShell, run uv's installer (Astral documents it for PowerShell):
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Then open a **new** window, so that the updated `PATH` takes effect, and install the CLI
-(this works in Command Prompt and PowerShell):
+Then open a **new** window, so that the updated `PATH` takes effect, and install the CLI:
 
 ```
 uv tool install globus-cli
@@ -289,8 +288,7 @@ After `pipx ensurepath`, open a **new** terminal.
 
 #### Windows
 
-With pip (use `python3` instead of `py` if Python came from the Microsoft Store); the
-same in Command Prompt and PowerShell:
+With pip (use `python3` instead of `py` if Python came from the Microsoft Store):
 
 ```
 py -m pip install --user pipx

@@ -36,7 +36,8 @@ Consequences:
 - ThinLinc client on the laptop: https://www.cendio.com/thinlinc/download (install steps
   for Windows, macOS and Linux: [page 9](../09-thinlinc-nionswift.md#install-the-client))
 - `sshproxy` set up (https://docs.nersc.gov/connect/mfa/#sshproxy). The generated
-  key (`~/.ssh/nersc` by default) is valid 24 h and must be regenerated daily:
+  key (`nersc` in your `.ssh` folder by default; its full path on each OS is in
+  [page 9](../09-thinlinc-nionswift.md#connect)) is valid 24 h and must be regenerated daily:
 
   ```bash
   sshproxy -u <nersc_username>
@@ -49,7 +50,7 @@ Consequences:
 2. Connection settings:
    - Server: `thinlinc.nersc.gov`
    - User: NERSC username
-   - Key: path to the sshproxy key (`~/.ssh/nersc`)
+   - Key: path to the sshproxy key (per OS: [page 9](../09-thinlinc-nionswift.md#connect), step 2)
 3. On first connect, verify the host key fingerprint against
    https://docs.nersc.gov/connect/#key-fingerprints
 4. Recommended: `Options...` → `Advanced` → Reconnect policy →
