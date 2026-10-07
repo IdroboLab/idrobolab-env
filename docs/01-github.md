@@ -17,8 +17,9 @@ next page ([general page 2](02-cloning.md)); getting the same access on Perlmutt
 ## Your terminal on the laptop
 
 Every command in these pages marked "on your laptop" runs in a terminal. Where the
-instructions differ by operating system, there is a subsection for each; a command that
-is the same everywhere is given once.
+instructions differ by operating system, there is a subsection for each. A command that
+is the same everywhere is given once, in a single unlabelled block, and works unchanged
+in Command Prompt, PowerShell, Terminal and a Linux terminal.
 
 ### Windows
 
@@ -40,8 +41,10 @@ Where a command differs between the two shells, the pages give one block labelle
 **Command Prompt** and one labelled **PowerShell**; a single block means the command is
 the same in both. The difference you meet most is how to write your home folder:
 `%USERPROFILE%` in Command Prompt, `$env:USERPROFILE` in PowerShell (both mean
-`C:\Users\<you>`). Neither shell expands `~`; only ssh itself understands `~/.ssh/...`
-inside its config file.
+`C:\Users\<you>`). Command Prompt does not expand `~`, and Windows PowerShell 5.1 passes
+it to programs as it is (PowerShell 7 can expand it, but do not rely on that): in
+commands, write `%USERPROFILE%` or `$env:USERPROFILE`. Only ssh itself understands
+`~/.ssh/...` inside its config file.
 
 You can instead use the Windows Subsystem for Linux (WSL), a Linux terminal inside
 Windows. It has its own home folder and its own `~/.ssh`, separate from Windows': if you
@@ -78,8 +81,7 @@ git talks to GitHub over SSH with a key pair: the **private key** stays on your 
 and is never shared, and the **public key** (the file ending in `.pub`) is registered on
 GitHub. This is a different key from the 24-hour NERSC key from `sshproxy`.
 
-**Create the key on your laptop.** The command is the same in Command Prompt, PowerShell,
-Terminal and a Linux terminal:
+**Create the key on your laptop:**
 
 ```bash
 ssh-keygen -t ed25519 -C "<your email>"
@@ -135,7 +137,7 @@ Select the printed line in the terminal and copy it.
 ssh -T git@github.com
 ```
 
-This is the same in every shell. The first time, ssh shows GitHub's host key fingerprint
+The first time, ssh shows GitHub's host key fingerprint
 and asks whether to continue. Compare it with the fingerprints GitHub publishes at
 <https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints>
 (the Ed25519 one starts `SHA256:+DiY3wvv`), then type `yes`. The answer
@@ -201,9 +203,14 @@ PowerShell:
 Rename-Item "$env:USERPROFILE\.ssh\config.txt" config
 ```
 
-#### macOS and Linux
+#### macOS
 
 Create or edit `~/.ssh/config` with any text editor, for example `nano ~/.ssh/config`.
+
+#### Linux
+
+Same as macOS: create or edit `~/.ssh/config` with any text editor, for example
+`nano ~/.ssh/config`.
 
 ### The entry
 
@@ -222,7 +229,7 @@ Host github.com
     #Port 443
 ```
 
-The entry is the same on every system. The lines mean:
+The lines mean:
 
 - `User git`: GitHub's SSH user name is always `git` (it is the `git@` in the addresses).
 - `IdentityFile` names the private key; `~` stands for your home directory
@@ -243,26 +250,35 @@ The entry is the same on every system. The lines mean:
 
 ### Check the entry
 
-See what ssh will use for `github.com`, then repeat `ssh -T git@github.com`.
+See what ssh will use for `github.com` (the four lines shown are `hostname`, `port`,
+`user` and `identityfile`), then repeat `ssh -T git@github.com`.
 
 #### Windows
 
 Command Prompt:
 
 ```
-ssh -G github.com | findstr /b /i "hostname port user identityfile"
+ssh -G github.com | findstr /b /i /c:"hostname " /c:"port " /c:"user " /c:"identityfile "
 ```
 
 PowerShell:
 
 ```powershell
-ssh -G github.com | Select-String "^(hostname|port|user|identityfile)"
+ssh -G github.com | Select-String "^(hostname|port|user|identityfile) "
 ```
 
-#### macOS and Linux
+#### macOS
 
 ```bash
-ssh -G github.com | grep -iE "^(hostname|port|user|identityfile)"
+ssh -G github.com | grep -iE "^(hostname|port|user|identityfile) "
+```
+
+#### Linux
+
+Same as macOS:
+
+```bash
+ssh -G github.com | grep -iE "^(hostname|port|user|identityfile) "
 ```
 
 ### The SSH agent
@@ -271,8 +287,9 @@ The **agent** is a background program that holds your unlocked keys in memory, s
 you type the passphrase once per login session instead of for every `git push`.
 `AddKeysToAgent` and, on Perlmutter, key forwarding
 ([Perlmutter page 2](perlmutter/02-shell-setup.md#1-github-from-perlmutter)) need one running.
-With the config entry, the `ssh -T git@github.com` test (or the first `git pull`) asks
-for the passphrase and loads the key; the commands below load it by hand.
+With the config entry, the `ssh -T git@github.com` test asks for the passphrase and loads
+the key (so does the first `git pull`, on Windows once git uses Windows' own ssh, see
+[section 4](#4-git-once)); the commands below load it by hand.
 
 #### Windows
 
@@ -341,8 +358,7 @@ ssh-add ~/.ssh/id_ed25519
 
 ### Install git on your laptop
 
-Perlmutter has git already. Check your laptop with `git --version` (the same command in
-every shell). If it is missing
+Perlmutter has git already. Check your laptop with `git --version`. If it is missing
 ([git-scm.com](https://git-scm.com/install/)):
 
 #### Windows
@@ -350,7 +366,8 @@ every shell). If it is missing
 Download and run the installer from <https://git-scm.com/download/win>, or, in either
 shell, `winget install Git.Git`. Then open a **new** Command Prompt or PowerShell window
 and run `git --version`; if the shell does not know `git`, run the installer again and
-choose the option that puts git on the `PATH`.
+choose the option that puts git on the `PATH`. Then do the one extra setting under
+[Git for Windows and the ssh agent](#git-for-windows-and-the-ssh-agent) below.
 
 #### macOS
 
@@ -369,8 +386,7 @@ sudo pacman -S git                          # Arch
 
 ### Its settings
 
-On every machine where you use git (your laptop, and Perlmutter) run these once. They are
-the same in every shell:
+On every machine where you use git (your laptop, and Perlmutter) run these once:
 
 ```bash
 git config --global user.name "Your Name"
@@ -380,3 +396,17 @@ git config --global init.defaultBranch main
 ```
 
 `user.name` and `user.email` are written into every commit you make.
+
+### Git for Windows and the ssh agent
+
+On Windows only. Git for Windows comes with its own `ssh.exe`, which cannot talk to the
+Windows ssh agent enabled in section 3, so git would ask for your passphrase on every
+`git pull` and `git push` even though the key is loaded. Tell git to use Windows' own
+ssh once ([GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent),
+section "Troubleshooting SSH agent conflicts in Windows"):
+
+```
+git config --global core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"
+```
+
+Alternatively, choose "Use external OpenSSH" when you run the Git for Windows installer.
