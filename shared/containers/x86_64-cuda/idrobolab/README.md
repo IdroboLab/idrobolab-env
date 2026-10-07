@@ -68,8 +68,8 @@ podman-hpc pull ghcr.io/<username>/idrobolab:latest                          # P
 
 ### Registry access
 
-Both `ghcr.io/<username>/idrobolab` and `ghcr.io/<username>/otherimage` are
-**public** as of 2026-08-14, so `podman-hpc pull` needs no credentials.
+`ghcr.io/<username>/idrobolab` is **public** (since 2026-08-14), so `podman-hpc pull`
+needs no credentials.
 
 GHCR packages are private on first push, though, and stay that way until the
 visibility is changed by hand — idrobolab was, until it was flipped. An

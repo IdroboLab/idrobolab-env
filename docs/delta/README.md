@@ -20,13 +20,18 @@ Delta (environment variables, where files live, the editable-install import trap
 ## Getting started
 
 1. Run `accounts` on a Delta login node to find your charge accounts: `<project>-delta-cpu` for the CPU partitions, `<project>-delta-gpu` for the GPU partitions, charged separately.
-2. Build the image once: `ACCOUNT=<project>-delta-cpu delta/get-image.sh` converts the registry image to a `.sif` on a compute node (the conversion is too heavy for a login node). Keep `.sif` files in `$PROJECTS_BASE/software/containers/`, not in scratch, and record `sha256sum` of the image with your results.
-3. Copy the job template for your partition from [`delta/jobs/`](../../delta/jobs/), replace `<project>` in its `--account` line, and submit it with your script as the argument: `sbatch gpu_a100_1gpu.sbatch my_script.py`. Always set `--time`: the default is 30 minutes.
-4. Run the smoke tests of the [first-run checklist](../../delta/jobs/README.md#first-run-checklist) once before the first real job.
+2. Clone this repository to `~/idrobolab-env` on Delta, as described in [general page 2](../02-cloning.md).
+3. Build the image once, on a login node (it queues the conversion on a compute node itself, because the conversion is too heavy for a login node):
+   ```bash
+   mkdir -p $PROJECTS_BASE/software/containers && ACCOUNT=<project>-delta-cpu SIF=$PROJECTS_BASE/software/containers/otherimage_delta.sif ~/idrobolab-env/delta/get-image.sh
+   ```
+   The `.sif` lands in `$PROJECTS_BASE/software/containers/`, where the job templates look for it, not in scratch. Record `sha256sum` of the image with your results. The script pulls another image by default, and whether you can pull it depends on that package's visibility, which the maintainer sets: if it stops with `unauthorized`, ask the maintainer (see [The images](#the-images)).
+4. Copy the job template for your partition from [`delta/jobs/`](../../delta/jobs/), replace `<project>` in its `--account` line, and submit it with your script as the argument: `sbatch gpu_a100_1gpu.sbatch my_script.py`. Always set `--time`: the default is 30 minutes.
+5. Run the smoke tests of the [first-run checklist](../../delta/jobs/README.md#first-run-checklist) once before the first real job.
 
 ## The images
 
-The templates default to the `otherimage` image (`ghcr.io/<username>/otherimage`: GPAW with `gpaw.<module>`, another image, gpaw-weaver, PySlice and abTEM on CUDA 12.8 and MPICH 4.3.2). Its recipe is another image's recipe (maintained separately, not in this repo). The group's own image has its recipe in [`shared/containers/x86_64-cuda/idrobolab/`](../../shared/containers/x86_64-cuda/idrobolab/); the templates take any image through `SIF=/path/to/image.sif`. One image serves A40, A100 and H200 nodes: the GPU code is in fat multi-architecture wheels.
+The templates default to the `otherimage` image (`ghcr.io/<username>/otherimage`: GPAW with `gpaw.<module>`, another image, gpaw-weaver, PySlice and abTEM on CUDA 12.8 and MPICH 4.3.2). Its recipe is another image's recipe (maintained separately, not in this repo). The image is the maintainer's, and whether you can pull it depends on the visibility of its package, which the maintainer sets: if `delta/get-image.sh` fails with `unauthorized`, ask the maintainer. The group's own image is public and has its recipe in [`shared/containers/x86_64-cuda/idrobolab/`](../../shared/containers/x86_64-cuda/idrobolab/); the templates take any image through `SIF=/path/to/image.sif`. One image serves A40, A100 and H200 nodes: the GPU code is in fat multi-architecture wheels.
 
 ## Conventions
 

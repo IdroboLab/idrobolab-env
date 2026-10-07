@@ -77,8 +77,7 @@ GPU scripts run a single Python process (no MPI); switch the payload to
 # on Delta, once:
 accounts                                   # find <project>-delta-{cpu,gpu}
 mkdir -p $PROJECTS_BASE/software/containers
-# transfer the image (from the dev machine):
-#   scp otherimage_delta.sif <user>@login.delta.ncsa.illinois.edu:$PROJECTS_BASE/software/containers/
+# get the image: see delta/get-image.sh (docs/delta/README.md, "Getting started")
 sha256sum $PROJECTS_BASE/software/containers/otherimage_delta.sif   # record for provenance
 export APPTAINER_CACHEDIR=$SCRATCH_BASE/$USER/.apptainer   # keep caches off $HOME (quota)
 

@@ -5,11 +5,10 @@ environment for Perlmutter's GPU nodes, consumed with **podman-hpc**
 (NERSC's recommended container runtime; Apptainer SIF images are not
 supported at NERSC).
 
-This is the same recipe as the Apptainer definition proven for NCSA Delta
-(another image's recipe (maintained separately, not in this repo)), translated to a Dockerfile: same
-base image, same versions, same build steps. **Status: built and published.**
-`ghcr.io/<username>/otherimage` and `ghcr.io/<username>/idrobolab` both exist and are
-public, and idrobolab has been pulled and **verified end to end on Perlmutter**:
+This is another image's recipe (maintained separately, not in this repo), the build
+proven on NCSA Delta, as a Dockerfile: same base image, same versions, same build
+steps. **Status: built and published.** `ghcr.io/<username>/idrobolab` exists and is
+public, and has been pulled and **verified end to end on Perlmutter**:
 a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
 invariant to GPU count (job <jobid>; log under
 `perlmutter/verification/multigpu_abtem/`, analysis in
