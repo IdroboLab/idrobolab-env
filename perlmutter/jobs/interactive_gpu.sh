@@ -1,5 +1,5 @@
 #!/bin/bash
-# Interactive shell inside another image's container on Perlmutter GPU nodes.
+# Interactive shell inside the idrobolab container on Perlmutter GPU nodes.
 #
 # NERSC's interactive QOS: up to 4 nodes, 4 hours, 2 jobs running at a time,
 # charged at the normal rate (QOS factor 1.0) — so a full node held idle for
@@ -32,14 +32,14 @@ CONSTRAINT=${CONSTRAINT:-gpu}
 NODES=${NODES:-1}
 GPUS=${GPUS:-4}
 TIME=${TIME:-01:00:00}
-# Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
+# Image. Accepts a bare name -- IMAGE=idrobolab -- or a full reference
 # (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
 # verification launchers and `update-image.sh <name>`. A value containing "/"
 # is used verbatim; TAG and IMAGE_OWNER apply only to the short form.
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;
-    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
 esac
 
 # Bind-mounts + the in-container working directory. podman-hpc mounts nothing
@@ -131,4 +131,4 @@ exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=interactive \
 
 # CPU-only equivalent (no GPU allocation, charged against the CPU account):
 #   salloc -A <project> -C cpu -q interactive -N 1 -t 01:00:00 \
-#       podman-hpc run --rm $GROUP_FLAGS -it -v $SCRATCH:$SCRATCH ghcr.io/<username>/otherimage:latest /bin/bash
+#       podman-hpc run --rm $GROUP_FLAGS -it -v $SCRATCH:$SCRATCH "$IMAGE" /bin/bash

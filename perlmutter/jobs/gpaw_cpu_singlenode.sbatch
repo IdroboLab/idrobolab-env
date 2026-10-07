@@ -1,5 +1,5 @@
 #!/bin/bash
-# GPAW / another image MPI job on ONE Perlmutter CPU node (128 ranks).
+# GPAW MPI job on ONE Perlmutter CPU node (128 ranks).
 #
 # Unlike the Delta template, the MPI ranks are launched by the HOST `srun`,
 # not by an in-container mpiexec: podman-hpc's `--mpi` flag bind-mounts the
@@ -7,7 +7,7 @@
 # wires up PMI, so `srun` spawns one container per rank and they form one
 # MPI_COMM_WORLD with native Slingshot transport. This is NERSC's documented
 # and supported pattern — there is no need for the Apptainer-style hybrid
-# library-injection gymnastics that the hpcenvs repo's delta/jobs/gpaw_cpu_multinode.sbatch does.
+# library-injection gymnastics that delta/jobs/gpaw_cpu_multinode.sbatch does.
 #
 # Node: 2x AMD EPYC 7763 (Milan), 128 physical cores (256 logical), 512 GB.
 # Charging: walltime x nodes x 1.0 (Perlmutter charge factor is 1.0).
@@ -41,14 +41,14 @@ set -euo pipefail
 # passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
-# Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
+# Image. Accepts a bare name -- IMAGE=idrobolab -- or a full reference
 # (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
 # verification launchers and `update-image.sh <name>`. A value containing "/"
 # is used verbatim; TAG and IMAGE_OWNER apply only to the short form.
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;
-    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
 esac
 SCRIPT=${1:?usage: sbatch gpaw_cpu_singlenode.sbatch script.py [args]}
 shift

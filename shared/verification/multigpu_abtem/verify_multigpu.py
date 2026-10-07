@@ -2,8 +2,8 @@
 """Verify that abTEM distributes GPU work across every GPU on a node.
 
 Cluster-agnostic: this payload is shared by the Delta and Perlmutter launchers
-(perlmutter/verification/multigpu_abtem/ here, delta/ in the hpcenvs repo) and runs on any multi-GPU
-box with CuPy + dask-cuda. Delta offers 4-, 8- and H200x8 GPU nodes; Perlmutter
+(the multigpu_abtem directories under delta/ and perlmutter/) and runs on any
+multi-GPU box with CuPy + dask-cuda. Delta offers 4-, 8- and H200x8 GPU nodes; Perlmutter
 GPU nodes are 4x A100 only, so GPU-count sweeps there top out at 4. It exercises the multi-GPU
 support added on the abTEM ``multi-gpu-support`` branch, which routes lazy GPU
 computes through a dask-cuda cluster (one worker process per GPU).

@@ -51,7 +51,11 @@ Managing them:
 ./install-jupyter-kernel.sh --image ... --dry-run                # inspect first
 ```
 
-Kernels are written to `~/.local/share/jupyter/kernels/<name>/kernel.json`.
+Kernels are written to `~/.local/share/jupyter/kernels/<name>/kernel.json`. A container
+kernel stores the full image reference in `kernel.json` when it is installed, so a kernel
+keeps running the image it was installed with: to point it at another image or tag,
+run the same `--image ... --name ...` command again with `--force` (add `--shared` for a
+shared kernel).
 
 ### Moving a personal kernel to the shared tree
 
@@ -139,7 +143,7 @@ prerequisite for the next.
 **1. Does podman-hpc accept the flag at all?** Login node, seconds.
 
 ```bash
-podman-hpc run --rm --network host ghcr.io/<username>/idrobolab:latest true; echo "exit=$?"
+podman-hpc run --rm --network host ghcr.io/idrobolab/idrobolab:latest true; echo "exit=$?"
 ```
 
 `exit=0` means the flag is accepted. An "unknown flag" error means container
@@ -150,7 +154,7 @@ matters, because acceptance is not the same as effect. On a compute node
 (`perlmutter/jobs/interactive_gpu.sh` gets you a shell), in one terminal:
 
 ```bash
-podman-hpc run --rm --network host ghcr.io/<username>/idrobolab:latest \
+podman-hpc run --rm --network host ghcr.io/idrobolab/idrobolab:latest \
     python3 -m http.server 8899 --bind 0.0.0.0
 ```
 
@@ -266,7 +270,7 @@ All are environment variables; trailing arguments go to `jupyter lab`.
 | `TIME` | `02:00:00` | An idle notebook is charged like a busy one |
 | `QOS` | `shared_interactive` | `interactive` for a whole node |
 | `PORT` | `8899` | Pick another if it is taken; the launch fails loudly rather than drifting |
-| `IMAGE` | `idrobolab` | Short name or full reference; `TAG`/`IMAGE_OWNER` apply to the short form |
+| `IMAGE` | `$IDROBOLAB_IMAGE`, else `idrobolab` | Short name or full reference; `TAG`/`IMAGE_OWNER` apply only with a short name in `IMAGE` |
 | `CPUS` | `32 × GPUS` | Logical cores. The slice QOSes require exactly this |
 | `MEM` | unset | **Leave it unset** — see the `--mem` trap below |
 | `THREADS` | `CPUS / 2` | Sets `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` |
@@ -277,7 +281,7 @@ All are environment variables; trailing arguments go to `jupyter lab`.
 ```bash
 TIME=00:30:00 ./interactive_jupyter.sh                     # a quick look
 QOS=interactive GPUS=4 ./interactive_jupyter.sh            # whole node
-IMAGE=otherimage PORT=9101 ./interactive_jupyter.sh
+PORT=9101 ./interactive_jupyter.sh
 ./interactive_jupyter.sh --ServerApp.root_dir=$SCRATCH     # extra jupyter args
 ```
 

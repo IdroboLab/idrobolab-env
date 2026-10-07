@@ -8,7 +8,7 @@
 #   ./install-jupyter-kernel.sh --venv  /global/common/software/<project>/venvs/analysis \
 #                               --name analysis --display "Analysis (venv)"
 #   ./install-jupyter-kernel.sh --conda ~/.conda/envs/myenv --name myenv
-#   ./install-jupyter-kernel.sh --image ghcr.io/<username>/idrobolab:latest \
+#   ./install-jupyter-kernel.sh --image ghcr.io/idrobolab/idrobolab:latest \
 #                               --name idrobolab --display "idrobolab (GPU)" --gpu
 #
 #   ./install-jupyter-kernel.sh --list
@@ -165,7 +165,7 @@ case "$BACKEND" in
     image)
         case "$TARGET" in
             */*) : ;;
-            *)   TARGET="ghcr.io/${IMAGE_OWNER:-<username>}/${TARGET}:${TAG:-latest}" ;;
+            *)   TARGET="ghcr.io/${IMAGE_OWNER:-idrobolab}/${TARGET}:${TAG:-latest}" ;;
         esac
         DEFAULT_NAME=$(basename "${TARGET%%:*}")
         # Bake in the absolute path. JupyterHub launches the kernel from its own

@@ -30,9 +30,8 @@ themselves:
 PAYLOAD_DIR=${PAYLOAD_DIR:-$HERE/../../../shared/verification/multigpu_abtem}
 ```
 
-`perlmutter/verification/multigpu_abtem/` here and `delta/verification/multigpu_abtem/`
-in the hpcenvs repo (which holds the same payload) sit at the same depth, so the
-same `../../../` works in both. Override
+`perlmutter/verification/multigpu_abtem/` and `delta/verification/multigpu_abtem/`
+sit at the same depth, so the same `../../../` works in both. Override
 `PAYLOAD_DIR` if you keep the payloads somewhere else. Note that `sbatch` executes
 a **spool copy** of the script, so `BASH_SOURCE` points into the spool directory
 where the payload is absent — the launchers use `$SLURM_SUBMIT_DIR` and only fall
@@ -45,8 +44,8 @@ A sparse checkout works as long as `shared/` is in the set:
 git sparse-checkout set shared perlmutter
 ```
 
-The only thing that set does not bring is the Delta README this file links to
-once (for the dask/dask-cuda analysis); add `delta` to the set if you want it
+The only thing that set does not bring is the [Delta README](../../../delta/verification/multigpu_abtem/README.md)
+this file links to (for the dask/dask-cuda analysis); add `delta` to the set if you want it
 locally.
 
 ## podman-hpc, not Apptainer — nothing is mounted by default
@@ -54,11 +53,11 @@ locally.
 This is the single biggest difference from the Delta launchers, and the one most
 likely to bite.
 
-- The image is an **OCI image**, not a `.sif`: `ghcr.io/<username>/otherimage:latest`,
-  overridable with `IMAGE=...`. Pull/refresh it into the project's shared CFS
-  store with `../../helpers/update-image.sh otherimage` — **the argument is not
-  optional**, the script defaults to `idrobolab` — on a login node only, since
-  compute nodes have no route to ghcr.io. Then `source ../../env.sh` so
+- The image is an **OCI image**, not a `.sif`:
+  `ghcr.io/idrobolab/idrobolab:latest`, overridable with `IMAGE=...`.
+  Pull/refresh it into the project's shared CFS store with
+  `../../helpers/update-image.sh idrobolab` on a login node only, since compute
+  nodes have no route to ghcr.io. Then `source ../../env.sh` so
   `PODMANHPC_ADDITIONAL_STORES` points at the read-only `/dvs_ro` mirror of that
   store.
 - **Apptainer inherits `$HOME` and `$PWD`; podman-hpc inherits nothing.** Every
@@ -80,12 +79,12 @@ likely to bite.
 ## How the branch abTEM is injected (no venv)
 
 The container carries its own abTEM, installed **editable** from a checkout
-staged into the build context (hpcenvs repo, `shared/containers/x86_64-cuda/otherimage/Dockerfile`:
-`COPY src/abTEM /opt/src/abTEM` + `pip install -e /opt/src/abTEM`). Do **not**
-identify it by version: the Delta README called it 1.0.9, while the
-Dockerfile in this repo stages an abTEM main **1.1.0** checkout, so which abTEM a
-given image holds — and whether it already carries multi-GPU code — depends on
-what was staged when that image was built. Check `podman-hpc images --digests`
+staged into the build context by the idrobolab recipe: `COPY src/abTEM
+/opt/src/abTEM` + `pip install -e /opt/src/abTEM`. Do **not** identify it by
+version: the Delta README called it 1.0.9, while the idrobolab Dockerfile stages
+an abTEM main **1.1.0** checkout, so which abTEM a given image holds — and
+whether it already carries multi-GPU code — depends on what was staged when that
+image was built. Check `podman-hpc images --digests`
 and section 0's printed path, not a version you expect.
 
 Upgrading it per job is not the answer. "The image is read-only" is a Delta (SIF)
@@ -147,8 +146,8 @@ name the same location.
 
 Because the container's abTEM is an *editable* install, binding the checkout over
 the install path (`-v $ABTEM_SRC:/opt/src/abTEM`) would work equally well, and is
-the pattern `../../../docs/perlmutter/reference/podman-hpc.md` documents for gpaw/otherimage/gpaw-weaver/
-PySlice. The launchers deliberately do not use it: `PYTHONPATH` keeps the
+the pattern `../../../docs/perlmutter/reference/podman-hpc.md` documents for
+gpaw/gpaw-weaver/abTEM. The launchers deliberately do not use it: `PYTHONPATH` keeps the
 Perlmutter and Delta runs differing in as few places as possible, and it leaves
 the container's own abTEM visible in section 0 when something goes wrong.
 
@@ -162,7 +161,7 @@ The full analysis — why a plain `pip install dask-cuda` cannot resolve against
 this stack, why `dask==2026.1.1` must never be pinned (a `to_zarr` regression
 abTEM blacklists), and the Plan-B downgrade table if the `--no-deps` pairing ever
 misbehaves — is in
-the hpcenvs repo's `delta/verification/multigpu_abtem/README.md`.
+[`delta/verification/multigpu_abtem/README.md`](../../../delta/verification/multigpu_abtem/README.md).
 It is written once because the image is the same on both clusters; nothing in it
 is Delta-specific.
 
@@ -174,7 +173,7 @@ Perlmutter GPU nodes are **1× AMD EPYC 7763 (64 physical / 128 logical cores),
 
 - **GPU-count sweeps top out at 4** (`--gpu-counts 1,2,4`). Delta's launchers
   carry a commented-out `gpuA100x8` variant next to every `#SBATCH` block (and
-  the hpcenvs repo's `delta/jobs/` adds a `gpuH200x8` template on top of that); those blocks are
+  [`delta/jobs/`](../../../delta/jobs/) adds a `gpuH200x8` template on top of that); those blocks are
   **deliberately absent here** because Perlmutter has no 8-GPU node to switch
   to. Anything wider than 4 GPUs is a multi-node problem, and
   `dask_cuda.LocalCUDACluster` is single-node by construction — a multi-node
@@ -219,7 +218,7 @@ the note under *Benchmark* below.
 ```bash
 # 0. one-time: make the image visible to compute nodes, and set the store vars
 . ../../env.sh                       # PODMANHPC_ADDITIONAL_STORES -> /dvs_ro mirror
-../../helpers/update-image.sh otherimage   # login node only; pulls into the CFS store
+../../helpers/update-image.sh idrobolab    # login node only; pulls into the CFS store
 podman-hpc images --digests          # record the digest with your results
 
 # 1. point ABTEM_SRC at your 'multi-gpu-support' checkout and preflight it
@@ -235,7 +234,7 @@ ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch --timing   # also time 1 vs N
 Everything is overridable at submit time:
 
 ```bash
-IMAGE=ghcr.io/<username>/otherimage:v2 ABTEM_SRC=$SCRATCH/code/abTEM-269 \
+IMAGE=ghcr.io/idrobolab/idrobolab:v2 ABTEM_SRC=$SCRATCH/code/abTEM-269 \
   sbatch -A <project>_g multigpu_verify.sbatch --gpus 2
 ```
 
@@ -259,7 +258,7 @@ podman-hpc run --rm --gpu \
     -v "$SCRATCH:$SCRATCH" -v "$HOME:$HOME" \
     -v "$PAYLOAD:$PAYLOAD" -v "$ABTEM_SRC:$ABTEM_SRC" \
     -e PYTHONPATH="$ABTEM_SRC" --workdir "$SCRATCH" \
-    ghcr.io/<username>/otherimage:latest python "$PAYLOAD/verify_multigpu.py"
+    ghcr.io/idrobolab/idrobolab:latest python "$PAYLOAD/verify_multigpu.py"
 ```
 
 `--workdir` is there for the same reason the launchers set it: dask-cuda workers
@@ -382,7 +381,7 @@ nothing, which is why the launchers precheck the import path and abort.
   dask=2026.7.0   distributed=2026.7.0   cupy=13.5.1   dask_cuda=26.6.0
   GPU 0: NVIDIA A100-SXM4-40GB  pci=0000:03:00  40 GB
   ... (×4)
-  abtem=1.1.0  <- /pscratch/sd/p/<username>/code/abTEM/abtem/__init__.py
+  abtem=1.1.0  <- /pscratch/sd/<x>/<username>/code/abTEM/abtem/__init__.py
 [ PASS ] environment.abtem_multigpu_support -- is_gpu_dask_client + dask.multi-gpu
 [ PASS ] environment.dask_cuda      -- dask=2026.7.0, dask_cuda expects dask ...
 1. dask-cuda cluster bring-up
@@ -425,12 +424,12 @@ from Delta's; only their *distinctness* is checked.
 - **`Error: short-name resolution` / image not found on the compute node** — the
   image is in the login-node store but not in a store the compute node can read.
   `source ../../env.sh` (sets `PODMANHPC_ADDITIONAL_STORES` to the `/dvs_ro`
-  mirror) and use the fully qualified `ghcr.io/<username>/otherimage:latest`. An
+  mirror) and use the fully qualified `ghcr.io/idrobolab/idrobolab:latest`. An
   image you **built** rather than pulled also needs `podman-hpc migrate <tag>`.
 - **The image vanished between runs** — `$SCRATCH` is purged after 8 weeks
   without access, and the default squash store lives there. Keep campaign images
-  in the CFS store (`../../helpers/update-image.sh otherimage` — bare, it pulls
-  `idrobolab`) and record the digest.
+  in the CFS store (`../../helpers/update-image.sh idrobolab`) and record the
+  digest.
 - **`Killed` (SIGKILL) during cluster bring-up, no traceback** — host-memory OOM:
   not enough RAM for N dask-cuda workers in this (large) container. Most common
   cause: running the job script with **`bash`**, which ignores the `#SBATCH`

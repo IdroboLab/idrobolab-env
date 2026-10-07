@@ -7,7 +7,7 @@
 # run it inside the container ON A GPU NODE to confirm both accelerator paths
 # actually run on the hardware and agree with the CPU reference.
 #
-#   Delta (apptainer):   apptainer exec --nv otherimage.sif lammps-gpu-selftest
+#   Delta (apptainer):   apptainer exec --nv idrobolab.sif lammps-gpu-selftest
 #   Perlmutter (podman): podman-hpc run --gpu <image> lammps-gpu-selftest
 #   plain docker:        docker run --gpus all <image> lammps-gpu-selftest
 #

@@ -6,9 +6,9 @@ analysis), ML interatomic potentials (**fairchem**, **orb-models**), phonons
 (**phonopy**, **hiphive**), **pymatgen**, **dask**, **jupyterlab** — on CUDA
 12.8 / Python 3.12 / x86_64.
 
-Sibling of `otherimage` (in the hpcenvs repo, `shared/containers/x86_64-cuda/otherimage/`): it reuses the **identical
-compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdwxc + GPAW) and
-swaps the Python stack. Builds and distributes the same way (one image for
+Sibling of another image's recipe (maintained separately, not in this repo): it reuses
+the **identical compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdwxc +
+GPAW) and swaps the Python stack. Builds and distributes the same way (one image for
 Delta via Apptainer and Perlmutter via podman-hpc).
 
 ## The one hard constraint: torch 2.8
@@ -28,7 +28,7 @@ there is **no** `data.pyg.org` companion-wheel step. If you ever need torch
 | `requirements-idrobolab.txt` | Curated Python stack — **hand-maintained** (not scraped from a dev venv) |
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/` |
-| `publish.sh` | Build + push to `ghcr.io/<username>/idrobolab` |
+| `publish.sh` | Build + push to `ghcr.io/idrobolab/idrobolab` |
 
 ### Multi-GPU abTEM (dask-cuda)
 
@@ -43,7 +43,7 @@ loudly, not as a silent fall back to one GPU.
 the `to_zarr` regression. `requirements-idrobolab.txt` therefore also carries
 abTEM's exclusion set so the resolve lands correctly the first time. The full
 analysis, including the Plan B downgrade, is in
-the hpcenvs repo's `delta/verification/multigpu_abtem/README.md`.
+[`delta/verification/multigpu_abtem/README.md`](../../../../delta/verification/multigpu_abtem/README.md).
 The Dockerfile block lists which package supplies each skipped dependency; the
 build fails loudly if the install moves `torch` off the fairchem 2.8 ceiling.
 
@@ -59,17 +59,18 @@ package.
 ```bash
 # 1. stage (in the devcontainer):
 ./prepare_build_context.sh
-# 2. build on a host with docker/podman (layer-cached), then push:
-./publish.sh                              # -> ghcr.io/<username>/idrobolab
+# 2. build on a host with docker/podman (layer-cached), then push; needs GHCR_USER
+#    (your GitHub username) and GITHUB_PACKAGE_TOKEN (a PAT with write:packages):
+./publish.sh                              # -> ghcr.io/idrobolab/idrobolab
 # 3. consume:
-apptainer build idrobolab.sif docker://ghcr.io/<username>/idrobolab:latest   # Delta
-podman-hpc pull ghcr.io/<username>/idrobolab:latest                          # Perlmutter
+apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   # Delta
+podman-hpc pull ghcr.io/idrobolab/idrobolab:latest                          # Perlmutter
 ```
 
 ### Registry access
 
-Both `ghcr.io/<username>/idrobolab` and `ghcr.io/<username>/otherimage` are
-**public** as of 2026-08-14, so `podman-hpc pull` needs no credentials.
+`ghcr.io/idrobolab/idrobolab` is **public**, so `podman-hpc pull`
+needs no credentials.
 
 GHCR packages are private on first push, though, and stay that way until the
 visibility is changed by hand — idrobolab was, until it was flipped. An
@@ -83,18 +84,18 @@ which reads like a credential problem but really means "not readable
 anonymously": the client sent no credentials and GHCR refused to issue even
 an anonymous token. If that reappears (a new package, or visibility reset),
 either flip it public at
-`github.com/users/<username>/packages/container/idrobolab/settings`, or log in
+`github.com/orgs/IdroboLab/packages/container/idrobolab/settings`, or log in
 on the cluster with a PAT carrying `read:packages`:
 
 ```bash
 # Perlmutter (login node — pulled images are auto-squashed and visible to
 # compute nodes, so no `podman-hpc migrate` is needed):
-podman-hpc login ghcr.io -u <username>          # paste the PAT at the prompt
+podman-hpc login ghcr.io -u <github-user>         # paste the PAT at the prompt
 
 # Delta:
-export APPTAINER_DOCKER_USERNAME=<username>
+export APPTAINER_DOCKER_USERNAME=<github-user>
 export APPTAINER_DOCKER_PASSWORD=$GITHUB_PACKAGE_TOKEN
-apptainer build idrobolab.sif docker://ghcr.io/<username>/idrobolab:latest
+apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest
 ```
 
 Check whether the package exists and your PAT can read it, from anywhere. The
@@ -104,10 +105,10 @@ manifest request answers `401` even for a public package, so neither status
 on its own tells you anything.
 
 ```bash
-TOKEN=$(curl -s -u <username>:$GITHUB_PACKAGE_TOKEN \
-    "https://ghcr.io/token?service=ghcr.io&scope=repository:<username>/idrobolab:pull" \
+TOKEN=$(curl -s -u <github-user>:$GITHUB_PACKAGE_TOKEN \
+    "https://ghcr.io/token?service=ghcr.io&scope=repository:idrobolab/idrobolab:pull" \
     | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-curl -s -H "Authorization: Bearer $TOKEN" https://ghcr.io/v2/<username>/idrobolab/tags/list
+curl -s -H "Authorization: Bearer $TOKEN" https://ghcr.io/v2/idrobolab/idrobolab/tags/list
 ```
 
 podman-hpc stores the login under `$XDG_RUNTIME_DIR/containers/auth.json`,
@@ -121,7 +122,7 @@ Common uses:
 ```bash
 apptainer exec --nv idrobolab.sif python script.py        # GPU compute
 apptainer exec --nv idrobolab.sif jupyter lab --no-browser --ip=0.0.0.0
-# GAP/DFT MPI (single node, in-container): see that image's jobs (hpcenvs repo) for the
+# GAP/DFT MPI (single node, in-container): see Delta's job templates (delta/jobs/) for the
 # mpiexec -bootstrap fork / srun --mpi=pmi2 patterns (same MPICH).
 ```
 

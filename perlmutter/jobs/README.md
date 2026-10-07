@@ -2,12 +2,15 @@
 
 Template job scripts per node type and QOS. All take the payload as
 arguments (`sbatch <script>.sbatch my_script.py [args...]`), locate the image
-via `$IMAGE` (default `idrobolab`; a bare name resolves against
-`ghcr.io/<username>/`, a value containing `/` is used verbatim — overridable at
-submit time with `IMAGE=... sbatch ...`), and mount `$SCRATCH`, `$CFS`, and
-`$HOME` when present. The exceptions are `abtem_uv_gpu_shared.sbatch` and
-`abtem_uv_gpu_node.sbatch`, which run abTEM from a uv environment on the host
-(`~/venvs/abtem`) and use no container.
+via `$IMAGE` (default `$IDROBOLAB_IMAGE` from `env.sh`, a full reference to
+`ghcr.io/idrobolab/idrobolab:latest`, else `idrobolab`; overridable at submit time with
+`IMAGE=... sbatch ...`). A bare name resolves to
+`ghcr.io/${IMAGE_OWNER:-idrobolab}/<name>:${TAG:-latest}`, so `TAG` and
+`IMAGE_OWNER` take effect only together with a bare name (`IMAGE=idrobolab TAG=v2`);
+a value containing `/` is used verbatim, which is how any other image is given.
+The templates mount `$SCRATCH`, `$CFS`, and `$HOME` when present. The exceptions
+are `abtem_uv_gpu_shared.sbatch` and `abtem_uv_gpu_node.sbatch`, which run abTEM
+from a uv environment on the host (`~/venvs/abtem`) and use no container.
 
 The `--account` lines are set to **<project>** (CPU templates) and **<project>_g** (GPU
 templates); `sbatch -A <other>` overrides per submission.
@@ -132,7 +135,7 @@ a supported first-class feature rather than something to be hand-wired:
   Slingshot-optimised build and form one `MPI_COMM_WORLD`.
 - This means **none of Delta's hybrid library-injection machinery is needed
   here** — no `APPTAINER_CONTAINLIBS`, no manual `/opt/cray` binds, no
-  `LD_LIBRARY_PATH` surgery. Compare the hpcenvs repo's `delta/jobs/gpaw_cpu_multinode.sbatch`
+  `LD_LIBRARY_PATH` surgery. Compare [`delta/jobs/gpaw_cpu_multinode.sbatch`](../../delta/jobs/gpaw_cpu_multinode.sbatch)
   to see what that saves.
 - Single-node and multi-node use the **same** mechanism, so unlike on Delta
   there is no riskier multi-node code path.
@@ -147,8 +150,8 @@ a supported first-class feature rather than something to be hand-wired:
 
 ```bash
 # on a Perlmutter login node, once:
-../helpers/update-image.sh idrobolab # or another image — pulls into the shared
-                                     # CFS store and fixes its permissions
+../helpers/update-image.sh idrobolab # pulls into the shared CFS store
+                                     # and fixes its permissions
 podman-hpc images --digests          # record the digest with your results
 # (a locally BUILT image also needs `podman-hpc migrate <tag>` to be visible
 #  on compute nodes; pulled images are migrated automatically)
@@ -276,7 +279,7 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
   are editable installs, so a `gpaw/` subdirectory in the CWD shadows the
   real package through the namespace-package finder and you get
   `ImportError: cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw'`. Same
-  trap for `otherimage`, `gpaw_weaver`, `pyslice`. Branch checkouts belong at
+  trap for `gpaw_weaver`, `abtem`. Branch checkouts belong at
   `$SCRATCH/code/gpaw`, mounted onto `/opt/src/gpaw`.
 - **For one-liner `python -c` checks, use `python -P`** (drops CWD from
   `sys.path`). Do *not* add `-P` to `python src/script.py` runs — it also

@@ -4,14 +4,15 @@
 #
 # Prerequisites:
 #   1. ./prepare_build_context.sh first (stages ./src from /workspaces/code).
-#   2. docker or podman + a registry login with write access:
-#        echo "$GHCR_PAT" | podman login ghcr.io -u <username> --password-stdin
+#   2. docker or podman, and GHCR_USER (your GitHub username) and
+#      GITHUB_PACKAGE_TOKEN (a PAT with write:packages) in the environment: the
+#      script logs in to ghcr.io with them.
 #
 # Env overrides: IMAGE, TAG, ENGINE.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-IMAGE=${IMAGE:-ghcr.io/<username>/idrobolab}
+IMAGE=${IMAGE:-ghcr.io/idrobolab/idrobolab}
 TAG=${TAG:-latest}
 ENGINE=${ENGINE:-$(command -v podman || command -v docker || true)}
 : "${ENGINE:?need podman or docker on PATH}"
@@ -21,15 +22,17 @@ if [ ! -d src ]; then
     exit 1
 fi
 
+# An unauthenticated push to GHCR fails as "Requesting bearer token: 403
+# Forbidden" (not 401), which reads like a permissions problem rather than a
+# missing login. Check the credentials before the build and log in explicitly.
+: "${GHCR_USER:?set GHCR_USER to your GitHub username}"
+: "${GITHUB_PACKAGE_TOKEN:?set GITHUB_PACKAGE_TOKEN to a PAT with write:packages}"
+
 echo ">> building ${IMAGE}:${TAG}  (engine: ${ENGINE##*/})"
 "$ENGINE" build -t "${IMAGE}:${TAG}" .
 
-# An unauthenticated push to GHCR fails as "Requesting bearer token: 403
-# Forbidden" (not 401), which reads like a permissions problem rather than a
-# missing login. Log in explicitly, as the hpcenvs repo's otherimage/publish.sh does.
-: "${GITHUB_PACKAGE_TOKEN:?set GITHUB_PACKAGE_TOKEN to a PAT with write:packages}"
 echo ">> logging in to ghcr.io  (engine: ${ENGINE##*/})"
-echo "$GITHUB_PACKAGE_TOKEN" | "$ENGINE" login ghcr.io -u <username> --password-stdin
+echo "$GITHUB_PACKAGE_TOKEN" | "$ENGINE" login ghcr.io -u "$GHCR_USER" --password-stdin
 
 echo ">> pushing ${IMAGE}:${TAG}"
 "$ENGINE" push "${IMAGE}:${TAG}"

@@ -9,7 +9,7 @@ via podman-hpc, OCI/Docker images only).
 | Path | Purpose |
 |---|---|
 | [../docs/perlmutter/](../docs/perlmutter/) | **Start here as a new group member** (after the general pages in [../docs/](../docs/)) — step-by-step introduction: account and `sshproxy` login (Windows/macOS/Linux), shell and group setup, storage and data transfer, jobs and queues, Python with uv, the idrobolab container, abTEM on 1–4 GPUs, Jupyter, ThinLinc and Nion Swift, coding agents, group conventions |
-| [../shared/containers/x86_64-cuda/idrobolab/](../shared/containers/x86_64-cuda/idrobolab/) | The idrobolab container recipe — build & publish in its README. Its sibling `otherimage` (shared with Delta) lives in the hpcenvs repo |
+| [../shared/containers/x86_64-cuda/idrobolab/](../shared/containers/x86_64-cuda/idrobolab/) | The idrobolab container recipe — build & publish in its README |
 | [podman-hpc.md](../docs/perlmutter/reference/podman-hpc.md) | Perlmutter run notes: `podman-hpc pull`/`run`, MPI, GPU |
 | [jupyter.md](../docs/perlmutter/reference/jupyter.md) | Notebooks: jupyter.nersc.gov via a registered kernel, or your own allocation + `ssh -L`. Knobs, gotchas, troubleshooting |
 | [verification/multigpu_abtem/](verification/multigpu_abtem/) | abTEM multi-GPU verification + HAADF scaling benchmark (launchers; payloads in `shared/`) |

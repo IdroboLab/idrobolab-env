@@ -1,24 +1,22 @@
-# another image / GPAW container for NERSC Perlmutter
+# idrobolab container for NERSC Perlmutter
 
-OCI (Docker-format) build context reproducing the dev-machine Python
-environment for Perlmutter's GPU nodes, consumed with **podman-hpc**
+OCI (Docker-format) image with a curated GPAW, abTEM and microscopy-analysis
+stack for Perlmutter's GPU nodes, consumed with **podman-hpc**
 (NERSC's recommended container runtime; Apptainer SIF images are not
 supported at NERSC).
 
-This is the same recipe as the Apptainer definition proven for NCSA Delta
-(`shared/containers/x86_64-cuda/otherimage/` in the hpcenvs repo), translated to a Dockerfile: same
-base image, same versions, same build steps. **Status: built and published.**
-`ghcr.io/<username>/otherimage` and `ghcr.io/<username>/idrobolab` both exist and are
-public, and idrobolab has been pulled and **verified end to end on Perlmutter**:
+This is the idrobolab recipe (`shared/containers/x86_64-cuda/idrobolab/`) as a
+Dockerfile. **Status: built and published.** `ghcr.io/idrobolab/idrobolab` exists and is
+public, and has been pulled and **verified end to end on Perlmutter**:
 a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
-invariant to GPU count (job <jobid>; log under
-`perlmutter/verification/multigpu_abtem/`, analysis in
+invariant to GPU count (job <jobid>, which ran under the image's earlier
+registry name; log under `perlmutter/verification/multigpu_abtem/`, analysis in
 `shared/containers/x86_64-cuda/idrobolab/README.md`).
 
 ## Fit to Perlmutter
 
 - **CPU/GPU**: AMD Milan + A100 (sm_80) — covered by the `-march=x86-64-v3`
-  CPU code and the fat cu129/cuda12 wheels (torch 2.13.0, jax 0.10.2, cupy).
+  CPU code and the fat cu129/cuda12 wheels (torch 2.8.0, cupy).
 - **MPI**: stock MPICH 4.3.2 built from source with shared libraries —
   exactly NERSC's documented recommendation, so `podman-hpc run --mpi` can
   swap in the ABI-compatible (`libmpi.so.12`), Slingshot-optimized Cray
@@ -30,36 +28,23 @@ invariant to GPU count (job <jobid>; log under
 | File | Purpose |
 |---|---|
 | `Dockerfile` | OCI image recipe (base: NGC `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04`) |
-| `requirements-delta.txt` | All PyPI packages pinned to the dev-env versions — auto-generated, do not edit by hand. One file for both clusters; the name is historical |
-| `siteconfig-delta.py` | GPAW build configuration (MPI, ScaLAPACK, FFTW, libxc, libvdwxc). Also shared; also historically named |
-| `prepare_build_context.sh` | Regenerates `requirements-delta.txt` from the live dev env, then stages the four source trees into `./src/` |
+| `requirements-idrobolab.txt` | Curated Python stack — hand-maintained |
+| `siteconfig.py` | GPAW build configuration (MPI, ScaLAPACK, FFTW, libxc, libvdwxc) |
+| `prepare_build_context.sh` | Stages the three source trees into `./src/` |
 
-The four dev packages (**gpaw** — a fork branch with an extra module, staged
-from the committed tree by `prepare_build_context.sh` (`GPAW_REF=<ref>`
-overrides) — **another image**, **gpaw-weaver**, **PySlice**) are installed
-**editable** at `/opt/src/<name>`; mount a cluster checkout over that path to
-run any branch. PAW datasets come from the `gpaw-data` pip package inside the
-image.
+The three dev packages (**gpaw** — vanilla `master`, staged from the committed
+tree by `prepare_build_context.sh` (`GPAW_REF=<ref>` overrides) —
+**gpaw-weaver**, **abTEM**) are installed **editable** at `/opt/src/<name>`;
+mount a cluster checkout over that path to run any branch. PAW datasets come
+from the `gpaw-data` pip package inside the image.
 
 ## Build
 
-Stage the context on the dev machine, then build either on Perlmutter or on
-any docker/podman host:
-
-```bash
-cd shared/containers/x86_64-cuda/otherimage   # in the hpcenvs repo
-./prepare_build_context.sh        # regenerates pins + stages ./src
-
-# Option A — on a Perlmutter login node (rsync this directory over first):
-podman-hpc build -t otherimage:latest .
-podman-hpc migrate otherimage:latest    # make it visible to compute nodes
-
-# Option B — any docker/podman host, then via a registry:
-docker build -t <registry>/<user>/otherimage:latest .
-docker push <registry>/<user>/otherimage:latest
-# ...and on Perlmutter:
-podman-hpc pull <registry>/<user>/otherimage:latest
-```
+Members do not build the image: it is built and pushed from the maintainer's
+devcontainer with `publish.sh`, as described under "Build & run" in
+[`shared/containers/x86_64-cuda/idrobolab/README.md`](../../../shared/containers/x86_64-cuda/idrobolab/README.md).
+The maintainer pulls it into the group's shared store with
+`perlmutter/helpers/update-image.sh`.
 
 ## Image storage
 
@@ -187,16 +172,16 @@ wedged store.
 
 ```bash
 # GPU, single node
-podman-hpc run --rm --gpu otherimage:latest python script.py
+podman-hpc run --rm --gpu "$IDROBOLAB_IMAGE" python script.py
 
 # GPAW, MPI across nodes — --mpi injects the host Cray MPICH (MPICH ABI)
 srun -N 4 --ntasks-per-node=64 \
-    podman-hpc run --rm --mpi otherimage:latest python gpaw_script.py
+    podman-hpc run --rm --mpi "$IDROBOLAB_IMAGE" python gpaw_script.py
 
 # Hybrid MPI+OpenMP (OMP_NUM_THREADS defaults to 1 in the image)
 srun -N 2 --ntasks-per-node=16 -c 8 \
     podman-hpc run --rm --mpi -e OMP_NUM_THREADS=8 \
-    otherimage:latest python gpaw_script.py
+    "$IDROBOLAB_IMAGE" python gpaw_script.py
 ```
 
 Check the current NERSC podman-hpc docs for the exact `--mpi`/`--gpu` flag
@@ -216,7 +201,7 @@ cost several debugging rounds, because the container looks like it is on the
 host network:
 
 ```bash
-$ podman-hpc run --rm ghcr.io/<username>/idrobolab:latest sh -c 'hostname; cat /proc/net/dev'
+$ podman-hpc run --rm ghcr.io/idrobolab/idrobolab:latest sh -c 'hostname; cat /proc/net/dev'
 04ad5a40ad5c
 Inter-|   Receive ...
     lo: ...
@@ -316,29 +301,24 @@ is granted. See "Supplementary groups are dropped in the container" above.
 
 ## Running your own branches (cluster checkouts)
 
-Same pattern as the Delta image — the dev packages resolve to
+The idrobolab image installs gpaw, gpaw-weaver and abTEM **editable** at
 `/opt/src/<name>`, so mount a checkout over that path:
 
 ```bash
 cd $SCRATCH/code
-git clone git@gitlab.com:<username>/gpaw.git && git -C gpaw checkout <branch>
+git clone https://gitlab.com/gpaw/gpaw.git && git -C gpaw checkout <branch>
 
 podman-hpc run --rm --gpu \
     -v $SCRATCH/code/gpaw:/opt/src/gpaw \
-    otherimage:latest python script.py
+    "$IDROBOLAB_IMAGE" python script.py
 ```
 
-Mount only the repos you want to override. Another image, gpaw-weaver, and
-PySlice are pure Python — any branch just works. For **gpaw**, the compiled
-`_gpaw.so` stashed in site-packages serves clones without one; if your
-branch changes the C sources, rebuild in-place in the mounted clone with the
-container's toolchain:
-
-```bash
-podman-hpc run --rm -v $SCRATCH/code/gpaw:/opt/src/gpaw otherimage:latest \
-    bash -c 'cd /opt/src/gpaw && GPAW_CONFIG=/opt/build/siteconfig.py \
-             python setup.py build_ext --inplace'
-```
+Mount only the repos you want to override. gpaw-weaver and abTEM are pure
+Python — any branch just works. For **gpaw**, the compiled `_gpaw.so` stashed
+in site-packages serves clones without one, so a branch that changes only
+Python files works too. The image is a slim runtime without compilers or the
+GPAW build configuration, so a branch that changes the C sources cannot be
+rebuilt inside it; that needs a new image from the idrobolab recipe.
 
 ## Notes and caveats
 

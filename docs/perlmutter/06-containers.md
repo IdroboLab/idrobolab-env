@@ -17,7 +17,7 @@ already in the group's shared image store; `env.sh` ([page 2](02-shell-setup.md)
 tells podman-hpc where to find it. Check on a login node:
 
 ```bash
-podman-hpc images          # should list ghcr.io/<username>/idrobolab   latest
+podman-hpc images          # should list ghcr.io/idrobolab/idrobolab   latest
 ```
 
 **Don't pull the image yourself.** It is 20 GB, and the maintainer refreshes the
@@ -94,6 +94,6 @@ package the image lacks, ask the maintainer to add it to the recipe
 - MPI (GPAW on CPU nodes): use the GPAW templates. They add `--mpi` and
   `GPAW_MPI_BACKEND=cgpaw`, which MPI runs need.
 
-More: [`reference/podman-hpc.md`](reference/podman-hpc.md) (written for the sibling `otherimage`
-image; the commands are the same) and
+More: [`reference/podman-hpc.md`](reference/podman-hpc.md) (podman-hpc traps and image notes)
+and
 [`shared/containers/x86_64-cuda/idrobolab/README.md`](../../shared/containers/x86_64-cuda/idrobolab/README.md).

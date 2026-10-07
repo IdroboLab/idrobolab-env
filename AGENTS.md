@@ -1,10 +1,11 @@
 # idrobolab-env: instructions for coding agents
 
-The IdroboLab environment for NERSC Perlmutter (project <project>): `perlmutter/` (env.sh,
-helpers, job templates, docs) and the `idrobolab` container recipe under
-`shared/containers/x86_64-cuda/idrobolab/`. Split out of the `hpcenvs` repo, which keeps
-the other clusters and the `otherimage`/`ruszlab` recipes; a reference to those names the
-hpcenvs repo in text, never a relative link.
+The IdroboLab group's environments: NERSC Perlmutter (project <project>) in `perlmutter/`
+(env.sh, helpers, job templates) and NCSA Delta in `delta/` (get-image.sh, job templates,
+verification launchers), the `idrobolab` container recipe under
+`shared/containers/x86_64-cuda/idrobolab/`, and the documentation in `docs/`. Split out of
+the `hpcenvs` repo, which is frozen and holds nothing this repo needs. Rules specific to
+one cluster are scoped to it below; `delta/AGENTS.md` holds the Delta conventions.
 
 This file is read by every coding agent (Codex reads `AGENTS.md` directly; Claude Code
 through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CLAUDE.md`.
@@ -17,11 +18,14 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   so this rule is the only guard: an unreviewed push to `main` reaches every member's
   shell on their next pull. The member-facing workflow is `docs/CONTRIBUTING.md`.
 - All documentation lives in `docs/`: the general pages (`01-github.md`, `02-cloning.md`,
-  `03-globus.md`), `CONTRIBUTING.md`, and the Perlmutter section `docs/perlmutter/`, with
-  its reference notes in `docs/perlmutter/reference/`. Both series are numbered in reading
+  `03-globus.md`), `CONTRIBUTING.md`, the Perlmutter section `docs/perlmutter/`, with
+  its reference notes in `docs/perlmutter/reference/`, and the Delta page
+  `docs/delta/README.md`. The general and Perlmutter series are numbered in reading
   order, so renaming or adding a page means updating every `[page N]` link and the tables
   in `docs/README.md` and `docs/perlmutter/README.md`. The README of a directory that
-  holds scripts (`perlmutter/jobs/`, `perlmutter/helpers/`, ...) stays next to them.
+  holds scripts (`perlmutter/jobs/`, `perlmutter/helpers/`, `delta/jobs/`, ...) stays next
+  to them, and a cluster's narrative goes in its `docs/<cluster>/` page; `delta/README.md`
+  is a short directory README pointing to `docs/delta/README.md`.
 - Each member works from their own clone (`~/idrobolab-env`, or wherever they cloned it);
   nothing reads a shared checkout. Scripts locate their siblings relative to their own
   file, and docs give paths as `~/idrobolab-env/...`.
@@ -37,6 +41,18 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   names are kept from before the split so existing setups keep working: never rename
   them.
 
+## Delta (delta/)
+
+- The job templates default `SIF` to `$PROJECTS_BASE/software/containers/idrobolab.sif`
+  (`get-image.sh` pulls `ghcr.io/idrobolab/idrobolab` into it; that image has not been
+  run on Delta yet) and carry the placeholder `<project>-delta-{cpu,gpu}` in their `--account` lines, which
+  the user replaces (the verification launchers still carry a concrete account there).
+- The Python payloads of the multi-GPU verification are shared with Perlmutter in
+  `shared/verification/multigpu_abtem/`; the launchers in `delta/verification/` and
+  `perlmutter/verification/` locate them relative to themselves. Change a payload once,
+  there.
+- Read `delta/AGENTS.md` before editing anything in `delta/`.
+
 ## Agent instructions (perlmutter/agents/)
 
 `perlmutter/agents/` holds the rules `helpers/setup-agents.sh` installs for members' agents
@@ -45,7 +61,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 
 ## The idrobolab container recipe
 
-- The image is built and pushed (`publish.sh` → `ghcr.io/<username>/idrobolab`) only from the
+- The image is built and pushed (`publish.sh` → `ghcr.io/idrobolab/idrobolab`) only from the
   maintainer's devcontainer, where `prepare_build_context.sh` stages the editable trees
   from `CODE_DIR=/workspaces/code`. Nobody builds on Perlmutter.
 - It keeps the `:latest` tag; never retag or move it.
@@ -56,4 +72,5 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   bind mount over `/opt/src/gpaw`.
 - MPI stays MPICH-ABI (`libmpi.so.12`). The image is x86_64-cuda: never point it, or
   anything compiled in it, at another architecture.
-- Record the image digest (`podman-hpc images --digests`) with campaign results.
+- Record the image digest (`podman-hpc images --digests` on Perlmutter, `sha256sum` of the
+  `.sif` on Delta) with campaign results.
