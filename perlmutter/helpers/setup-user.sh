@@ -16,6 +16,7 @@
 #   2. links the project's shared Jupyter kernels into your own kernel dir
 #   3. checks the things that silently break later: project group membership,
 #      whether the shared image store is actually readable by you, $SCRATCH
+#   4. if you ran setup-agents.sh, shows its --check result
 set -euo pipefail
 
 CHECK=0 UNDO=0
@@ -177,6 +178,15 @@ fi
 # $HOME is small and, on NERSC, quota'd well below what a container workflow
 # will produce. Point people at the right filesystem before they fill it.
 ok "keep data on \$SCRATCH or \$CFS, not \$HOME (run 'myquota' to see why)"
+
+# Coding-agent rules: only for users who ran setup-agents.sh (its marker is in
+# either file). It names the same files setup-agents.sh writes.
+if grep -qsF 'idrobolab-env agent rules >>>' \
+        "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/CLAUDE.md" "${CODEX_HOME:-$HOME/.codex}/AGENTS.md"; then
+    echo
+    echo "4. coding-agent rules (setup-agents.sh --check)"
+    "$HELPERS/setup-agents.sh" --check | sed 's/^/  /' || warn "setup-agents.sh --check found something to do"
+fi
 
 echo
 if [ "$WARNINGS" -eq 0 ]; then

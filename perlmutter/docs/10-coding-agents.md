@@ -24,19 +24,53 @@ For Codex, [codex.md](codex.md) walks through every step.
 Both also have editor and desktop-app versions that connect to Perlmutter over SSH.
 On Perlmutter, the terminal version is the simplest.
 
-## NERSC's baseline instructions
+## Instructions: three layers
 
-NERSC publishes instruction files that teach an agent Perlmutter's rules: login nodes
-vs jobs, Slurm, file systems. Install them once:
+An agent follows three layers of written instructions, each adding to the one before:
+
+1. **NERSC's baseline**: what an agent must know about Perlmutter (login nodes vs
+   jobs, Slurm approval, file systems, the filesystem guard). It is kept in this repo
+   under `perlmutter/agents/nersc/` (BSD-3, see the `LICENSE` there). NERSC's updates
+   arrive as a pull request from a weekly workflow, and an admin reads them before
+   they reach you.
+2. **The group's rules**: [`perlmutter/agents/group.md`](../agents/group.md): accounts,
+   queues, container, data and provenance. They never relax NERSC's.
+3. **The project's own**: a `CLAUDE.md` or `AGENTS.md` in the project folder (`/init`
+   inside the agent drafts one) with what the agent should know about that project.
+
+Start each agent once first (log in; [Codex](codex.md#2-log-in)), which creates its
+config directory. Then one command sets up layers 1 and 2; run it once, and again after
+every `git pull` of `~/idrobolab-env`:
 
 ```bash
-git clone https://github.com/NERSC/coding-agents.git ~/nersc-coding-agents
+~/idrobolab-env/perlmutter/helpers/setup-agents.sh           # set up or update
+~/idrobolab-env/perlmutter/helpers/setup-agents.sh --check   # report only
+~/idrobolab-env/perlmutter/helpers/setup-agents.sh --undo    # remove what it added
 ```
 
-Then follow `claude/README.md` or `codex/README.md` in that clone. They install
-`~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`. `git pull` there picks up NERSC's
-updates. For one project, put a `CLAUDE.md` or `AGENTS.md` in the project folder (`/init`
-inside the agent drafts one) with what the agent should know about that project.
+- **Which agents:** an agent is handled only if its directory exists, `~/.claude`
+  (or `$CLAUDE_CONFIG_DIR`) and `~/.codex` (or `$CODEX_HOME`). If you use only one, the
+  other is skipped.
+- **Claude Code**: a marked block at the top of `~/.claude/CLAUDE.md` imports the two
+  files from your clone, so a `git pull` is all an update needs. Your own text goes
+  below the block. If you pasted NERSC's file into `CLAUDE.md` earlier, the script
+  warns: delete that part by hand, or it loads twice.
+- **Codex** cannot import files, so the script writes a copy of both between markers
+  at the top of `~/.codex/AGENTS.md`, then a `## Local additions` heading and your own
+  text. After a `git pull`, run the script again (`--check` and `setup-user.sh` say
+  when the copy is stale). Your text below the heading is kept. So is text outside the
+  markers that is not under the heading, and a file without markers: it moves below the
+  heading, except a pasted copy of NERSC's file, which the managed part replaces.
+- **Safety:** when your own text or the file's layout changes (not on a plain refresh
+  of NERSC's or the group's text), the script first saves a copy next to the file
+  (`<file>.bak-<UTC time>`) and prints the path. Edits made inside a pasted copy of
+  NERSC's file are kept only in that copy. A file with unbalanced markers (one
+  without its partner, or repeated) is refused in every mode, with the line numbers,
+  and left as it is: fix it by hand. A file inside a git work tree (symlinks
+  resolved) is never written: for Claude the script prints the lines to add; for Codex
+  use a `CODEX_HOME` outside the tree. `--undo` removes the block or managed part and
+  keeps everything else.
+- Restart the agent afterwards.
 
 For Codex, NERSC recommends this `~/.codex/config.toml`:
 

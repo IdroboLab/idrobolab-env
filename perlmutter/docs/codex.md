@@ -57,30 +57,31 @@ EOF
 
 Don't use `danger-full-access` or a flag that skips approvals.
 
-## 4. Instructions: NERSC's baseline and the project's
+## 4. Instructions: NERSC's baseline, the group's and the project's
 
 Codex reads instruction files called `AGENTS.md` and puts them all into its context:
 
 | File | What goes there |
 |---|---|
-| `~/.codex/AGENTS.md` | your personal file: NERSC's baseline, then your own preferences |
+| `~/.codex/AGENTS.md` | your personal file: NERSC's baseline and the group's rules (managed by a script), then your own preferences |
 | `AGENTS.md` at the top of a git repository, and in subfolders down to where you start Codex | project rules; files closer to your folder come later and so take precedence |
 
-Install NERSC's baseline into your personal file:
+Set up the personal file with the group's script, from your clone of `idrobolab-env`
+and after your first login (which creates `~/.codex`):
 
 ```bash
-git clone https://github.com/NERSC/coding-agents.git ~/nersc-coding-agents
-install -m 0600 ~/nersc-coding-agents/codex/.codex/AGENTS.md ~/.codex/AGENTS.md
+~/idrobolab-env/perlmutter/helpers/setup-agents.sh
 ```
 
-If you already had a `~/.codex/AGENTS.md`, paste your old content below NERSC's
-`## Local additions` heading instead of overwriting it. Your own preferences always go
-below that heading. To update later: `git -C ~/nersc-coding-agents pull`, then replace
-everything **above** `## Local additions` with the new file's content.
+Your own preferences always go **below the `## Local additions` heading**. Codex cannot
+import files, so run the script again after each `git pull` of `~/idrobolab-env`.
+[Page 10](10-coding-agents.md#instructions-three-layers) describes what it does, for
+both agents.
 
 For a project, put an `AGENTS.md` in the repository root: what the project is, how to
 run its tests, which data it must not touch. Inside a session, `/init` drafts one. Keep
-all of them short: Codex reads at most 32 KiB of `AGENTS.md` text in total.
+all of them short: Codex reads at most 32 KiB of `AGENTS.md` text in total, and the
+script warns when the personal file alone is over that.
 `idrobolab-env` has one already ([AGENTS.md](../../AGENTS.md)).
 
 ## 5. Use it

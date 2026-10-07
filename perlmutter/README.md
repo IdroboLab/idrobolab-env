@@ -17,6 +17,7 @@ via podman-hpc, OCI/Docker images only).
 | [jobs/interactive_gpu_shared.sh](jobs/interactive_gpu_shared.sh) | Container shell on 1 or 2 GPUs of a shared node (`shared_interactive`, ≤ 4 h); `interactive_gpu.sh` is the whole-node twin |
 | [examples/abtem/](examples/abtem/) | `abtem_gpu_example.py`: a small abTEM HAADF-type scan on a GPU or CPU, run by the uv job templates ([docs/07](docs/07-abtem.md)) |
 | [jobs/interactive_jupyter.sh](jobs/interactive_jupyter.sh) | JupyterLab in the container on a compute node; prints the `ssh -L` tunnel line with the node name filled in |
+| [agents/](agents/) | What members' coding agents follow: `group.md` (the group's rules), `nersc/` (a vendored copy of NERSC's baseline, with `UPSTREAM` naming the commit) and `sync-nersc.sh` (refreshes `nersc/`; run weekly by the `nersc-agents-sync` workflow). Installed by `helpers/setup-agents.sh` ([docs/10](docs/10-coding-agents.md#instructions-three-layers)) |
 | [helpers/setup-user.sh](helpers/setup-user.sh) | Per-user setup ([docs/02](docs/02-shell-setup.md)) — one command sets up your shell, Jupyter kernels, and checks what silently breaks later |
 | [helpers/](helpers/) | Scripts run by hand on a login node: image pulls, store permissions, shared uv, the Nion Swift launcher |
 | [helpers/update-image.sh](helpers/update-image.sh) | Pull/refresh an image into the shared CFS store (`/global/cfs/cdirs/<project>/podman-hpc`). Login nodes only |

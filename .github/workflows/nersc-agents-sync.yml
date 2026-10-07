@@ -1,0 +1,68 @@
+# Keeps perlmutter/agents/nersc/ (the vendored copy of NERSC's coding-agent
+# baseline) current. Weekly, or by hand from the Actions tab: run sync-nersc.sh and,
+# if upstream changed, put the result on the branch nersc-agents-sync and open (or
+# update) one pull request for an admin to review. Never pushes to main. The job
+# force-pushes nersc-agents-sync, so anything committed on that branch by hand is
+# overwritten.
+#
+# Needs the setting "Allow GitHub Actions to create and approve pull requests"
+# (Settings > Actions > General > Workflow permissions, in the repository or the
+# organisation).
+name: nersc-agents-sync
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency: nersc-agents-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: nersc-agents-sync
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEFAULT_BRANCH }}
+
+      - name: Sync from NERSC/coding-agents
+        run: perlmutter/agents/sync-nersc.sh
+
+      - name: Open or update the pull request
+        run: |
+          if [ -z "$(git status --porcelain -- perlmutter/agents/nersc)" ]; then
+            echo "nothing to propose"
+            exit 0
+          fi
+          sha=$(sed -n 's/^commit: //p' perlmutter/agents/nersc/UPSTREAM)
+          title="agents: update NERSC baseline to ${sha:0:12}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git add perlmutter/agents/nersc
+          git commit -m "$title"
+          {
+            echo "NERSC/coding-agents is now at \`$sha\`."
+            echo "Compare: https://github.com/NERSC/coding-agents/commits/$sha"
+            echo
+            echo "Changed files (read the diff before merging: members' agents follow this text):"
+            echo
+            git diff --stat HEAD~1 HEAD
+            echo
+            echo "Opened by the nersc-agents-sync workflow. See docs/CONTRIBUTING.md."
+          } > body.md
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+          number=$(gh pr list --head "$BRANCH" --base "$DEFAULT_BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --title "$title" --body-file body.md
+          else
+            gh pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" --title "$title" --body-file body.md
+          fi

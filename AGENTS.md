@@ -34,6 +34,12 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   names are kept from before the split so existing setups keep working: never rename
   them.
 
+## Agent instructions (perlmutter/agents/)
+
+`perlmutter/agents/` holds the rules `helpers/setup-agents.sh` installs for members' agents
+(`group.md`); its vendored `nersc/` files change only through `sync-nersc.sh` or the
+`nersc-agents-sync` workflow, never by hand.
+
 ## The idrobolab container recipe
 
 - The image is built and pushed (`publish.sh` → `ghcr.io/<username>/idrobolab`) only from the
