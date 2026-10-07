@@ -21,8 +21,8 @@ does, so don't let it do anything you wouldn't do yourself.
 
 For Codex, [codex.md](codex.md) walks through every step.
 
-Both also have editor and desktop-app versions that connect to Perlmutter over SSH.
-On Perlmutter, the terminal version is the simplest.
+Both also have editor and desktop-app versions that connect to Perlmutter over SSH
+(VS Code: [page 11](11-vscode.md)). On Perlmutter, the terminal version is the simplest.
 
 ## Instructions: three layers
 

@@ -155,6 +155,5 @@ to edit, submit and run short tests, and do the real work on compute nodes
 
 ## 6. VS Code (optional)
 
-The **Remote - SSH** extension works with the `perlmutter` alias from §4. It runs a
-server process on the login node, so close the remote window when you are done. Like
-ssh, it stops connecting once the day's key expires.
+The **Remote - SSH** extension works with the `perlmutter` alias from §4, on a login node
+or on a compute node you have booked: [page 11](11-vscode.md).

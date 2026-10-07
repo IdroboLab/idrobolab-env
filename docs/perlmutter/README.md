@@ -22,6 +22,7 @@ the maintainer instructions.
 | 8 | [Jupyter](08-jupyter.md) | notebooks on jupyter.nersc.gov or on your own node |
 | 9 | [ThinLinc and Nion Swift](09-thinlinc-nionswift.md) | ThinLinc client (Windows, macOS, Linux), remote desktop, Nion Swift on a compute node |
 | 10 | [Coding agents](10-coding-agents.md) | Claude Code and Codex on Perlmutter |
+| 11 | [VS Code](11-vscode.md) | Remote - SSH on a login node or a compute node, home quota, Python interpreters |
 
 How we work together (data layout, compute etiquette, provenance) is collected in the
 **[group conventions](conventions.md)**, a first draft.
