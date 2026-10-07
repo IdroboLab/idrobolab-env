@@ -50,9 +50,12 @@
 #              `update-image.sh idrobolab` pulls) or a full reference
 #              (ghcr.io/other/img:tag), used verbatim. Default:
 #              $IDROBOLAB_IMAGE from env.sh, else idrobolab
-#   TAG        tag for the short-name form only (default latest)
+#   TAG        tag for the short-name form only (default latest); takes effect
+#              only together with IMAGE=<name>, since $IDROBOLAB_IMAGE is a
+#              full reference
 #   IMAGE_OWNER  registry owner for the short-name form (default idrobolab;
-#              any other image is given as a full reference in IMAGE)
+#              any other image is given as a full reference in IMAGE); same
+#              condition as TAG
 
 set -euo pipefail
 

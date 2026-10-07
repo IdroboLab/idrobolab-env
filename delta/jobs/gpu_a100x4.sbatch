@@ -1,6 +1,6 @@
 #!/bin/bash
 # Full quad-A100 node (gpuA100x4): GPU Python workloads — abTEM multislice,
-# orb-models, torch/jax — from the idrobolab container.
+# orb-models, torch, cupy — from the idrobolab container.
 # Charging: 1 A100-hour = 16 core-hours = 62.5 GB-hours (whichever is larger).
 #
 # Usage:  sbatch gpu_a100x4.sbatch my_gpu_script.py [args...]

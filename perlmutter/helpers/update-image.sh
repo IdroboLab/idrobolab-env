@@ -7,7 +7,7 @@
 # Usage:
 #   ./update-image.sh                      # idrobolab:latest
 #   TAG=v2 ./update-image.sh idrobolab     # a specific tag
-#   IMAGE=ghcr.io/someone/thing ./update-image.sh   # any other image: its full reference
+#   IMAGE=ghcr.io/someone/thing ./update-image.sh   # any other image: repository, no tag (TAG sets it)
 #   REFRESH=1 ./update-image.sh            # drop the squashed copy first
 #
 # Afterwards, jobs read the store through the DVS read-only mirror — see

@@ -4,7 +4,9 @@
 # factor 3.0) — the FP64/large-memory flagship partition: complex128 EMCD
 # runs, exact-S2 / large-crop asymmetry-gate jobs.
 # Charging: 1 H200-hour = 12 core-hours = 250 GB-hours.
-# H200 = sm_90: covered by the image's fat wheels (torch cu129, jax, cupy).
+# H200 = sm_90: covered by the image's Python wheels (torch cu129, cupy) and
+# MAGMA (Ampere + Hopper); its QE GPU build targets sm_80 and LAMMPS is built
+# for AMPERE80 (PTX JIT on Hopper).
 #
 # Usage:  sbatch gpu_h200x8.sbatch my_gpu_script.py [args...]
 #

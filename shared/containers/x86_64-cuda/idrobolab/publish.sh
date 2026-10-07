@@ -22,14 +22,15 @@ if [ ! -d src ]; then
     exit 1
 fi
 
+# An unauthenticated push to GHCR fails as "Requesting bearer token: 403
+# Forbidden" (not 401), which reads like a permissions problem rather than a
+# missing login. Check the credentials before the build and log in explicitly.
+: "${GHCR_USER:?set GHCR_USER to your GitHub username}"
+: "${GITHUB_PACKAGE_TOKEN:?set GITHUB_PACKAGE_TOKEN to a PAT with write:packages}"
+
 echo ">> building ${IMAGE}:${TAG}  (engine: ${ENGINE##*/})"
 "$ENGINE" build -t "${IMAGE}:${TAG}" .
 
-# An unauthenticated push to GHCR fails as "Requesting bearer token: 403
-# Forbidden" (not 401), which reads like a permissions problem rather than a
-# missing login. Log in explicitly.
-: "${GHCR_USER:?set GHCR_USER to your GitHub username}"
-: "${GITHUB_PACKAGE_TOKEN:?set GITHUB_PACKAGE_TOKEN to a PAT with write:packages}"
 echo ">> logging in to ghcr.io  (engine: ${ENGINE##*/})"
 echo "$GITHUB_PACKAGE_TOKEN" | "$ENGINE" login ghcr.io -u "$GHCR_USER" --password-stdin
 
