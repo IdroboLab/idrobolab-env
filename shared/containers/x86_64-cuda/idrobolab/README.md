@@ -28,7 +28,7 @@ there is **no** `data.pyg.org` companion-wheel step. If you ever need torch
 | `requirements-idrobolab.txt` | Curated Python stack — **hand-maintained** (not scraped from a dev venv) |
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/` |
-| `publish.sh` | Build + push to `ghcr.io/<username>/idrobolab` |
+| `publish.sh` | Build + push to `ghcr.io/idrobolab/idrobolab` |
 
 ### Multi-GPU abTEM (dask-cuda)
 
@@ -60,15 +60,15 @@ package.
 # 1. stage (in the devcontainer):
 ./prepare_build_context.sh
 # 2. build on a host with docker/podman (layer-cached), then push:
-./publish.sh                              # -> ghcr.io/<username>/idrobolab
+./publish.sh                              # -> ghcr.io/idrobolab/idrobolab
 # 3. consume:
-apptainer build idrobolab.sif docker://ghcr.io/<username>/idrobolab:latest   # Delta
-podman-hpc pull ghcr.io/<username>/idrobolab:latest                          # Perlmutter
+apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   # Delta
+podman-hpc pull ghcr.io/idrobolab/idrobolab:latest                          # Perlmutter
 ```
 
 ### Registry access
 
-`ghcr.io/<username>/idrobolab` is **public** (since 2026-08-14), so `podman-hpc pull`
+`ghcr.io/idrobolab/idrobolab` is **public**, so `podman-hpc pull`
 needs no credentials.
 
 GHCR packages are private on first push, though, and stay that way until the
@@ -83,7 +83,7 @@ which reads like a credential problem but really means "not readable
 anonymously": the client sent no credentials and GHCR refused to issue even
 an anonymous token. If that reappears (a new package, or visibility reset),
 either flip it public at
-`github.com/users/<username>/packages/container/idrobolab/settings`, or log in
+`github.com/orgs/IdroboLab/packages/container/idrobolab/settings`, or log in
 on the cluster with a PAT carrying `read:packages`:
 
 ```bash
@@ -94,7 +94,7 @@ podman-hpc login ghcr.io -u <username>          # paste the PAT at the prompt
 # Delta:
 export APPTAINER_DOCKER_USERNAME=<username>
 export APPTAINER_DOCKER_PASSWORD=$GITHUB_PACKAGE_TOKEN
-apptainer build idrobolab.sif docker://ghcr.io/<username>/idrobolab:latest
+apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest
 ```
 
 Check whether the package exists and your PAT can read it, from anywhere. The
@@ -105,9 +105,9 @@ on its own tells you anything.
 
 ```bash
 TOKEN=$(curl -s -u <username>:$GITHUB_PACKAGE_TOKEN \
-    "https://ghcr.io/token?service=ghcr.io&scope=repository:<username>/idrobolab:pull" \
+    "https://ghcr.io/token?service=ghcr.io&scope=repository:idrobolab/idrobolab:pull" \
     | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
-curl -s -H "Authorization: Bearer $TOKEN" https://ghcr.io/v2/<username>/idrobolab/tags/list
+curl -s -H "Authorization: Bearer $TOKEN" https://ghcr.io/v2/idrobolab/idrobolab/tags/list
 ```
 
 podman-hpc stores the login under `$XDG_RUNTIME_DIR/containers/auth.json`,

@@ -7,7 +7,7 @@ supported at NERSC).
 
 This is another image's recipe (maintained separately, not in this repo), the build
 proven on NCSA Delta, as a Dockerfile: same base image, same versions, same build
-steps. **Status: built and published.** `ghcr.io/<username>/idrobolab` exists and is
+steps. **Status: built and published.** `ghcr.io/idrobolab/idrobolab` exists and is
 public, and has been pulled and **verified end to end on Perlmutter**:
 a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
 invariant to GPU count (job <jobid>; log under
@@ -215,7 +215,7 @@ cost several debugging rounds, because the container looks like it is on the
 host network:
 
 ```bash
-$ podman-hpc run --rm ghcr.io/<username>/idrobolab:latest sh -c 'hostname; cat /proc/net/dev'
+$ podman-hpc run --rm ghcr.io/idrobolab/idrobolab:latest sh -c 'hostname; cat /proc/net/dev'
 04ad5a40ad5c
 Inter-|   Receive ...
     lo: ...

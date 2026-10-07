@@ -51,7 +51,8 @@
 #              (ghcr.io/other/img:tag), used verbatim. Default:
 #              $IDROBOLAB_IMAGE from env.sh, else idrobolab
 #   TAG        tag for the short-name form only (default latest)
-#   IMAGE_OWNER  registry owner for the short-name form (default <username>)
+#   IMAGE_OWNER  registry owner for the short-name form (default idrobolab for
+#              the idrobolab image, <username> for any other name)
 
 set -euo pipefail
 

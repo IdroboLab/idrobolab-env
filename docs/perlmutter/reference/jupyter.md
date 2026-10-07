@@ -139,7 +139,7 @@ prerequisite for the next.
 **1. Does podman-hpc accept the flag at all?** Login node, seconds.
 
 ```bash
-podman-hpc run --rm --network host ghcr.io/<username>/idrobolab:latest true; echo "exit=$?"
+podman-hpc run --rm --network host ghcr.io/idrobolab/idrobolab:latest true; echo "exit=$?"
 ```
 
 `exit=0` means the flag is accepted. An "unknown flag" error means container
@@ -150,7 +150,7 @@ matters, because acceptance is not the same as effect. On a compute node
 (`perlmutter/jobs/interactive_gpu.sh` gets you a shell), in one terminal:
 
 ```bash
-podman-hpc run --rm --network host ghcr.io/<username>/idrobolab:latest \
+podman-hpc run --rm --network host ghcr.io/idrobolab/idrobolab:latest \
     python3 -m http.server 8899 --bind 0.0.0.0
 ```
 

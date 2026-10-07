@@ -35,7 +35,7 @@
 #   export ABTEM_SRC=$SCRATCH/code/abTEM         # 'multi-gpu-support' checkout
 #
 #   Image selection (any of these):
-#     IMAGE=idrobolab sbatch ...                 # short name -> ghcr.io/<username>/idrobolab:latest
+#     IMAGE=idrobolab sbatch ...                 # short name -> ghcr.io/idrobolab/idrobolab:latest
 #     IMAGE=idrobolab TAG=v3 sbatch ...          # short name, explicit tag
 #     IMAGE=ghcr.io/other/img:tag sbatch ...     # full reference, used verbatim
 #   Default is idrobolab; the short name matches `update-image.sh <name>`.

@@ -63,7 +63,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 
 ## The idrobolab container recipe
 
-- The image is built and pushed (`publish.sh` → `ghcr.io/<username>/idrobolab`) only from the
+- The image is built and pushed (`publish.sh` → `ghcr.io/idrobolab/idrobolab`) only from the
   maintainer's devcontainer, where `prepare_build_context.sh` stages the editable trees
   from `CODE_DIR=/workspaces/code`. Nobody builds on Perlmutter.
 - It keeps the `:latest` tag; never retag or move it.

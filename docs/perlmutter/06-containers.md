@@ -17,7 +17,7 @@ already in the group's shared image store; `env.sh` ([page 2](02-shell-setup.md)
 tells podman-hpc where to find it. Check on a login node:
 
 ```bash
-podman-hpc images          # should list ghcr.io/<username>/idrobolab   latest
+podman-hpc images          # should list ghcr.io/idrobolab/idrobolab   latest
 ```
 
 **Don't pull the image yourself.** It is 20 GB, and the maintainer refreshes the

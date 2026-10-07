@@ -12,7 +12,7 @@ first, then the step-by-step Perlmutter introduction or the Delta page.
 | [docs/](docs/) | All documentation: the general pages ([GitHub](docs/01-github.md), [cloning](docs/02-cloning.md), [Globus](docs/03-globus.md)), [contributing](docs/CONTRIBUTING.md), the Perlmutter introduction and reference notes in [docs/perlmutter/](docs/perlmutter/), and the Delta page in [docs/delta/](docs/delta/README.md) |
 | [perlmutter/](perlmutter/) | The files for Perlmutter: `env.sh`, helpers, job templates, examples, agent rules |
 | [delta/](delta/) | The files for Delta (NCSA): `get-image.sh`, job templates per partition, the multi-GPU verification launchers, agent rules |
-| [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/<username>/idrobolab`) |
+| [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/idrobolab/idrobolab`) |
 | [shared/verification/multigpu_abtem/](shared/verification/multigpu_abtem/) | Payloads for the abTEM multi-GPU verification launched from `perlmutter/verification/` and `delta/verification/` |
 
 ## Your own clone

@@ -2,9 +2,11 @@
 
 Template job scripts per node type and QOS. All take the payload as
 arguments (`sbatch <script>.sbatch my_script.py [args...]`), locate the image
-via `$IMAGE` (default `idrobolab`; a bare name resolves against
-`ghcr.io/<username>/`, a value containing `/` is used verbatim — overridable at
-submit time with `IMAGE=... sbatch ...`), and mount `$SCRATCH`, `$CFS`, and
+via `$IMAGE` (default `idrobolab`; a bare name resolves to
+`ghcr.io/idrobolab/idrobolab` for `idrobolab` and to `ghcr.io/<username>/<name>`
+for any other name, `IMAGE_OWNER` overrides the owner, and a value containing
+`/` is used verbatim — overridable at submit time with `IMAGE=... sbatch ...`),
+and mount `$SCRATCH`, `$CFS`, and
 `$HOME` when present. The exceptions are `abtem_uv_gpu_shared.sbatch` and
 `abtem_uv_gpu_node.sbatch`, which run abTEM from a uv environment on the host
 (`~/venvs/abtem`) and use no container.
