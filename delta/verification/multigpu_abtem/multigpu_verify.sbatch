@@ -1,18 +1,18 @@
 #!/bin/bash
 # Multi-GPU verification for abTEM on Delta's gpuA100x4 partition.
-# Runs verify_multigpu.py inside another image's container (which ships
+# Runs verify_multigpu.py inside the idrobolab container (which ships
 # dask-cuda), with the abTEM 'multi-gpu-support' branch injected via PYTHONPATH
 # to shadow the container's own abTEM (no venv). NB: the image installs abTEM
 # editable from a staged checkout, so its version is NOT a reliable way to tell
 # container from branch -- both currently report 1.1.0. Only abtem.__file__ is.
 #
 # Usage:
-#   SIF=/path/otherimage_delta.sif ABTEM_SRC=/path/abTEM \
+#   SIF=/path/idrobolab.sif ABTEM_SRC=/path/abTEM \
 #     sbatch multigpu_verify.sbatch            # 4 GPUs, default checks
 #   (add --timing for a 1-vs-N GPU wall-clock comparison)
 #   # optional preflight (no venv):  ABTEM_SRC=/path/abTEM ./setup_env.sh#
 #   Image selection: SIF is the .sif path; IMAGE=<name> resolves to
-#   $PROJECTS_BASE/software/containers/<name>_delta.sif (default another image),
+#   $PROJECTS_BASE/software/containers/<name>.sif (default idrobolab),
 #   matching the short-name form used by the Perlmutter launchers.
 #
 # For 8 GPUs switch the partition/resources below to the gpuA100x8 block, or
@@ -63,17 +63,17 @@ fi
 
 # Image selection. SIF is the .sif path and always wins when set. IMAGE gives
 # the short-name form used elsewhere in the repo -- `IMAGE=idrobolab` resolves
-# to <containers>/idrobolab_delta.sif -- and an absolute path in IMAGE is taken
+# to <containers>/idrobolab.sif -- and an absolute path in IMAGE is taken
 # as-is, so either variable can carry a path.
-IMAGE=${IMAGE:-otherimage}
+IMAGE=${IMAGE:-idrobolab}
 case "$IMAGE" in
     /*) SIF=${SIF:-$IMAGE} ;;
-    *)  SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/${IMAGE}_delta.sif} ;;
+    *)  SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/${IMAGE}.sif} ;;
 esac
 if [ ! -f "$SIF" ]; then
     echo "ERROR: container image not found: $SIF" >&2
     echo "  Set SIF=/path/to/image.sif, or IMAGE=<name> for" >&2
-    echo "  \$PROJECTS_BASE/software/containers/<name>_delta.sif" >&2
+    echo "  \$PROJECTS_BASE/software/containers/<name>.sif" >&2
     exit 1
 fi
 # abTEM 'multi-gpu-support' checkout. It is injected via PYTHONPATH to shadow the

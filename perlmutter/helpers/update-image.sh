@@ -6,9 +6,8 @@
 #
 # Usage:
 #   ./update-image.sh                      # idrobolab:latest
-#   ./update-image.sh otherimage           # sibling image, same store
 #   TAG=v2 ./update-image.sh idrobolab     # a specific tag
-#   IMAGE=ghcr.io/someone/thing ./update-image.sh
+#   IMAGE=ghcr.io/someone/thing ./update-image.sh   # any other image: its full reference
 #   REFRESH=1 ./update-image.sh            # drop the squashed copy first
 #
 # Afterwards, jobs read the store through the DVS read-only mirror — see
@@ -31,11 +30,7 @@ if [ -z "${STORE_RO:-}" ]; then
 fi
 
 NAME=${1:-idrobolab}
-case "$NAME" in
-    idrobolab) OWNER=idrobolab ;;
-    *)         OWNER=<username> ;;
-esac
-IMAGE=${IMAGE:-ghcr.io/$OWNER/$NAME}
+IMAGE=${IMAGE:-ghcr.io/${IMAGE_OWNER:-idrobolab}/$NAME}
 TAG=${TAG:-latest}
 REF="${IMAGE}:${TAG}"
 WHOAMI=${USER:-$(id -un)}       # $USER is not set in every batch/container shell

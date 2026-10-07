@@ -22,7 +22,7 @@
 module reset   # loads defaults, sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod quirk)
 set -euo pipefail
 
-SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/idrobolab.sif}
 SCRIPT=${1:?usage: sbatch gpu_a40_1gpu.sbatch script.py [args]}
 shift
 

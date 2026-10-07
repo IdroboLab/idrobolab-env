@@ -47,15 +47,14 @@ set -euo pipefail
 # passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
-# Image. Accepts a bare name -- IMAGE=otherimage -- or a full reference
+# Image. Accepts a bare name -- IMAGE=idrobolab -- or a full reference
 # (ghcr.io/user/img:tag, or one pinned by @sha256:...), matching the
 # verification launchers and `update-image.sh <name>`. A value containing "/"
 # is used verbatim; TAG and IMAGE_OWNER apply only to the short form.
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;
-    idrobolab) IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
-    *)         IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
 esac
 SCRIPT=${1:?usage: sbatch gpu_1gpu_shared.sbatch script.py [args]}
 shift

@@ -51,8 +51,8 @@
 #              (ghcr.io/other/img:tag), used verbatim. Default:
 #              $IDROBOLAB_IMAGE from env.sh, else idrobolab
 #   TAG        tag for the short-name form only (default latest)
-#   IMAGE_OWNER  registry owner for the short-name form (default idrobolab for
-#              the idrobolab image, <username> for any other name)
+#   IMAGE_OWNER  registry owner for the short-name form (default idrobolab;
+#              any other image is given as a full reference in IMAGE)
 
 set -euo pipefail
 
@@ -74,7 +74,7 @@ GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 # BASH_SOURCE is the real file -- no spool-copy dance like the .sbatch files.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# env.sh exports OTHERIMAGE_IMAGE (and the CFS image store); honour it when the
+# env.sh exports IDROBOLAB_IMAGE (and the CFS image store); honour it when the
 # user sourced it, but stay usable when they did not.
 # Image selection. Accepts either a bare name -- `IMAGE=idrobolab` -- or a full
 # reference (`ghcr.io/user/img:tag`, or one pinned by @sha256:...). A value with
@@ -85,8 +85,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;                       # already a full reference, use verbatim
-    idrobolab) IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
-    *)         IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
 esac
 # Optional. Unset (or empty) means "check the container's own abTEM", which
 # is a real thing to want: the image installs abTEM editable from a staged
@@ -155,7 +154,7 @@ IMAGE_REPO=${IMAGE_REPO%:*}
 IMAGE_LIST=$(podman-hpc images 2>/dev/null || true)
 if ! grep -qF -- "$IMAGE_REPO" <<<"$IMAGE_LIST"; then
     echo "NOTE: '$IMAGE_REPO' not visible in \`podman-hpc images\`." >&2
-    echo "      Pull it into the shared store first:  ../../helpers/update-image.sh otherimage" >&2
+    echo "      Pull it into the shared store first:  ../../helpers/update-image.sh idrobolab" >&2
     echo "      (or: podman-hpc pull $IMAGE). Pulls need a LOGIN node." >&2
 fi
 

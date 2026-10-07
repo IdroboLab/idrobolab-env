@@ -1,6 +1,6 @@
 #!/bin/bash
 # Multi-GPU verification for abTEM on a Perlmutter GPU node (4x A100 40 GB).
-# Runs verify_multigpu.py inside another image's container (which ships
+# Runs verify_multigpu.py inside the idrobolab container (which ships
 # dask-cuda), with the abTEM 'multi-gpu-support' branch injected via PYTHONPATH
 # to shadow the container's own abTEM (no venv).
 #
@@ -28,10 +28,7 @@
 #
 # Usage:
 #   . ../../env.sh              # PODMANHPC_ADDITIONAL_STORES -> shared CFS store
-#   ../../helpers/update-image.sh otherimage   # pull/refresh the image (LOGIN node only)
-#                                      # the argument matters: with none the
-#                                      # script pulls idrobolab, a different
-#                                      # (and much larger) image
+#   ../../helpers/update-image.sh idrobolab    # pull/refresh the image (LOGIN node only)
 #   export ABTEM_SRC=$SCRATCH/code/abTEM         # 'multi-gpu-support' checkout
 #
 #   Image selection (any of these):
@@ -53,7 +50,7 @@
 # Login-node preflight (no GPU needed; proves the injection works before you
 # spend an allocation on it) -- ./setup_env.sh does this with more reporting:
 #   podman-hpc run --rm $GROUP_FLAGS -v "$ABTEM_SRC:$ABTEM_SRC" $PYPATH_FLAG \
-#       ghcr.io/<username>/otherimage:latest \
+#       "$IMAGE" \
 #       python -P -c "import abtem; print(abtem.__version__, abtem.__file__)"
 #   # abtem.__file__ MUST be under $ABTEM_SRC. If it is /opt/src/abTEM the
 #   # container's own abTEM won and the checks below would be testing nothing --
@@ -140,7 +137,7 @@ if [ ! -f "$PAYLOAD_DIR/verify_multigpu.py" ]; then
     exit 1
 fi
 
-# OTHERIMAGE_IMAGE is exported by ../../env.sh; the literal is the fallback for
+# IDROBOLAB_IMAGE is exported by ../../env.sh; the literal is the fallback for
 # a shell that never sourced it.
 # Image selection. Accepts either a bare name -- `IMAGE=idrobolab` -- or a full
 # reference (`ghcr.io/user/img:tag`, or one pinned by @sha256:...). A value with
@@ -151,8 +148,7 @@ fi
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;                       # already a full reference, use verbatim
-    idrobolab) IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
-    *)         IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
 esac
 
 # abTEM 'multi-gpu-support' checkout. It is injected via PYTHONPATH to shadow the
@@ -258,7 +254,7 @@ THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 echo "== image =="
 podman-hpc images --digests | grep -E "REPOSITORY|${IMAGE%%:*}" || \
     echo "(not listed: source ../../env.sh for the shared CFS store, or pull" \
-         "it on a LOGIN node with ../../helpers/update-image.sh otherimage)"
+         "it on a LOGIN node with ../../helpers/update-image.sh idrobolab)"
 
 echo "IMAGE=$IMAGE"
 echo "abtem_src=$ABTEM_SRC (via PYTHONPATH, mounted at the same path)"

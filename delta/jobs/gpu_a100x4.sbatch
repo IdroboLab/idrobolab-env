@@ -1,6 +1,6 @@
 #!/bin/bash
 # Full quad-A100 node (gpuA100x4): GPU Python workloads — abTEM multislice,
-# orb-models, torch/jax — from another image's container.
+# orb-models, torch/jax — from the idrobolab container.
 # Charging: 1 A100-hour = 16 core-hours = 62.5 GB-hours (whichever is larger).
 #
 # Usage:  sbatch gpu_a100x4.sbatch my_gpu_script.py [args...]
@@ -21,7 +21,7 @@
 module reset   # loads defaults, sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod quirk)
 set -euo pipefail
 
-SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/idrobolab.sif}
 SCRIPT=${1:?usage: sbatch gpu_a100x4.sbatch script.py [args]}
 shift
 
@@ -29,7 +29,7 @@ BINDS=""
 for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"; done
 
 # Run a cluster checkout instead of the baked-in code:
-# BINDS="$BINDS,<project-dir>/code/otherimage:/opt/src/otherimage"
+# BINDS="$BINDS,<project-dir>/code/gpaw:/opt/src/gpaw"
 
 # For 4 MPI ranks x 1 GPU each (instead of one process using 4 GPUs), switch
 # the payload to:  mpiexec -bootstrap fork -n 4 python "$SCRIPT" "$@"

@@ -165,8 +165,7 @@ case "$BACKEND" in
     image)
         case "$TARGET" in
             */*) : ;;
-            idrobolab) TARGET="ghcr.io/${IMAGE_OWNER:-idrobolab}/${TARGET}:${TAG:-latest}" ;;
-            *)         TARGET="ghcr.io/${IMAGE_OWNER:-<username>}/${TARGET}:${TAG:-latest}" ;;
+            *)   TARGET="ghcr.io/${IMAGE_OWNER:-idrobolab}/${TARGET}:${TAG:-latest}" ;;
         esac
         DEFAULT_NAME=$(basename "${TARGET%%:*}")
         # Bake in the absolute path. JupyterHub launches the kernel from its own

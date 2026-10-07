@@ -17,11 +17,11 @@
 #   ABTEM_SRC=/path/to/abTEM ./setup_env.sh     # login node is fine
 #
 # Env vars:
-#   SIF        container image (default $PROJECTS_BASE/software/containers/otherimage_delta.sif)
+#   SIF        container image (default $PROJECTS_BASE/software/containers/idrobolab.sif)
 #   ABTEM_SRC  abTEM checkout to inject (optional). Unset/empty checks the
 #              container's own abTEM instead.#
 #   Image selection: SIF is the .sif path; IMAGE=<name> resolves to
-#   $PROJECTS_BASE/software/containers/<name>_delta.sif (default another image),
+#   $PROJECTS_BASE/software/containers/<name>.sif (default idrobolab),
 #   matching the short-name form used by the Perlmutter launchers.
 
 
@@ -29,17 +29,17 @@ set -euo pipefail
 
 # Image selection. SIF is the .sif path and always wins when set. IMAGE gives
 # the short-name form used elsewhere in the repo -- `IMAGE=idrobolab` resolves
-# to <containers>/idrobolab_delta.sif -- and an absolute path in IMAGE is taken
+# to <containers>/idrobolab.sif -- and an absolute path in IMAGE is taken
 # as-is, so either variable can carry a path.
-IMAGE=${IMAGE:-otherimage}
+IMAGE=${IMAGE:-idrobolab}
 case "$IMAGE" in
     /*) SIF=${SIF:-$IMAGE} ;;
-    *)  SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/${IMAGE}_delta.sif} ;;
+    *)  SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/${IMAGE}.sif} ;;
 esac
 if [ ! -f "$SIF" ]; then
     echo "ERROR: container image not found: $SIF" >&2
     echo "  Set SIF=/path/to/image.sif, or IMAGE=<name> for" >&2
-    echo "  \$PROJECTS_BASE/software/containers/<name>_delta.sif" >&2
+    echo "  \$PROJECTS_BASE/software/containers/<name>.sif" >&2
     exit 1
 fi
 # Optional: unset (or empty) checks the container's own abTEM, which the image

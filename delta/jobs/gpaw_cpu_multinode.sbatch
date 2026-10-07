@@ -1,5 +1,5 @@
 #!/bin/bash
-# GPAW / another image MPI job across MULTIPLE cpu-partition nodes.
+# GPAW MPI job across MULTIPLE cpu-partition nodes.
 #
 # *** UNTESTED ON DELTA — verify the paths below on a node first (see the
 #     "VERIFY ON DELTA" block and jobs/README.md) ***
@@ -39,7 +39,7 @@ module reset                            # loads cray-mpich (default); sets $WORK
 module load cray-mpich                  # ensure CRAY_MPICH_DIR/MPICH_DIR are set
 set -euo pipefail
 
-SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/idrobolab.sif}
 SCRIPT=${1:?usage: sbatch gpaw_cpu_multinode.sbatch script.py [args]}
 shift
 

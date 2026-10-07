@@ -1,6 +1,6 @@
 #!/bin/bash
 # Materialize the Delta .sif by converting the registry image built+pushed by the
-# Another image's recipe publish.sh (maintained separately, not in this repo).
+# idrobolab recipe's publish.sh (shared/containers/x86_64-cuda/idrobolab/).
 #
 # Run on Delta (or any host with apptainer). On a Delta login node the script
 # re-launches itself on a compute node via srun (cpu-interactive by default) and
@@ -18,9 +18,9 @@
 # APPTAINER_CACHEDIR defaults to $SCRATCH_BASE/$USER/.apptainer (keep off $HOME);
 # inside a Slurm job APPTAINER_TMPDIR defaults to a per-job dir on node-local /tmp.
 set -euo pipefail
-IMAGE=${IMAGE:-ghcr.io/<username>/otherimage}
+IMAGE=${IMAGE:-ghcr.io/idrobolab/idrobolab}
 TAG=${TAG:-latest}
-SIF=${SIF:-otherimage_delta.sif}
+SIF=${SIF:-idrobolab.sif}
 
 if [[ $(hostname -s) == dt-login* && ${NO_SRUN:-0} != 1 ]]; then
     SELF=$(readlink -f "$0")

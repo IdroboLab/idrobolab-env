@@ -1,5 +1,5 @@
 #!/bin/bash
-# GPAW / another image MPI job on ONE cpu-partition node, using the MPICH
+# GPAW MPI job on ONE cpu-partition node, using the MPICH
 # *inside* the container (mpiexec/hydra) — no host-MPI integration needed.
 # This is the verified, zero-surprises way to run MPI GPAW up to one full
 # node (128 ranks). For multi-node, see gpaw_cpu_multinode.sbatch.
@@ -20,7 +20,7 @@
 module reset   # loads defaults (incl. cray-mpich), sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod)
 set -euo pipefail
 
-SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif}
+SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/idrobolab.sif}
 SCRIPT=${1:?usage: sbatch gpaw_cpu_singlenode.sbatch script.py [args]}
 shift
 

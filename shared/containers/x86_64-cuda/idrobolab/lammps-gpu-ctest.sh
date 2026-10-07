@@ -15,8 +15,8 @@
 # package. For a quick KOKKOS-CUDA + GPU-package sanity run, use
 # lammps-gpu-selftest instead.
 #
-#   apptainer exec --nv otherimage.sif lammps-gpu-ctest
-#   apptainer exec --nv otherimage.sif lammps-gpu-ctest -R lj_cut   # scope
+#   apptainer exec --nv idrobolab.sif lammps-gpu-ctest
+#   apptainer exec --nv idrobolab.sif lammps-gpu-ctest -R lj_cut   # scope
 #
 # HEAVY: clones LAMMPS and compiles liblammps + the GPU kernels + the test
 # binaries on the node (a few minutes; no QUIP/KIM). Needs a GPU, nvcc/cmake/git
