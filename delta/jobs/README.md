@@ -96,7 +96,8 @@ apptainer exec --nv $SIF python -c "import torch; print(torch.cuda.get_device_na
 
 Note the A100/A40 nodes are AMD Milan while H200 nodes are Intel Xeon —
 both run the image's `x86-64-v3` code; no per-partition images needed
-(A40 sm_86 / A100 sm_80 / H200 sm_90 are all in the shipped fat wheels).
+(the Python GPU wheels cover A40 sm_86 / A100 sm_80 / H200 sm_90; the QE and
+LAMMPS GPU builds are sm_80, see [The images](../../docs/delta/README.md#the-images)).
 
 ## Gotchas
 
@@ -114,9 +115,9 @@ both run the image's `x86-64-v3` code; no per-partition images needed
   variables alone do not trip the check. Add it if you switch one of them to
   the commented `mpiexec` payload.
 - **Never name a working directory (or output dir) `gpaw`.** The dev
-  packages (gpaw, gpaw_weaver, abtem) are *editable* installs in the image, so `import gpaw` resolves
-  through a namespace-style finder. A `gpaw/` subdirectory in your current
-  directory shadows the real package: `python -c` puts the CWD on
+  packages (gpaw, gpaw_weaver, abtem) are *editable* installs in the image, so
+  `import gpaw` resolves through a namespace-style finder. A `gpaw/`
+  subdirectory in your current directory shadows the real package: `python -c` puts the CWD on
   `sys.path`, Python treats `./gpaw` as a namespace package, the real
   `gpaw/__init__.py` never runs, and you get
   `ImportError: cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw'

@@ -53,10 +53,11 @@ locally.
 This is the single biggest difference from the Delta launchers, and the one most
 likely to bite.
 
-- The image is an **OCI image**, not a `.sif`: `ghcr.io/idrobolab/idrobolab:latest`,
-  overridable with `IMAGE=...`. Pull/refresh it into the project's shared CFS
-  store with `../../helpers/update-image.sh idrobolab` on a login node only, since
-  compute nodes have no route to ghcr.io. Then `source ../../env.sh` so
+- The image is an **OCI image**, not a `.sif`:
+  `ghcr.io/idrobolab/idrobolab:latest`, overridable with `IMAGE=...`.
+  Pull/refresh it into the project's shared CFS store with
+  `../../helpers/update-image.sh idrobolab` on a login node only, since compute
+  nodes have no route to ghcr.io. Then `source ../../env.sh` so
   `PODMANHPC_ADDITIONAL_STORES` points at the read-only `/dvs_ro` mirror of that
   store.
 - **Apptainer inherits `$HOME` and `$PWD`; podman-hpc inherits nothing.** Every
@@ -81,8 +82,9 @@ The container carries its own abTEM, installed **editable** from a checkout
 staged into the build context by the idrobolab recipe: `COPY src/abTEM
 /opt/src/abTEM` + `pip install -e /opt/src/abTEM`. Do **not** identify it by
 version: the Delta README called it 1.0.9, while the idrobolab Dockerfile stages
-an abTEM main **1.1.0** checkout, so which abTEM a given image holds — and whether it already carries multi-GPU code — depends on
-what was staged when that image was built. Check `podman-hpc images --digests`
+an abTEM main **1.1.0** checkout, so which abTEM a given image holds — and
+whether it already carries multi-GPU code — depends on what was staged when that
+image was built. Check `podman-hpc images --digests`
 and section 0's printed path, not a version you expect.
 
 Upgrading it per job is not the answer. "The image is read-only" is a Delta (SIF)

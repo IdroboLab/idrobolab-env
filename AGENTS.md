@@ -4,8 +4,8 @@ The IdroboLab group's environments: NERSC Perlmutter (project <project>) in `per
 (env.sh, helpers, job templates) and NCSA Delta in `delta/` (get-image.sh, job templates,
 verification launchers), the `idrobolab` container recipe under
 `shared/containers/x86_64-cuda/idrobolab/`, and the documentation in `docs/`. Split out of
-the `hpcenvs` repo, which is frozen and holds nothing this repo needs. Rules specific to one cluster are scoped to it below;
-`delta/AGENTS.md` holds the Delta conventions.
+the `hpcenvs` repo, which is frozen and holds nothing this repo needs. Rules specific to
+one cluster are scoped to it below; `delta/AGENTS.md` holds the Delta conventions.
 
 This file is read by every coding agent (Codex reads `AGENTS.md` directly; Claude Code
 through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CLAUDE.md`.

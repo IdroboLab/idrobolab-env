@@ -2,13 +2,15 @@
 
 Template job scripts per node type and QOS. All take the payload as
 arguments (`sbatch <script>.sbatch my_script.py [args...]`), locate the image
-via `$IMAGE` (default `idrobolab`; a bare name resolves to
-`ghcr.io/idrobolab/idrobolab`, `IMAGE_OWNER` overrides the owner, and a value
-containing `/` is used verbatim, which is how any other image is given —
-overridable at submit time with `IMAGE=... sbatch ...`), and mount `$SCRATCH`,
-`$CFS`, and `$HOME` when present. The exceptions are `abtem_uv_gpu_shared.sbatch` and
-`abtem_uv_gpu_node.sbatch`, which run abTEM from a uv environment on the host
-(`~/venvs/abtem`) and use no container.
+via `$IMAGE` (default `$IDROBOLAB_IMAGE` from `env.sh`, a full reference to
+`ghcr.io/idrobolab/idrobolab:latest`; overridable at submit time with
+`IMAGE=... sbatch ...`). A bare name resolves to
+`ghcr.io/${IMAGE_OWNER:-idrobolab}/<name>:${TAG:-latest}`, so `TAG` and
+`IMAGE_OWNER` take effect only together with a bare name (`IMAGE=idrobolab TAG=v2`);
+a value containing `/` is used verbatim, which is how any other image is given.
+The templates mount `$SCRATCH`, `$CFS`, and `$HOME` when present. The exceptions
+are `abtem_uv_gpu_shared.sbatch` and `abtem_uv_gpu_node.sbatch`, which run abTEM
+from a uv environment on the host (`~/venvs/abtem`) and use no container.
 
 The `--account` lines are set to **<project>** (CPU templates) and **<project>_g** (GPU
 templates); `sbatch -A <other>` overrides per submission.

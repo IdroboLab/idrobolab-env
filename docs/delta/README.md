@@ -31,7 +31,7 @@ Delta (environment variables, where files live, the editable-install import trap
 
 ## The images
 
-The templates default to the group's `idrobolab` image (`ghcr.io/idrobolab/idrobolab`): GPAW, abTEM and gpaw-weaver, with ptyrad, nionswift, fairchem, orb-models and phonopy, on CUDA 12.8 and Python 3.12. Its recipe is in [`shared/containers/x86_64-cuda/idrobolab/`](../../shared/containers/x86_64-cuda/idrobolab/), and its package is public, so `delta/get-image.sh` needs no credentials; if it fails with `unauthorized`, ask the maintainer. **The idrobolab image has not been run on Delta yet**: work through the [first-run checklist](../../delta/jobs/README.md#first-run-checklist) before a real job. The templates take any other image through `SIF=/path/to/image.sif`. One image serves A40, A100 and H200 nodes: the GPU code is in fat multi-architecture wheels.
+The templates default to the group's `idrobolab` image (`ghcr.io/idrobolab/idrobolab`): GPAW, abTEM and gpaw-weaver, with ptyrad, nionswift, fairchem, orb-models and phonopy, on CUDA 12.8 and Python 3.12. Its recipe is in [`shared/containers/x86_64-cuda/idrobolab/`](../../shared/containers/x86_64-cuda/idrobolab/), and its package is public, so `delta/get-image.sh` needs no credentials; if it fails with `unauthorized`, ask the maintainer. **The idrobolab image has not been run on Delta yet**: work through the [first-run checklist](../../delta/jobs/README.md#first-run-checklist) before a real job. The templates take any other image through `SIF=/path/to/image.sif`. One image serves A40, A100 and H200 nodes: the Python GPU wheels (torch, cupy) and MAGMA cover Ampere and Hopper, while the QE GPU build targets sm_80 and LAMMPS is built for AMPERE80, relying on PTX JIT on H200.
 
 ## Conventions
 

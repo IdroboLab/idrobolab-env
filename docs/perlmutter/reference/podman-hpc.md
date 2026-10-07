@@ -1,7 +1,7 @@
 # idrobolab container for NERSC Perlmutter
 
-OCI (Docker-format) build context reproducing the dev-machine Python
-environment for Perlmutter's GPU nodes, consumed with **podman-hpc**
+OCI (Docker-format) image with a curated GPAW, abTEM and microscopy-analysis
+stack for Perlmutter's GPU nodes, consumed with **podman-hpc**
 (NERSC's recommended container runtime; Apptainer SIF images are not
 supported at NERSC).
 
@@ -9,8 +9,8 @@ This is the idrobolab recipe (`shared/containers/x86_64-cuda/idrobolab/`) as a
 Dockerfile. **Status: built and published.** `ghcr.io/idrobolab/idrobolab` exists and is
 public, and has been pulled and **verified end to end on Perlmutter**:
 a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
-invariant to GPU count (job <jobid>; log under
-`perlmutter/verification/multigpu_abtem/`, analysis in
+invariant to GPU count (job <jobid>, which ran under the image's earlier
+registry name; log under `perlmutter/verification/multigpu_abtem/`, analysis in
 `shared/containers/x86_64-cuda/idrobolab/README.md`).
 
 ## Fit to Perlmutter
@@ -40,23 +40,10 @@ from the `gpaw-data` pip package inside the image.
 
 ## Build
 
-Stage the context on the dev machine, then build either on Perlmutter or on
-any docker/podman host:
-
-```bash
-cd ~/idrobolab-env/shared/containers/x86_64-cuda/idrobolab
-./prepare_build_context.sh        # regenerates pins + stages ./src
-
-# Option A — on a Perlmutter login node (rsync this directory over first):
-podman-hpc build -t idrobolab:latest .
-podman-hpc migrate idrobolab:latest    # make it visible to compute nodes
-
-# Option B — any docker/podman host, then via a registry:
-docker build -t <registry>/<user>/idrobolab:latest .
-docker push <registry>/<user>/idrobolab:latest
-# ...and on Perlmutter:
-podman-hpc pull <registry>/<user>/idrobolab:latest
-```
+Members do not build the image: it is built and pushed from the maintainer's
+devcontainer with `publish.sh`, as described under "Build & run" in
+[`shared/containers/x86_64-cuda/idrobolab/README.md`](../../../shared/containers/x86_64-cuda/idrobolab/README.md).
+Pull it with `perlmutter/helpers/update-image.sh`.
 
 ## Image storage
 
