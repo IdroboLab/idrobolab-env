@@ -117,8 +117,8 @@ LAMMPS GPU builds are sm_80, see [The images](../../docs/delta/README.md#the-ima
 - **Never name a working directory (or output dir) `gpaw`.** The dev
   packages (gpaw, gpaw_weaver, abtem) are *editable* installs in the image, so
   `import gpaw` resolves through a namespace-style finder. A `gpaw/`
-  subdirectory in your current directory shadows the real package: `python -c` puts the CWD on
-  `sys.path`, Python treats `./gpaw` as a namespace package, the real
+  subdirectory in your current directory shadows the real package: `python -c`
+  puts the CWD on `sys.path`, Python treats `./gpaw` as a namespace package, the real
   `gpaw/__init__.py` never runs, and you get
   `ImportError: cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw'
   (unknown location)`. Same trap for `gpaw_weaver`, `abtem`.

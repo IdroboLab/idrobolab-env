@@ -270,7 +270,7 @@ All are environment variables; trailing arguments go to `jupyter lab`.
 | `TIME` | `02:00:00` | An idle notebook is charged like a busy one |
 | `QOS` | `shared_interactive` | `interactive` for a whole node |
 | `PORT` | `8899` | Pick another if it is taken; the launch fails loudly rather than drifting |
-| `IMAGE` | `$IDROBOLAB_IMAGE`, else `idrobolab` | Short name or full reference; `TAG`/`IMAGE_OWNER` apply to the short form |
+| `IMAGE` | `$IDROBOLAB_IMAGE`, else `idrobolab` | Short name or full reference; `TAG`/`IMAGE_OWNER` apply only with a short name in `IMAGE` |
 | `CPUS` | `32 × GPUS` | Logical cores. The slice QOSes require exactly this |
 | `MEM` | unset | **Leave it unset** — see the `--mem` trap below |
 | `THREADS` | `CPUS / 2` | Sets `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` |

@@ -43,7 +43,8 @@ from the `gpaw-data` pip package inside the image.
 Members do not build the image: it is built and pushed from the maintainer's
 devcontainer with `publish.sh`, as described under "Build & run" in
 [`shared/containers/x86_64-cuda/idrobolab/README.md`](../../../shared/containers/x86_64-cuda/idrobolab/README.md).
-Pull it with `perlmutter/helpers/update-image.sh`.
+The maintainer pulls it into the group's shared store with
+`perlmutter/helpers/update-image.sh`.
 
 ## Image storage
 

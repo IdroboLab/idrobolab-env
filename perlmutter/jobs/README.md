@@ -3,7 +3,7 @@
 Template job scripts per node type and QOS. All take the payload as
 arguments (`sbatch <script>.sbatch my_script.py [args...]`), locate the image
 via `$IMAGE` (default `$IDROBOLAB_IMAGE` from `env.sh`, a full reference to
-`ghcr.io/idrobolab/idrobolab:latest`; overridable at submit time with
+`ghcr.io/idrobolab/idrobolab:latest`, else `idrobolab`; overridable at submit time with
 `IMAGE=... sbatch ...`). A bare name resolves to
 `ghcr.io/${IMAGE_OWNER:-idrobolab}/<name>:${TAG:-latest}`, so `TAG` and
 `IMAGE_OWNER` take effect only together with a bare name (`IMAGE=idrobolab TAG=v2`);
