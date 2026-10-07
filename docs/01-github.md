@@ -9,9 +9,9 @@ files without overwriting each other. GitHub hosts the shared copy of such a fol
 analysis code belongs in git too ([page 2](02-cloning.md#5-your-own-projects-and-your-data)).
 
 This page sets up what every later page assumes: a GitHub account, membership of the
-IdroboLab organisation, an SSH key that lets git on your laptop identify you (with the config entry that goes with it),
-and git's one-time settings. Cloning repositories is the next page ([page 2](02-cloning.md)); getting
-the same access on Perlmutter is in
+IdroboLab organisation, an SSH key that lets git on your laptop identify you (with the
+config entry that goes with it), and git's one-time settings. Cloning repositories is the
+next page ([page 2](02-cloning.md)); getting the same access on Perlmutter is in
 [Perlmutter page 2](perlmutter/02-shell-setup.md#1-github-from-perlmutter).
 
 ## 1. Account and the IdroboLab organisation
