@@ -297,7 +297,11 @@ RUN pip install -e /opt/src/abTEM
 # toolchain; the GPU-accelerated styles must be verified on a real GPU node.
 # It roughly doubles the LAMMPS build time (a second QUIP build), so keep it 0
 # for production images and set 1 only for verification builds.
-ARG LAMMPS_BRANCH=stable
+# Pinned to a release tag, the one the devcontainer builds; the moving `stable` branch
+# would change the release under an unchanged recipe. stable_30Sep2026 fails to link
+# liblammps.so with the Kokkos-CUDA preset (g++: cannot specify '-o' with '-c' ... with
+# multiple files), so do not move the pin without a CUDA build.
+ARG LAMMPS_BRANCH=stable_22Jul2025_update6
 ARG LAMMPS_RUN_TESTS=0
 RUN set -eux; \
     apt-get update; apt-get install -y --no-install-recommends libhdf5-dev libzstd-dev ffmpeg; \
