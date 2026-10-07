@@ -12,7 +12,7 @@
 # ONE abTEM calculation spread over the four GPUs needs dask-cuda, whose
 # cuda-bindings dependency is fragile to resolve outside the container: run that
 # as a container job (gpu_4gpu_node.sbatch). Create or update ~/venvs/abtem on a
-# login node (docs/07-abtem.md): compute nodes should not download anything, and
+# login node (docs/perlmutter/07-abtem.md): compute nodes should not download anything, and
 # /global/common is read-only there.
 #
 # Charging: walltime x 1 node x 1.0 (4x the 1-GPU shared job per hour).
@@ -38,7 +38,7 @@ set -euo pipefail
 VENV=${VENV:-$HOME/venvs/abtem}
 SCRIPT=${1:?usage: sbatch abtem_uv_gpu_node.sbatch script.py [args]}
 shift
-[ -x "$VENV/bin/python" ] || { echo "no environment at $VENV: create it as described in docs/07-abtem.md" >&2; exit 1; }
+[ -x "$VENV/bin/python" ] || { echo "no environment at $VENV: create it as described in docs/perlmutter/07-abtem.md" >&2; exit 1; }
 export OUT=${OUT:-${SCRATCH:?SCRATCH is not set}/abtem-sweep-$SLURM_JOB_ID}   # read by the srun line below
 
 export OMP_NUM_THREADS=16 OPENBLAS_NUM_THREADS=16

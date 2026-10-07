@@ -5,7 +5,7 @@ environments. They are complements, not rivals.
 
 | | **A. jupyter.nersc.gov** | **B. Your own allocation + ssh tunnel** |
 |---|---|---|
-| Set up with | [`helpers/install-jupyter-kernel.sh`](helpers/install-jupyter-kernel.sh) | [`jobs/interactive_jupyter.sh`](jobs/interactive_jupyter.sh) |
+| Set up with | [`helpers/install-jupyter-kernel.sh`](../../../perlmutter/helpers/install-jupyter-kernel.sh) | [`jobs/interactive_jupyter.sh`](../../../perlmutter/jobs/interactive_jupyter.sh) |
 | Tunnel | none | `ssh -L`, one line, printed for you |
 | Terminal to keep open | none | yes — closing it ends the session |
 | Survives a dropped laptop connection | yes | no |
@@ -272,7 +272,7 @@ All are environment variables; trailing arguments go to `jupyter lab`.
 | `THREADS` | `CPUS / 2` | Sets `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` |
 | `SHM_SIZE` | unset | e.g. `32g`, if dask workers hit shared-memory errors |
 | `PUBLISH` | `1` | `0` drops `-p`; the port then will not be reachable |
-| `ACCOUNT` | `<project>_g` | `<project>` for CPU work — see [jobs/README.md](jobs/README.md) |
+| `ACCOUNT` | `<project>_g` | `<project>` for CPU work — see [jobs/README.md](../../../perlmutter/jobs/README.md) |
 
 ```bash
 TIME=00:30:00 ./interactive_jupyter.sh                     # a quick look

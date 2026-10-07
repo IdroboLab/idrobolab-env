@@ -72,7 +72,7 @@ the `salloc` and starts the container ([page 6](06-containers.md#interactive-she
 ## Batch jobs (`sbatch`)
 
 Ready-made templates are in
-[`~/idrobolab-env/perlmutter/jobs/`](../jobs/). Most run your script
+[`~/idrobolab-env/perlmutter/jobs/`](../../perlmutter/jobs/). Most run your script
 inside the group container ([page 6](06-containers.md)) and take the script as an
 argument:
 
@@ -94,7 +94,7 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 
 To change the time, name or resources, copy a template into your project folder and
 edit its `#SBATCH` lines, or override them on the command line
-(`sbatch -t 08:00:00 -J myrun ...`). Details and pitfalls: [`../jobs/README.md`](../jobs/README.md).
+(`sbatch -t 08:00:00 -J myrun ...`). Details and pitfalls: [`../jobs/README.md`](../../perlmutter/jobs/README.md).
 
 A minimal job of your own, here a uv script ([page 5](05-python-uv.md)) on part of a
 CPU node:

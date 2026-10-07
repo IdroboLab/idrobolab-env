@@ -60,4 +60,4 @@ line in a second terminal **on your laptop**, using your `perlmutter` alias, e.g
   tunnel doesn't: just re-run the `ssh -L` line.
 - The allocation is charged while the notebook sits idle, so stop it when you're done.
 
-Details and troubleshooting: [`../jupyter.md`](../jupyter.md).
+Details and troubleshooting: [`reference/jupyter.md`](reference/jupyter.md).

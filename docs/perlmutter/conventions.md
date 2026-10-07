@@ -2,7 +2,7 @@
 
 How we work on Perlmutter as a group. This is a **first draft**, collected from what we
 already do; it will change. Propose changes with a pull request
-([contributing](../../docs/CONTRIBUTING.md)), and raise the open points below at the next
+([contributing](../CONTRIBUTING.md)), and raise the open points below at the next
 group meeting.
 
 ## Settings and code

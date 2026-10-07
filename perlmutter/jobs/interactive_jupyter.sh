@@ -170,7 +170,7 @@ WORKDIR=$(pwd -P)
 #
 # Do not be misled by /proc/net/dev inside the container showing hsn0: podman-hpc
 # gives the container a view of the host /proc, so it describes the node rather
-# than the namespace. See ../podman-hpc.md, "Networking". PUBLISH=0 drops it.
+# than the namespace. See docs/perlmutter/reference/podman-hpc.md, "Networking". PUBLISH=0 drops it.
 PUBLISH_FLAGS=""
 [ "${PUBLISH:-1}" = "0" ] || PUBLISH_FLAGS="-p $PORT:$PORT"
 
@@ -180,7 +180,7 @@ PUBLISH_FLAGS=""
 #
 # --allow-root is not optional: `jupyter lab` REFUSES to start as uid 0 without
 # it (a [C] line, then it exits). The container does run as root, and under
-# rootless podman that root IS your own host uid -- see ../podman-hpc.md,
+# rootless podman that root IS your own host uid -- see docs/perlmutter/reference/podman-hpc.md,
 # "The container runs as root, and that is correct here".
 JUPYTER_ARGS="--no-browser --ip=0.0.0.0 --port=$PORT --port-retries=0 --allow-root"
 

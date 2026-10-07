@@ -1,7 +1,7 @@
 # IdroboLab group rules (NERSC project <project>)
 
 These rules add to NERSC's guidance above and never relax it. Details are in the
-group's Perlmutter pages, `~/idrobolab-env/perlmutter/docs/` (clone path may differ).
+group's Perlmutter pages, `~/idrobolab-env/docs/perlmutter/` (clone path may differ).
 
 ## Jobs
 
@@ -37,4 +37,4 @@ group's Perlmutter pages, `~/idrobolab-env/perlmutter/docs/` (clone path may dif
 
 Keep the job script, its output, the image digest (`podman-hpc images --digests |
 grep idrobolab`) and, for a package run from the user's own checkout, its commit
-(`git -C <checkout> rev-parse HEAD`) together with the results. `conventions.md`.
+(`git -C <checkout> rev-parse HEAD`) together with the results. `docs/perlmutter/conventions.md`.

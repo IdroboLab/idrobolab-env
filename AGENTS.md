@@ -16,9 +16,12 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   GitHub does not enforce this (the organisation's free plan has no branch protection),
   so this rule is the only guard: an unreviewed push to `main` reaches every member's
   shell on their next pull. The member-facing workflow is `docs/CONTRIBUTING.md`.
-- Repo-wide pages live in `docs/`; the Perlmutter introduction in `perlmutter/docs/` is
-  numbered in reading order, so renaming or adding a page means updating every
-  `[page N]` link and the table in `perlmutter/docs/README.md`.
+- All documentation lives in `docs/`: the general pages (`01-github.md`, `02-cloning.md`,
+  `03-globus.md`), `CONTRIBUTING.md`, and the Perlmutter section `docs/perlmutter/`, with
+  its reference notes in `docs/perlmutter/reference/`. Both series are numbered in reading
+  order, so renaming or adding a page means updating every `[page N]` link and the tables
+  in `docs/README.md` and `docs/perlmutter/README.md`. The README of a directory that
+  holds scripts (`perlmutter/jobs/`, `perlmutter/helpers/`, ...) stays next to them.
 - Each member works from their own clone (`~/idrobolab-env`, or wherever they cloned it);
   nothing reads a shared checkout. Scripts locate their siblings relative to their own
   file, and docs give paths as `~/idrobolab-env/...`.

@@ -147,7 +147,7 @@ name the same location.
 
 Because the container's abTEM is an *editable* install, binding the checkout over
 the install path (`-v $ABTEM_SRC:/opt/src/abTEM`) would work equally well, and is
-the pattern `../../podman-hpc.md` documents for gpaw/otherimage/gpaw-weaver/
+the pattern `../../../docs/perlmutter/reference/podman-hpc.md` documents for gpaw/otherimage/gpaw-weaver/
 PySlice. The launchers deliberately do not use it: `PYTHONPATH` keeps the
 Perlmutter and Delta runs differing in as few places as possible, and it leaves
 the container's own abTEM visible in section 0 when something goes wrong.
@@ -458,7 +458,7 @@ from Delta's; only their *distinctness* is checked.
 
 These launchers follow the conventions in `../../jobs/` (constraint, `_g`
 account, QOS, `cpus-per-task`, mount loop) and the podman-hpc patterns in
-`../../podman-hpc.md`, but **have not been run on Perlmutter yet** — see the
+`../../../docs/perlmutter/reference/podman-hpc.md`, but **have not been run on Perlmutter yet** — see the
 Status section of `../../jobs/README.md` for the state of the Perlmutter side of
 the image. The *payloads* are the ones exercised from Delta, so a failure here is
 more likely in the launcher (mounts, flags) than in the checks. Start with

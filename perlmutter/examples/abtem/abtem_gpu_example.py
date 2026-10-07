@@ -19,7 +19,7 @@ abTEM and CuPy versions, the device and the wall time, and writes the image
     uv run --script abtem_gpu_example.py --device cpu --cells 1 --scan 4 --out /tmp/test
 
 The job templates ``abtem_uv_gpu_shared.sbatch`` and ``abtem_uv_gpu_node.sbatch`` run it
-with the environment ``~/venvs/abtem`` (perlmutter/docs/07-abtem.md). One process uses
+with the environment ``~/venvs/abtem`` (docs/perlmutter/07-abtem.md). One process uses
 one GPU; spreading a single calculation over several GPUs needs dask-cuda and runs
 in the idrobolab container.
 

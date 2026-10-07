@@ -70,7 +70,7 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 | `interactive_jupyter.sh` | `gpu` / `shared_interactive` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
 
 Which of these to use for abTEM, in the container or from your own uv environment, is
-the subject of [docs/07-abtem.md](../docs/07-abtem.md).
+the subject of [page 7](../../docs/perlmutter/07-abtem.md).
 
 ## Node hardware
 
@@ -176,12 +176,12 @@ QOS=interactive GPUS=4 ./interactive_jupyter.sh    # whole node, 4x the charge
 ```
 
 Full runbook for both routes — hub kernels and self-allocated sessions —
-with knobs and troubleshooting: [../jupyter.md](../jupyter.md).
+with knobs and troubleshooting: [jupyter.md](../../docs/perlmutter/reference/jupyter.md).
 
 The container needs `-p <port>:<port>` for the port to exist on the node —
 binding `0.0.0.0` inside the container is not enough, and `/proc/net/dev`
 inside the container looks like host networking but is not. See
-../podman-hpc.md, "Networking".
+docs/perlmutter/reference/podman-hpc.md, "Networking".
 
 ## Gotchas
 

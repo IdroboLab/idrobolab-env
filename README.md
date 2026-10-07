@@ -4,11 +4,11 @@ The IdroboLab group's environment for NERSC Perlmutter (project <project>): shel
 setup, Slurm job templates, the `idrobolab` container recipe, Jupyter and Nion
 Swift setup, and the introduction for new group members.
 
-**New here? Start at [perlmutter/docs/README.md](perlmutter/docs/README.md).**
+**New here? Start at [docs/perlmutter/README.md](docs/perlmutter/README.md).**
 
 | Path | What |
 |---|---|
-| [docs/](docs/) | Repo-wide pages: [GitHub and git](docs/github.md), [contributing](docs/CONTRIBUTING.md) |
+| [docs/](docs/) | Repo-wide pages: [GitHub and git](docs/01-github.md), [contributing](docs/CONTRIBUTING.md) |
 | [perlmutter/](perlmutter/) | Everything for Perlmutter: `env.sh`, helpers, job templates, reference notes, the step-by-step docs |
 | [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/<username>/idrobolab`) |
 | [shared/verification/multigpu_abtem/](shared/verification/multigpu_abtem/) | Payloads for the abTEM multi-GPU verification launched from `perlmutter/verification/` |
@@ -23,7 +23,7 @@ git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
 ```
 
 `git -C ~/idrobolab-env pull` brings in updates. GitHub access and SSH keys:
-[docs/github.md](docs/github.md).
+[docs/01-github.md](docs/01-github.md).
 
 ## Contributing
 

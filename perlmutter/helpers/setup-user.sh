@@ -33,6 +33,7 @@ done
 # home path), so the block keeps working if NERSC moves the home directory.
 HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 PERLMUTTER=$(dirname "$HELPERS")
+DOCS="$(dirname "$PERLMUTTER")/docs/perlmutter"
 PROJECT="${NERSC_PROJECT:-<project>}"
 SHARED_JUPYTER="${HPCENVS_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
 
@@ -196,8 +197,8 @@ else
 fi
 echo
 echo "Next steps, none of them automatic:"
-echo "  * notebooks:        $PERLMUTTER/jupyter.md"
+echo "  * notebooks:        $DOCS/reference/jupyter.md"
 echo "  * batch templates:  $PERLMUTTER/jobs/README.md"
-echo "  * container notes:  $PERLMUTTER/podman-hpc.md"
+echo "  * container notes:  $DOCS/reference/podman-hpc.md"
 echo "  * from a laptop, set up sshproxy so ssh does not prompt every time:"
 echo "    https://docs.nersc.gov/connect/mfa/#sshproxy"

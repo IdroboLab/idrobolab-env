@@ -66,7 +66,7 @@ Notes:
 
 This directory is part of the group repository `IdroboLab/idrobolab-env`;
 everyone works from their own clone at `~/idrobolab-env` (set up in
-[docs/github.md](../docs/github.md)):
+[docs/01-github.md](../../01-github.md)):
 
 ```bash
 git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env

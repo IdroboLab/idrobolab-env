@@ -11,7 +11,7 @@ instructions.
 | # | Page | What you set up or learn |
 |---|---|---|
 | 1 | [Account and login](01-login.md) | NERSC account, MFA, `sshproxy` (Windows / macOS / Linux), SSH config |
-| → | [GitHub and git](../../docs/github.md) | GitHub account, SSH key, your clone of `idrobolab-env` (repo-wide page) |
+| → | [GitHub and git](../01-github.md) | GitHub account, SSH key, your clone of `idrobolab-env` (repo-wide page) |
 | 2 | [Shell and group setup](02-shell-setup.md) | oh-my-bash, the group environment |
 | 3 | [Storage and data transfer](03-storage-and-transfer.md) | which file system for what, quotas, rsync, Globus, HPSS |
 | 4 | [Jobs and queues](04-jobs.md) | accounts and cost, `salloc`, `sbatch`, job templates, watching jobs |

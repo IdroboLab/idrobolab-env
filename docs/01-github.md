@@ -5,7 +5,7 @@ The group keeps its settings, job templates and these pages in the git repositor
 Each member works in their own copy (a *clone*) and proposes changes through pull
 requests ([contributing](CONTRIBUTING.md)). This page sets up GitHub access from your
 laptop and from Perlmutter; do it after logging in to Perlmutter the first time
-([Perlmutter page 1](../perlmutter/docs/01-login.md)).
+([Perlmutter page 1](perlmutter/01-login.md)).
 
 ## 1. Account and the IdroboLab organisation
 
@@ -47,7 +47,7 @@ git that needs your key runs on a login node: compute nodes have neither your ke
 your agent.
 
 **A. Forward your laptop's key (no key stored at NERSC).** The `ForwardAgent yes` line
-in your SSH config ([Perlmutter page 1](../perlmutter/docs/01-login.md#4-ssh-config)) lets git on Perlmutter use the
+in your SSH config ([Perlmutter page 1](perlmutter/01-login.md#4-ssh-config)) lets git on Perlmutter use the
 laptop's key while you are connected. Load the key into your laptop's agent once per
 login session:
 
@@ -87,7 +87,7 @@ git config --global init.defaultBranch main
 
 ## 5. Your copy of idrobolab-env
 
-On Perlmutter ([shell setup](../perlmutter/docs/02-shell-setup.md) uses it next):
+On Perlmutter ([shell setup](perlmutter/02-shell-setup.md) uses it next):
 
 ```bash
 git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
@@ -113,5 +113,5 @@ To change `idrobolab-env` itself, open a pull request: see
 Your own projects (analysis code, job scripts) belong in git too. Create them under
 your GitHub account or in IdroboLab (ask first). Keep data out of git: large files,
 simulation output and raw microscope data stay on CFS
-([Perlmutter page 3](../perlmutter/docs/03-storage-and-transfer.md)), and a `.gitignore` file keeps them from being
+([Perlmutter page 3](perlmutter/03-storage-and-transfer.md)), and a `.gitignore` file keeps them from being
 committed by accident.

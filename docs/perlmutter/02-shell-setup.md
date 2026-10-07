@@ -1,7 +1,7 @@
 # 2. Shell and group setup
 
 One-time setup on a Perlmutter login node, after cloning `idrobolab-env`
-([the GitHub page](../../docs/github.md#5-your-copy-of-idrobolab-env)): a nicer prompt (optional), then
+([the GitHub page](../01-github.md#5-your-copy-of-idrobolab-env)): a nicer prompt (optional), then
 the group environment. **Do them in this order.** The oh-my-bash installer replaces `~/.bashrc`,
 which would remove the line the group setup adds. If you did it the other way round,
 just re-run the group setup.
@@ -42,7 +42,7 @@ Run the group setup script once:
 The script:
 
 1. Adds a short, marked block to `~/.bashrc` that sources the group's
-   [`env.sh`](../env.sh).
+   [`env.sh`](../../perlmutter/env.sh).
 2. Links the group's shared Jupyter kernels into your account
    ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
@@ -83,7 +83,7 @@ about one, move its contents into `~/.bashrc`.
 ## 3. Keeping your clone current
 
 Everything in these pages (job templates, helper scripts, `env.sh`, the container
-recipe) lives in your clone `~/idrobolab-env` ([the GitHub page](../../docs/github.md#5-your-copy-of-idrobolab-env)),
+recipe) lives in your clone `~/idrobolab-env` ([the GitHub page](../01-github.md#5-your-copy-of-idrobolab-env)),
 and your shell reads `env.sh` from there. Update it now and then, and when someone
 announces a change:
 
@@ -92,4 +92,4 @@ git -C ~/idrobolab-env pull
 ```
 
 To change something for everyone, use a branch and a pull request
-([contributing](../../docs/CONTRIBUTING.md)).
+([contributing](../CONTRIBUTING.md)).

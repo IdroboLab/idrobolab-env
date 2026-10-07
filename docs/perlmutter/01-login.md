@@ -83,7 +83,7 @@ Host nersc-dtn dtn.nersc.gov
   other key you have, and NERSC may disconnect you with "Too many authentication
   failures".
 - `ForwardAgent yes` lets git on Perlmutter use the GitHub key on your laptop
-  ([the GitHub page](../../docs/github.md#3-github-from-perlmutter)).
+  ([the GitHub page](../01-github.md#3-github-from-perlmutter)).
 - `ServerAliveInterval` keeps an idle connection from being dropped.
 - Listing the full hostname on the `Host` line means `ssh perlmutter.nersc.gov`
   gets the same settings as `ssh perlmutter`.

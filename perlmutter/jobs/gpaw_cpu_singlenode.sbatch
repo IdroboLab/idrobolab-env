@@ -127,7 +127,7 @@ for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "$PWD"; do
 done
 WORKDIR=$(pwd -P)
 
-# Run a cluster checkout instead of the baked-in code (see podman-hpc.md,
+# Run a cluster checkout instead of the baked-in code (see docs/perlmutter/reference/podman-hpc.md,
 # "Running your own branches"):
 # MOUNTS="$MOUNTS -v $SCRATCH/code/gpaw:/opt/src/gpaw"
 
