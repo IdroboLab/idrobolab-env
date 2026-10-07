@@ -71,17 +71,9 @@ sshproxy --help        # if "command not found": add ~/.local/bin to PATH
 
 ## 3. Get today's key (every day)
 
-```bash
-sshproxy -u <username>        # asks for password+OTP
-```
-
-The command is the same in Command Prompt, PowerShell, Terminal and a Linux terminal. It
-writes `~/.ssh/nersc` and `~/.ssh/nersc-cert.pub` (on Windows `C:\Users\<you>\.ssh\nersc`
-and `nersc-cert.pub` there), valid for 24 hours. When `ssh perlmutter` starts asking for
-a password again, the key has expired: run `sshproxy` again.
-
-On Windows, NERSC says to create the `.ssh` folder first if it does not exist (the
-GitHub page's `ssh-keygen` has normally made it already):
+**Windows, once, first:** NERSC says to create the `.ssh` folder if it does not exist
+(the GitHub page's `ssh-keygen` has normally made it already). Run this before the first
+`sshproxy`.
 
 Command Prompt:
 
@@ -94,6 +86,16 @@ PowerShell:
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.ssh" | Out-Null
 ```
+
+Then, on every system:
+
+```bash
+sshproxy -u <username>        # asks for password+OTP
+```
+
+It writes `~/.ssh/nersc` and `~/.ssh/nersc-cert.pub` (on Windows `C:\Users\<you>\.ssh\nersc`
+and `nersc-cert.pub` there), valid for 24 hours. When `ssh perlmutter` starts asking for
+a password again, the key has expired: run `sshproxy` again.
 
 ## 4. SSH config
 
@@ -142,8 +144,8 @@ Host nersc-dtn dtn.nersc.gov
 ssh perlmutter
 ```
 
-This is the same in Command Prompt, PowerShell, Terminal and a Linux terminal, and so are
-the other `ssh`, `scp` and port-forwarding (`ssh -L`) commands in these pages.
+The `ssh`, `scp` and port-forwarding (`ssh -L`) commands in these pages are not
+shell-specific either.
 
 On the first connection, ssh shows the server's key fingerprint. Compare it with the
 fingerprints NERSC publishes at <https://docs.nersc.gov/connect/> before you type
