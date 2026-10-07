@@ -226,12 +226,11 @@ it must then be a complete resource spec incl. QOS/constraint/CPUs, and
 a `-t`/`--time` suppresses the walltime prompt); on a ThinLinc host it
 sets up ssh auth, copies
 the entry + icon from the shared location into the member's ThinLinc
-home, links the entry onto `~/Desktop` (§5.2), and adds a terminal
-launcher and an autostart entry that puts the Desktop links back after
-a new session (§5.4). No relogin needed: the
+home, adds a terminal launcher, and links both into the folder
+`~/Desktop/IdroboLab` (§5.2, §5.4). No relogin needed: the
 menu rescans on next open (`update-desktop-database
-~/.local/share/applications` nudges it), the Desktop icon is immediate,
-and MATE may ask to mark a new launcher trusted on first click. What it
+~/.local/share/applications` nudges it), the folder on the desktop is
+immediate, and MATE may ask to mark a new launcher trusted on first click. What it
 installs:
 
 `/global/common/software/mXXXX/bin/nionswift-job.sh` (mode 755): the
@@ -336,9 +335,10 @@ none of this):
 - **`~/Desktop` is the exception.** It is reset whenever a new session
   starts after a complete logout: NERSC's own desktop files (`DTNs`,
   `Logout`, `Perlmutter`, `tl-disconnect`) are re-created there with the
-  session's start time, and anything else, such as our link to the
-  launcher, is gone. Reconnecting to a running session does not reset
-  it. §5.4 deals with this.
+  session's start time, and other files and links lying directly in
+  `~/Desktop`, such as a link to the launcher, are gone. Folders in
+  `~/Desktop` survive the reset with their contents. Reconnecting to a
+  running session does not reset it. §5.4 deals with this.
 
 The `.desktop` entry has to live in the home the ThinLinc
 desktop reads, while the job script stays on Perlmutter in the shared
@@ -348,11 +348,11 @@ this section automatically; the manual equivalent — from a terminal
 *inside the ThinLinc desktop*:
 
 ```bash
-mkdir -p ~/.local/share/applications ~/Desktop
+mkdir -p ~/.local/share/applications ~/Desktop/IdroboLab
 scp perlmutter.nersc.gov:/global/common/software/mXXXX/share/nionswift/nionswift-perlmutter.desktop \
     ~/.local/share/applications/
 chmod +x ~/.local/share/applications/nionswift-perlmutter.desktop
-ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/
+ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/Desktop/IdroboLab/
 ```
 
 Members re-run the ThinLinc step whenever the maintainer re-runs the
@@ -390,8 +390,8 @@ gtk-launch nionswift-perlmutter
 terminal" ticked by hand.)
 
 On NERSC's ThinLinc desktop, Nion Swift starts from the `Alt+F2` run
-dialog, also when its `~/Desktop` icon is missing (§5.2): the dialog
-finds the entry in `~/.local/share/applications/`, which persists.
+dialog, without any desktop icon: the dialog finds the entry in
+`~/.local/share/applications/`, which persists.
 
 Two gotchas and their fixes:
 
@@ -408,38 +408,38 @@ Two gotchas and their fixes:
   Settings → Keyboard → Application Shortcuts → Add. This passes through
   even in windowed mode.
 
-### 5.4 After a new session: the autostart entry and the terminal launcher
+### 5.4 After a new session: the IdroboLab folder and the terminal launcher
 
-Because `~/Desktop` is reset at the start of a new session (§5.2), the
-setup script also installs, in the ThinLinc-side home:
+Because the reset of `~/Desktop` at the start of a new session removes
+links lying directly in it but keeps folders and their contents (§5.2),
+the setup script puts its desktop links in the folder
+`~/Desktop/IdroboLab`, in the ThinLinc-side home:
 
-- `~/.config/autostart/idrobolab-desktop-links.desktop`, a freedesktop
-  autostart entry ([Desktop Application Autostart
-  Specification](https://specifications.freedesktop.org/autostart/latest/);
-  `~/.config/autostart/` is the per-user autostart directory). At every
-  session start it runs
-  `sh -c "mkdir -p ~/Desktop && ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/.local/share/applications/thinlinc-terminal.desktop ~/Desktop/"`,
-  which re-creates the two links. `Exec` is written as one double-quoted
-  argument without `$`, backticks or backslashes, as the [Desktop Entry
-  Specification](https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html)
-  requires for an argument containing reserved characters; `sh` expands
-  the `~`. The entry has `NoDisplay=true`.
+- `~/Desktop/IdroboLab/nionswift-perlmutter.desktop` and
+  `~/Desktop/IdroboLab/thinlinc-terminal.desktop`, symbolic links to the
+  two launchers in `~/.local/share/applications/`.
 - `~/.local/share/applications/thinlinc-terminal.desktop`, a launcher with
   `Exec=bash -l` and `Terminal=true` (the key the Desktop Entry
   Specification defines for programs that run in a terminal window): it
   opens a login shell **on the ThinLinc host** in the desktop's own
   terminal emulator. Opening a plain terminal there is otherwise hard
   for members, and the sshproxy step (§5.2) needs one. It is executable
-  and linked onto `~/Desktop` like the Nion Swift launcher, and both
-  launchers are also in the applications menu.
+  like the Nion Swift launcher, and both launchers are also in the
+  applications menu.
 
 Re-running the setup script overwrites these files; nothing is duplicated.
+It also removes what older versions of it installed for the same purpose:
+the autostart entry `~/.config/autostart/idrobolab-desktop-links.desktop`,
+which re-created links directly on `~/Desktop` at every session start, and
+those links themselves. The copy of the script in the ThinLinc home does
+not update itself: to migrate, pull the clone on Perlmutter, fetch the
+script again (§5.1) and run it.
 
 Not verified, because it can only be tested on the ThinLinc desktop:
-whether the autostart entry runs after NERSC's re-creation of the files in
-`~/Desktop` (if it ran before, its links would be removed again), and
+whether symbolic links inside `~/Desktop/IdroboLab` survive a new session
+as the folder does, and whether Caja launches them from the folder;
 whether `Terminal=true` opens a terminal on that desktop (the Nion Swift
-launcher already relies on it, §5.1), and whether ticking "Run in terminal"
+launcher already relies on it, §5.1); and whether ticking "Run in terminal"
 in the run dialog (§5.3) gives a first terminal there.
 
 ## 6. Longer sessions (> interactive walltime)

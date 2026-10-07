@@ -62,12 +62,13 @@ you back where you were. Some things to know:
 - **The ThinLinc home is separate from your Perlmutter home**, although `$HOME` prints
   the same path on both: files you create on one do not appear on the other. The
   ThinLinc home survives logouts, so `~/.ssh` and your menu entries stay. The
-  exception is `~/Desktop`: when you start a new session after a complete logout, it
-  is emptied and only NERSC's own icons come back. Reconnecting to a session that is
-  still running does not reset it. (This was observed on 2026-10-07; NERSC does not
-  document it.) The setup below installs an autostart entry that puts our shortcuts
-  back at every session start, and the same launchers are in the applications menu, so
-  they are never lost.
+  exception is `~/Desktop`: when you start a new session after a complete logout, the
+  icons and links lying directly on it are removed and only NERSC's own come back.
+  Folders on the desktop, and everything in them, stay. Reconnecting to a session that
+  is still running does not reset it. (This was observed on 2026-10-07; NERSC
+  does not document it.) The setup below therefore puts our shortcuts in a folder
+  **IdroboLab** on the desktop, and the same launchers are in the applications menu.
+  Keep your own desktop shortcuts in a folder too.
 - Press **F8** for the ThinLinc menu: full screen, and "grab keyboard" so that
   shortcuts such as Alt+Tab go to the remote desktop instead of your laptop.
 - To log in to Perlmutter from a ThinLinc terminal without a password (the Nion Swift
@@ -87,8 +88,9 @@ machine through the run dialog: press `Alt+F2` (if your own computer grabs it, p
 `F8` first and choose *Grab keyboard*), tick **Run in terminal** on MATE, and run
 `bash` (the run dialog works there, but the *Run in terminal* box has not been tested
 yet; [details](reference/nionswift-perlmutter-thinlinc.md#53-launching-from-the-keyboard-inside-thinlinc)).
-Once the setup has run, use the **Terminal (ThinLinc host)** icon for every step on
-this page that says "in a ThinLinc terminal", such as `sshproxy -u <username>`.
+Once the setup has run, use the **Terminal (ThinLinc host)** icon in the
+**IdroboLab** folder for every step on this page that says "in a ThinLinc terminal",
+such as `sshproxy -u <username>`.
 
 In a **ThinLinc terminal** (not the Perlmutter one):
 
@@ -99,18 +101,22 @@ bash ~/setup-nionswift-launcher.sh
 ```
 
 This first `scp` may ask for password+OTP; the setup script then configures the
-key. It adds **Nion Swift (Perlmutter)** to the menu and an icon to the desktop, plus
-a second icon and menu entry, **Terminal (ThinLinc host)**, which opens a terminal on
-the ThinLinc machine (not on Perlmutter), and the autostart entry mentioned above.
-MATE may ask you to trust the icons on their first click. Run the script again
-whenever you want to repair or update these; it overwrites its own files and
-duplicates nothing.
+key. It adds **Nion Swift (Perlmutter)** to the menu, plus a second menu entry,
+**Terminal (ThinLinc host)**, which opens a terminal on the ThinLinc machine (not on
+Perlmutter), and puts icons for both in a folder **IdroboLab** on the desktop. MATE
+may ask you to trust the icons on their first click. Run the script again whenever
+you want to repair or update these; it overwrites its own files and duplicates
+nothing. If you ran an older version of the script, update your clone on Perlmutter
+(`git -C ~/idrobolab-env pull` in a Perlmutter terminal) and run the `scp` and `bash`
+lines above again: the copy in your ThinLinc home does not update itself. The new
+version moves the icons into the folder and removes the autostart entry the older
+version installed.
 
 ### Starting Nion Swift
 
-Click the icon on the desktop, choose it in the applications menu, or press `Alt+F2`
-and run `gtk-launch nionswift-perlmutter`; the last two work even when the desktop
-icon is missing. A terminal asks
+Open the **IdroboLab** folder on the desktop and click **Nion Swift (Perlmutter)**,
+choose it in the applications menu, or press `Alt+F2` and run
+`gtk-launch nionswift-perlmutter`. A terminal asks
 for the **memory** in GB (default 64) and the **wall time** in hours (default 4, also
 the maximum). Up to 256 GB it books a slice of a CPU node (`shared_interactive`,
 charged for the slice). Above that, it books a whole node. Once the job starts, Nion
