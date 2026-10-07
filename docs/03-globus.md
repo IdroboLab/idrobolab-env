@@ -235,13 +235,15 @@ no Python of your own, so the steps below use uv first and pipx as the alternati
 ### Install the CLI with uv
 
 uv's installer is described on its
-[installation page](https://docs.astral.sh/uv/getting-started/installation/).
+[installation page](https://docs.astral.sh/uv/getting-started/installation/). On every system,
+if `globus` is not found after the steps below, `uv tool update-shell` adds uv's tool folder
+to your `PATH`. [Perlmutter page 5](perlmutter/05-python-uv.md) introduces uv.
 
 #### Windows
 
-In PowerShell, run uv's installer (Astral documents it for PowerShell):
+In Command Prompt or PowerShell, run uv's installer (the command starts PowerShell itself):
 
-```powershell
+```
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
@@ -276,9 +278,6 @@ Open a **new** terminal, then:
 ```bash
 uv tool install globus-cli
 ```
-
-If `globus` is not found afterwards, `uv tool update-shell` adds uv's tool folder to your
-`PATH`. [Perlmutter page 5](perlmutter/05-python-uv.md) introduces uv.
 
 ### Install the CLI with pipx instead
 

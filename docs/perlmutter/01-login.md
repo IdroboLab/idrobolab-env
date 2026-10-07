@@ -144,8 +144,8 @@ Host nersc-dtn dtn.nersc.gov
 ssh perlmutter
 ```
 
-The `ssh`, `scp` and port-forwarding (`ssh -L`) commands in these pages are not
-shell-specific either.
+The `ssh`, `scp` and port-forwarding (`ssh -L`) commands in these pages are the
+same in every shell.
 
 On the first connection, ssh shows the server's key fingerprint. Compare it with the
 fingerprints NERSC publishes at <https://docs.nersc.gov/connect/> before you type
