@@ -27,8 +27,8 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   order, so renaming or adding a page means updating every `[page N]` link and the tables
   in `docs/README.md` and `docs/perlmutter/README.md`. The README of a directory that
   holds scripts (`perlmutter/jobs/`, `perlmutter/helpers/`, `delta/jobs/`, ...) stays next
-  to them; a cluster's `<cluster>/README.md` is a short directory README pointing to its
-  `docs/<cluster>/` page.
+  to them, and a cluster's narrative goes in its `docs/<cluster>/` page; `delta/README.md`
+  is a short directory README pointing to `docs/delta/README.md`.
 - Each member works from their own clone (`~/idrobolab-env`, or wherever they cloned it);
   nothing reads a shared checkout. Scripts locate their siblings relative to their own
   file, and docs give paths as `~/idrobolab-env/...`.
