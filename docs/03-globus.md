@@ -133,18 +133,61 @@ missing or differ
 ## 6. Globus Connect Personal
 
 **Globus Connect Personal** (GCP) is a small program that turns a laptop or an instrument
-PC into a collection. Install guides: [Windows](https://docs.globus.org/globus-connect-personal/install/windows/),
+PC into a collection. The setup logs you in to Globus and asks for consent; the collection
+it creates is the one you search for by name in the File Manager. Globus's install guides:
+[Windows](https://docs.globus.org/globus-connect-personal/install/windows/),
 [macOS](https://docs.globus.org/globus-connect-personal/install/mac/),
-[Linux](https://docs.globus.org/globus-connect-personal/install/linux/). The setup logs you
-in to Globus and asks for consent; the collection it creates is the one you search for
-by name in the File Manager.
+[Linux](https://docs.globus.org/globus-connect-personal/install/linux/). GCP has a
+graphical interface on Windows and macOS, so Command Prompt and PowerShell make no
+difference here.
+
+### Windows
+
+1. Download the installer from <https://app.globus.org/file-manager/gcp> and run it.
+   Click **Install**; if you have no administrator rights, click **Browse** and choose a
+   folder you may write to.
+2. Click **Log In**, authenticate with Globus, grant the consents it asks for, and
+   enter the details of your collection (its name is what you search for in the File
+   Manager).
+3. A circle with a "g" appears in the system tray (bottom right) while GCP runs.
+   **Folders:** right-click that icon → **Options…** → the **Access** tab; the **+** icon
+   adds a folder.
+
+### macOS
+
+1. Download Globus Connect Personal from <https://app.globus.org/file-manager/gcp>, open
+   the installer and drag the icon onto **Applications**.
+2. Open **Globus Connect Personal** from Applications, click **Log In**, authenticate,
+   grant the consents, and enter the details of your collection.
+3. A menu bar icon shows that GCP runs. **Folders:** click that icon → **Preferences…** →
+   the **Access** tab; the **+** icon adds a folder.
+
+### Linux
+
+Download and unpack the tarball, then set it up and start it from the unpacked folder:
+
+```bash
+wget https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
+tar xzf globusconnectpersonal-latest.tgz
+cd globusconnectpersonal-<version>          # the folder tar created
+./globusconnectpersonal -setup              # log in and name the collection
+./globusconnectpersonal -start &            # start it
+./globusconnectpersonal -status             # is it running?
+./globusconnectpersonal -stop
+```
+
+The graphical interface needs Tcl/Tk (`sudo apt-get install tk tcllib` on Debian and
+Ubuntu); `-start` runs without it. **Folders:** edit `~/.globusonline/lta/config-paths`,
+one line per folder in the form `<path>,<sharing flag>,<write flag>` (1 or 0 each), for
+example `~/,0,1` for your home folder, writable and not shareable, then `-stop` and
+`-start &` again.
+
+### Folders, running, and the free version
 
 - **Which folders are visible.** By default only your home folder is (on Linux, read and
-  write access to `~/`, without sharing). Change it on macOS under **Preferences** → the
-  **Access** tab, on Windows under the **Options** menu → the **Access** tab (the **+**
-  icon adds a folder), on Linux by editing `~/.globusonline/lta/config-paths` and
-  restarting. Expose the folder you transfer from, and nothing more; an instrument PC
-  should expose only the folder its data lands in.
+  write access to `~/`, without sharing); the system sections above say where to change
+  it. Expose the folder you transfer from, and nothing more; an instrument PC should
+  expose only the folder its data lands in.
 - **It must be running.** The collection is reachable only while the program runs and the
   computer is on and online. A transfer that involves it is suspended while it is not, and
   resumes when it is back unless three or more days have passed
@@ -185,18 +228,107 @@ folders, and with which rights. For NERSC see
 
 Everything above also works from a terminal with the **Globus CLI**, which is the way to
 script or repeat transfers
-([documentation](https://docs.globus.org/cli/)). On your laptop, install it the way
-Globus's instructions say:
+([documentation](https://docs.globus.org/cli/)). Globus recommends installing it with
+pipx; `uv tool install globus-cli` gives the same isolated installation and also needs
+no Python of your own, so the steps below use uv first and pipx as the alternative.
+
+### Install the CLI with uv
+
+uv's installer is described on its
+[installation page](https://docs.astral.sh/uv/getting-started/installation/). On every system,
+if `globus` is not found after the steps below, `uv tool update-shell` adds uv's tool folder
+to your `PATH`. [Perlmutter page 5](perlmutter/05-python-uv.md) introduces uv.
+
+#### Windows
+
+In Command Prompt or PowerShell, run uv's installer (the command starts PowerShell itself):
+
+```
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then open a **new** window, so that the updated `PATH` takes effect, and install the CLI:
+
+```
+uv tool install globus-cli
+```
+
+#### macOS
 
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Open a **new** terminal, then:
+
+```bash
+uv tool install globus-cli
+```
+
+#### Linux
+
+Same as macOS:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Open a **new** terminal, then:
+
+```bash
+uv tool install globus-cli
+```
+
+### Install the CLI with pipx instead
+
+If you already have Python 3.10 or newer, pipx works too, as the
+[pipx installation page](https://pipx.pypa.io/stable/how-to/install-pipx.html) describes.
+After `pipx ensurepath`, open a **new** terminal.
+
+#### Windows
+
+With pip (use `python3` instead of `py` if Python came from the Microsoft Store):
+
+```
+py -m pip install --user pipx
+```
+
+This often ends with a warning that `pipx.exe` is installed in a directory that is not
+on the `PATH`. Go to that directory (`cd` to the folder the warning names) and run
+`.\pipx.exe ensurepath`, even without the warning. Then, in a new window:
+
+```
 pipx install globus-cli
 ```
 
-(`pipx` itself comes from your package manager or [pipx's installation
-page](https://pipx.pypa.io/stable/how-to/install-pipx.html). If you already use `uv`, which
-[Perlmutter page 5](perlmutter/05-python-uv.md) introduces, `uv tool install globus-cli`
-does the same.) On Perlmutter the CLI is already available: `module load globus-tools`
-([NERSC](https://docs.nersc.gov/services/globus/)). The commands are the same everywhere:
+#### macOS
+
+With [Homebrew](https://brew.sh/):
+
+```bash
+brew install pipx
+pipx ensurepath
+pipx install globus-cli          # in a new terminal
+```
+
+#### Linux
+
+```bash
+sudo apt update && sudo apt install pipx     # Ubuntu 23.04 or newer
+sudo dnf install pipx                        # Fedora
+pipx ensurepath
+pipx install globus-cli                      # in a new terminal
+```
+
+On other distributions, `python3 -m pip install --user pipx` and then
+`python3 -m pipx ensurepath`; on Ubuntu 23.04+, Debian 12+ and Fedora 38+ that pip
+command fails with "externally-managed-environment", so use the distribution package.
+
+### Using it
+
+On Perlmutter the CLI is already available: `module load globus-tools`
+([NERSC](https://docs.nersc.gov/services/globus/)). The commands are the same
+everywhere:
 
 ```bash
 globus login                                  # log in; follow what it prints

@@ -14,8 +14,13 @@ choice, ideally somewhere that is not synchronised by a cloud service:
 
 ```bash
 git clone git@github.com:<owner>/<repository>.git            # creates ./<repository>
-git clone git@github.com:<owner>/<repository>.git ~/code/x   # or into a folder you name
+git clone git@github.com:<owner>/<repository>.git code/x     # or into a folder you name
 ```
+
+Git accepts `/` in paths on Windows. A folder name that starts with `~/` is understood by
+macOS and Linux shells only: Command Prompt does not expand `~`, and Windows PowerShell
+5.1 passes it to git as it is. On Windows use a relative path as above, or
+`%USERPROFILE%\...` (Command Prompt) or `$env:USERPROFILE\...` (PowerShell).
 
 Three kinds of repository come up:
 
@@ -69,7 +74,8 @@ uncommitted changes, commit them first (next section), or look at them with
 `git status` and ask before throwing anything away.
 
 For `idrobolab-env`, an update changes the scripts and job templates your shell and jobs
-use, so read what came in with `git -C ~/idrobolab-env log --oneline -5`.
+use, so read what came in with `git -C ~/idrobolab-env log --oneline -5` (on Perlmutter;
+on your laptop, use the folder of your clone).
 
 ## 4. Everyday git
 
@@ -95,10 +101,39 @@ Analysis code, job scripts and notes belong in git: it is your history, your bac
 the way a colleague gets the same code. Create the repository on GitHub (profile picture →
 **Your repositories** → **New**; choose **Private** unless you intend to publish; the
 group's repositories under IdroboLab are created after asking the maintainer), then put your folder
-in it:
+in it. First go into the folder:
+
+### Windows
+
+Command Prompt:
+
+```
+cd "%USERPROFILE%\myproject"
+```
+
+PowerShell:
+
+```powershell
+cd $env:USERPROFILE\myproject
+```
+
+### macOS
 
 ```bash
 cd ~/myproject
+```
+
+### Linux
+
+Same as macOS:
+
+```bash
+cd ~/myproject
+```
+
+### Put the folder in git
+
+```bash
 git init
 git branch -M main
 git add analysis.py README.md          # name the files; avoid `git add .` until a .gitignore exists
@@ -107,10 +142,12 @@ git remote add origin git@github.com:<your-username>/myproject.git
 git push -u origin main
 ```
 
-**Keep data out of git.** Large files, simulation output, job logs and raw microscope data
-stay on the file systems built for them (on Perlmutter: CFS,
-[Perlmutter page 3](perlmutter/03-storage-and-transfer.md)). git keeps every version of every
-file for ever, so a file committed once stays in the history even after you delete it.
+### Keep data out of git
+
+Large files, simulation output, job logs and raw microscope data stay on the file
+systems built for them (on Perlmutter: CFS,
+[Perlmutter page 3](perlmutter/03-storage-and-transfer.md)). git keeps every version of
+every file for ever, so a file committed once stays in the history even after you delete it.
 GitHub warns about files above 50 MiB and blocks files above 100 MiB
 ([GitHub's limits](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)).
 A `.gitignore` file in the top folder lists what git must leave alone:
@@ -127,6 +164,10 @@ results/
 slurm-*.out
 *.log
 ```
+
+Create it with any text editor. On Windows, `notepad .gitignore` (in either shell) opens
+it by its exact name, which avoids the `.txt` extension that Notepad's Save dialog may
+add.
 
 `git status` shows what is not yet in git; check it before every `git add`. If a large
 file or a secret has already been committed, stop and ask the maintainer before pushing.

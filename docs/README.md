@@ -11,9 +11,9 @@ They apply on any machine, not only on Perlmutter.
 
 | # | Page | What you set up or learn |
 |---|---|---|
-| 1 | [GitHub: account and SSH key](01-github.md) | GitHub account with two-factor authentication, the IdroboLab organisation, an SSH key, the `~/.ssh/config` entry for github.com, the SSH agent, git's one-time settings |
+| 1 | [GitHub: account and SSH key](01-github.md) | your terminal (Windows Command Prompt and PowerShell, macOS, Linux), GitHub account with two-factor authentication, the IdroboLab organisation, an SSH key, the `~/.ssh/config` entry for github.com, the SSH agent, installing git and its one-time settings |
 | 2 | [Cloning repositories](02-cloning.md) | clone the group's, your own and public repositories, keep a clone up to date, everyday git, your own projects in git and data out of it |
-| 3 | [Globus](03-globus.md) | log in, collections, the File Manager, transfers and Activity, Globus Connect Personal, sharing, the command line |
+| 3 | [Globus](03-globus.md) | log in, collections, the File Manager, transfers and Activity, Globus Connect Personal, sharing, the command line (installation steps for Windows, macOS and Linux) |
 
 [Contributing](CONTRIBUTING.md) explains how to propose a change to this repository
 (every change reaches `main` through a pull request).

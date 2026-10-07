@@ -7,7 +7,9 @@
 #      script, desktop entry, and icon into the project directories (§5.1);
 #   2. on a ThinLinc host (EACH group member, once): sets up ssh auth, copies
 #      the desktop entry + icon from the shared location into the ThinLinc
-#      home, and links the entry onto ~/Desktop (§5.2).
+#      home, links the entry onto ~/Desktop, adds a terminal launcher for the
+#      ThinLinc host, and installs an autostart entry that re-creates the
+#      ~/Desktop links at every session start (§5.2, §5.4).
 #
 # Idempotent — safe to re-run after changing the knobs below (or the
 # NIONSWIFT_* environment variables of the same names).
@@ -33,6 +35,8 @@ ICON_SRC="$SHARE_DIR/nionswift.png"
 
 # ThinLinc-side per-user install locations.
 DESKTOP_REL=".local/share/applications/nionswift-perlmutter.desktop"
+TERMINAL_REL=".local/share/applications/thinlinc-terminal.desktop"
+AUTOSTART_REL=".config/autostart/idrobolab-desktop-links.desktop"
 ICON_REL=".local/share/icons/hicolor/256x256/apps/nionswift.png"
 
 install_ssh_config() {
@@ -232,11 +236,42 @@ else
     fi
     ln -sf ~/"$DESKTOP_REL" ~/Desktop/nionswift-perlmutter.desktop
 
+    # terminal on the ThinLinc host itself (Terminal=true: the desktop opens
+    # it in its own terminal emulator); executable for the same reason as above
+    cat > ~/"$TERMINAL_REL" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Terminal (ThinLinc host)
+Comment=Login shell on the ThinLinc host (not on Perlmutter)
+Exec=bash -l
+Icon=utilities-terminal
+Terminal=true
+Categories=Utility;
+EOF
+    chmod +x ~/"$TERMINAL_REL"
+    ln -sf ~/"$TERMINAL_REL" ~/Desktop/thinlinc-terminal.desktop
+
+    # ~/Desktop is reset when a new session starts after a full logout, so an
+    # autostart entry puts the links back. The Exec value is one double-quoted
+    # argument (Desktop Entry spec, "The Exec key"), free of $, backticks and
+    # backslashes; sh expands the ~.
+    mkdir -p ~/.config/autostart
+    cat > ~/"$AUTOSTART_REL" <<EOF
+[Desktop Entry]
+Type=Application
+Name=IdroboLab desktop links
+Comment=Re-create the Nion Swift and terminal shortcuts on ~/Desktop
+Exec=sh -c "mkdir -p ~/Desktop && ln -sf ~/$DESKTOP_REL ~/$TERMINAL_REL ~/Desktop/"
+NoDisplay=true
+EOF
+
     command -v update-desktop-database >/dev/null 2>&1 && \
         update-desktop-database ~/.local/share/applications || true
 
     echo "ThinLinc side installed:"
     echo "  ~/$DESKTOP_REL (+ ~/Desktop link)"
+    echo "  ~/$TERMINAL_REL (+ ~/Desktop link)"
+    echo "  ~/$AUTOSTART_REL (restores the links at session start)"
     echo
     echo "No relogin needed — the menu picks the entry up on next open, and"
     echo "the Desktop icon is immediate (MATE may ask to mark it trusted on"
