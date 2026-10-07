@@ -142,6 +142,9 @@ Host nersc-dtn dtn.nersc.gov
 ssh perlmutter
 ```
 
+This is the same in Command Prompt, PowerShell, Terminal and a Linux terminal, and so are
+the other `ssh`, `scp` and port-forwarding (`ssh -L`) commands in these pages.
+
 On the first connection, ssh shows the server's key fingerprint. Compare it with the
 fingerprints NERSC publishes at <https://docs.nersc.gov/connect/> before you type
 `yes`. You land on a **login node**: a machine shared with every other user. Use it
