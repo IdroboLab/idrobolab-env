@@ -1,7 +1,10 @@
 # Delta (NCSA) — conventions
 
 Environment setup for NCSA's Delta HPC system (Apptainer container + Slurm job
-templates for another image's GPAW stack).
+templates for another image's GPAW stack). Rules for editing the files in
+`delta/`; the member-facing page is `docs/delta/README.md`, the partition matrix and MPI
+launch guide are in `delta/jobs/README.md`. The repo-wide rules are in the root
+`AGENTS.md`.
 
 ## Environment variables — no `$SCRATCH`
 
@@ -24,8 +27,9 @@ as the default.
 ## What lives where
 
 - **Container images** → `$PROJECTS_BASE/software/containers/` (shared, provenance
-  via `sha256sum`; `*.sif` is not tracked — only the build recipes under
-  `shared/containers/`).
+  via `sha256sum`; `*.sif` is not tracked — only the build recipes: another image's
+  recipe (maintained separately, not in this repo) and the idrobolab recipe under
+  `shared/containers/x86_64-cuda/idrobolab/`).
 - **Apptainer caches** → `$SCRATCH_BASE/$USER/.apptainer` (keep off `$HOME`;
   do not move to projects).
 - **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on

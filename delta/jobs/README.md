@@ -1,5 +1,7 @@
 # Slurm submission files for another image's container on Delta
 
+The overview of working on Delta is [docs/delta/README.md](../../docs/delta/README.md).
+
 Template job scripts per partition. All take the payload as arguments
 (`sbatch <script>.sbatch my_script.py [args...]`), locate the image via
 `$SIF` (default `$PROJECTS_BASE/software/containers/otherimage_delta.sif`, overridable at
