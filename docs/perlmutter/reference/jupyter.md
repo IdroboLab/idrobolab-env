@@ -51,7 +51,11 @@ Managing them:
 ./install-jupyter-kernel.sh --image ... --dry-run                # inspect first
 ```
 
-Kernels are written to `~/.local/share/jupyter/kernels/<name>/kernel.json`.
+Kernels are written to `~/.local/share/jupyter/kernels/<name>/kernel.json`. A container
+kernel stores the full image reference in `kernel.json` when it is installed, so a kernel
+keeps running the image it was installed with: to point it at another image or tag,
+run the same `--image ... --name ...` command again with `--force` (add `--shared` for a
+shared kernel).
 
 ### Moving a personal kernel to the shared tree
 
