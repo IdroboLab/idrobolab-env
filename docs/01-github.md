@@ -14,6 +14,53 @@ config entry that goes with it), and git's one-time settings. Cloning repositori
 next page ([general page 2](02-cloning.md)); getting the same access on Perlmutter is in
 [Perlmutter page 2](perlmutter/02-shell-setup.md#1-github-from-perlmutter).
 
+## Your terminal on the laptop
+
+Every command in these pages marked "on your laptop" runs in a terminal. Where the
+instructions differ by operating system, there is a subsection for each; a command that
+is the same everywhere is given once.
+
+### Windows
+
+Windows has two command-line shells, **Command Prompt** (`cmd.exe`) and **PowerShell**.
+Either works for everything these pages ask of your laptop. Open one from the Start menu
+(type `cmd` or `powershell`; NERSC gives the same tip: type either in the taskbar search
+box), or open **Windows Terminal**, which hosts both in tabs
+([Microsoft](https://learn.microsoft.com/en-us/windows/terminal/)). The prompt tells them
+apart: `C:\Users\you>` is Command Prompt, `PS C:\Users\you>` is PowerShell.
+
+The built-in **OpenSSH client** (`ssh`, `scp`, `ssh-keygen`, `ssh-add`) runs in both
+shells. Check with `ssh -V`, which prints a version. If Windows does not know the command,
+add the client: Start menu → type *Optional Features* → add **OpenSSH Client**, or, in an
+*administrator* PowerShell,
+`Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0`
+([Microsoft](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse)).
+
+Where a command differs between the two shells, the pages give one block labelled
+**Command Prompt** and one labelled **PowerShell**; a single block means the command is
+the same in both. The difference you meet most is how to write your home folder:
+`%USERPROFILE%` in Command Prompt, `$env:USERPROFILE` in PowerShell (both mean
+`C:\Users\<you>`). Neither shell expands `~`; only ssh itself understands `~/.ssh/...`
+inside its config file.
+
+You can instead use the Windows Subsystem for Linux (WSL), a Linux terminal inside
+Windows. It has its own home folder and its own `~/.ssh`, separate from Windows': if you
+choose it, follow the Linux instructions inside WSL throughout, and do not mix the two
+(for example, the `sshproxy` you install on Windows does not put a key into WSL). The
+pages assume native Windows.
+
+### macOS
+
+Open **Terminal**: click Spotlight in the menu bar, type *Terminal* and click it, or open
+`/Applications/Utilities` in Finder and double-click Terminal
+([Apple](https://support.apple.com/guide/terminal/open-or-quit-terminal-apd5265185d-f365-44cb-8b09-71a064a42125/mac)).
+`ssh`, `scp`, `ssh-keygen` and `ssh-add` come with macOS.
+
+### Linux
+
+Open the terminal program of your desktop. `ssh -V` shows whether the OpenSSH client is
+installed; if not, install your distribution's OpenSSH client package.
+
 ## 1. Account and the IdroboLab organisation
 
 1. Create an account at <https://github.com> (or use the one you have).
@@ -31,39 +78,73 @@ git talks to GitHub over SSH with a key pair: the **private key** stays on your 
 and is never shared, and the **public key** (the file ending in `.pub`) is registered on
 GitHub. This is a different key from the 24-hour NERSC key from `sshproxy`.
 
-**Create the key on your laptop** (PowerShell on Windows, a terminal elsewhere):
+**Create the key on your laptop.** The command is the same in Command Prompt, PowerShell,
+Terminal and a Linux terminal:
 
 ```bash
 ssh-keygen -t ed25519 -C "<your email>"
 ```
 
-Press Enter to accept the file name `~/.ssh/id_ed25519` (on Windows
-`C:\Users\<you>\.ssh\id_ed25519`), and choose a passphrase. This writes the private key
-`id_ed25519` and the public key `id_ed25519.pub`.
+Press Enter to accept the default file name, and choose a passphrase. This writes the
+private key `id_ed25519` and the public key `id_ed25519.pub` into the `.ssh` folder of
+your home folder: `~/.ssh/` on macOS and Linux, `C:\Users\<you>\.ssh\` on Windows.
 
 **Register the public key** on GitHub: profile picture → **Settings** → **SSH and GPG
 keys** → **New SSH key**. Give it a title such as "laptop", leave the key type at
-**Authentication Key**, and paste the contents of the `.pub` file into **Key**:
+**Authentication Key**, and paste the contents of the `.pub` file into **Key**, without
+adding newlines or spaces ([GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
+Show the file, or copy it to the clipboard:
 
-```bash
-cat ~/.ssh/id_ed25519.pub                              # Linux, macOS
-Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub        # Windows PowerShell
+### Windows
+
+Command Prompt:
+
+```
+type "%USERPROFILE%\.ssh\id_ed25519.pub"
+clip < "%USERPROFILE%\.ssh\id_ed25519.pub"
 ```
 
-**Test it:**
+PowerShell:
+
+```powershell
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub | clip
+```
+
+The first line of each pair prints the key; the second copies it to the clipboard
+(`type` is also an alias of `Get-Content` in PowerShell).
+
+### macOS
+
+```bash
+cat ~/.ssh/id_ed25519.pub              # print it
+pbcopy < ~/.ssh/id_ed25519.pub         # or copy it to the clipboard
+```
+
+### Linux
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+Select the printed line in the terminal and copy it.
+
+### Test it
 
 ```bash
 ssh -T git@github.com
 ```
 
-The first time, ssh shows GitHub's host key fingerprint and asks whether to continue.
-Compare it with the fingerprints GitHub publishes at
+This is the same in every shell. The first time, ssh shows GitHub's host key fingerprint
+and asks whether to continue. Compare it with the fingerprints GitHub publishes at
 <https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints>
 (the Ed25519 one starts `SHA256:+DiY3wvv`), then type `yes`. The answer
 "Hi <username>! You've successfully authenticated, but GitHub does not provide shell
 access." means it works.
 
-**Tokens instead of keys.** GitHub also accepts HTTPS with a personal access token
+### Tokens instead of keys
+
+GitHub also accepts HTTPS with a personal access token
 (**Settings → Developer settings → Personal access tokens**). We use SSH; a token is a
 password, so never paste it into a file, a script or an AI prompt.
 
@@ -81,7 +162,52 @@ entry is what you want once you have more than one key.
 | Windows | `C:\Users\<you>\.ssh\config` (`%USERPROFILE%\.ssh\config`; no file extension, see below) |
 | WSL | `~/.ssh/config` *inside* WSL; WSL has its own, separate from Windows' |
 
-The file may not exist yet; create it. Add:
+### Create the file
+
+The file may not exist yet; create it.
+
+#### Windows
+
+**Notepad silently saves `config` as `config.txt`**, and OpenSSH then ignores it. The
+safest way is to open the exact path from the shell: Notepad offers to create the file
+under that name.
+
+Command Prompt:
+
+```
+mkdir "%USERPROFILE%\.ssh"
+notepad "%USERPROFILE%\.ssh\config"
+```
+
+PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.ssh" | Out-Null
+notepad "$env:USERPROFILE\.ssh\config"
+```
+
+(`ssh-keygen` has made the `.ssh` folder already; if `mkdir` says it exists, go on.) If
+you already have a `config.txt`, rename it:
+
+Command Prompt:
+
+```
+ren "%USERPROFILE%\.ssh\config.txt" config
+```
+
+PowerShell:
+
+```powershell
+Rename-Item "$env:USERPROFILE\.ssh\config.txt" config
+```
+
+#### macOS and Linux
+
+Create or edit `~/.ssh/config` with any text editor, for example `nano ~/.ssh/config`.
+
+### The entry
+
+Add:
 
 ```
 Host github.com
@@ -95,6 +221,8 @@ Host github.com
     #Hostname ssh.github.com
     #Port 443
 ```
+
+The entry is the same on every system. The lines mean:
 
 - `User git`: GitHub's SSH user name is always `git` (it is the `git@` in the addresses).
 - `IdentityFile` names the private key; `~` stands for your home directory
@@ -113,20 +241,29 @@ Host github.com
   the name `github.com` in the address. The first connection through port 443 asks about
   the host key again: compare the fingerprint with GitHub's list as in section 2.
 
-Check what ssh will use with `ssh -G github.com | grep -iE "^(hostname|port|user|identityfile)"`
-(on Windows PowerShell: `ssh -G github.com | Select-String "^(hostname|port|user|identityfile)"`),
-then repeat `ssh -T git@github.com`.
+### Check the entry
 
-**Windows: Notepad silently saves `config` as `config.txt`**, and OpenSSH then ignores
-it. The safest way is to open the exact path from PowerShell:
+See what ssh will use for `github.com`, then repeat `ssh -T git@github.com`.
 
-```powershell
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.ssh" | Out-Null
-notepad "$env:USERPROFILE\.ssh\config"
+#### Windows
+
+Command Prompt:
+
+```
+ssh -G github.com | findstr /b /i "hostname port user identityfile"
 ```
 
-If you already have a `config.txt`, rename it:
-`Rename-Item "$env:USERPROFILE\.ssh\config.txt" config`.
+PowerShell:
+
+```powershell
+ssh -G github.com | Select-String "^(hostname|port|user|identityfile)"
+```
+
+#### macOS and Linux
+
+```bash
+ssh -G github.com | grep -iE "^(hostname|port|user|identityfile)"
+```
 
 ### The SSH agent
 
@@ -134,32 +271,106 @@ The **agent** is a background program that holds your unlocked keys in memory, s
 you type the passphrase once per login session instead of for every `git push`.
 `AddKeysToAgent` and, on Perlmutter, key forwarding
 ([Perlmutter page 2](perlmutter/02-shell-setup.md#1-github-from-perlmutter)) need one running.
-
-- **macOS and most Linux desktops** start one at login. `ssh-add -l` lists the loaded
-  keys; "The agent has no identities." is fine, and "Could not open a connection to your
-  authentication agent" means none is running. Start one for the current terminal with
-  `eval "$(ssh-agent -s)"`.
-- **Windows** has the service but disabled by default. Once, in an *administrator*
-  PowerShell:
-
-  ```powershell
-  Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent
-  ```
-
 With the config entry, the `ssh -T git@github.com` test (or the first `git pull`) asks
-for the passphrase and loads the key. To load it by hand:
+for the passphrase and loads the key; the commands below load it by hand.
 
-```bash
-ssh-add ~/.ssh/id_ed25519            # Linux; macOS: ssh-add --apple-use-keychain ~/.ssh/id_ed25519
-```
+#### Windows
+
+Windows has the agent as a service, but it is disabled by default. Enable it once, in an
+*administrator* shell (right-click Command Prompt or PowerShell → **Run as
+administrator**; GitHub and Microsoft both name an elevated PowerShell for this step).
+
+PowerShell:
 
 ```powershell
-ssh-add $env:USERPROFILE\.ssh\id_ed25519      # Windows
+Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent
+```
+
+Command Prompt (this runs the same PowerShell commands):
+
+```
+powershell -Command "Get-Service ssh-agent | Set-Service -StartupType Automatic; Start-Service ssh-agent"
+```
+
+Then load the key in an ordinary (non-administrator) window, and list what the agent
+holds:
+
+Command Prompt:
+
+```
+ssh-add "%USERPROFILE%\.ssh\id_ed25519"
+ssh-add -l
+```
+
+PowerShell:
+
+```powershell
+ssh-add $env:USERPROFILE\.ssh\id_ed25519
+ssh-add -l
+```
+
+([GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent),
+[Microsoft](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement).)
+
+#### macOS
+
+macOS starts an agent at login. `ssh-add -l` lists the loaded keys; "The agent has no
+identities." is fine. To load the key and keep its passphrase in the macOS keychain
+(with `UseKeychain yes` uncommented in the config entry):
+
+```bash
+ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+```
+
+Use the `ssh-add` that comes with macOS, not one installed by Homebrew or MacPorts
+([GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)).
+
+#### Linux
+
+Most Linux desktops start an agent at login. `ssh-add -l` lists the loaded keys; "The
+agent has no identities." is fine, and "Could not open a connection to your
+authentication agent" means none is running. Start one for the current terminal, then
+load the key:
+
+```bash
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
 ```
 
 ## 4. git, once
 
-On every machine where you use git (your laptop, and Perlmutter):
+### Install git on your laptop
+
+Perlmutter has git already. Check your laptop with `git --version` (the same command in
+every shell). If it is missing
+([git-scm.com](https://git-scm.com/install/)):
+
+#### Windows
+
+Download and run the installer from <https://git-scm.com/download/win>, or, in either
+shell, `winget install Git.Git`. Then open a **new** Command Prompt or PowerShell window
+and run `git --version`; if the shell does not know `git`, run the installer again and
+choose the option that puts git on the `PATH`.
+
+#### macOS
+
+Run `git --version`: if git is missing, macOS offers to install the Xcode Command Line
+Tools, which include it (`xcode-select --install` does the same;
+[Pro Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)). Or, with
+Homebrew, `brew install git`.
+
+#### Linux
+
+```bash
+sudo apt update && sudo apt install git     # Debian, Ubuntu
+sudo dnf install git                        # Fedora
+sudo pacman -S git                          # Arch
+```
+
+### Its settings
+
+On every machine where you use git (your laptop, and Perlmutter) run these once. They are
+the same in every shell:
 
 ```bash
 git config --global user.name "Your Name"
