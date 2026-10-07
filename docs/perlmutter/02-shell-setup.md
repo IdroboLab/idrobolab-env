@@ -142,3 +142,32 @@ git -C ~/idrobolab-env pull
 
 To change something for everyone, use a branch and a pull request
 ([contributing](../CONTRIBUTING.md)).
+
+## 6. Checking your setup
+
+A script checks the setup on this page, and the coding-agent rules once you have set
+them up ([page 10](10-coding-agents.md)). Run it on a login node after the setup, after
+a `git pull`, after moving your clone, or whenever something behaves oddly:
+
+```bash
+~/idrobolab-env/perlmutter/helpers/check-setup.sh
+```
+
+It never prompts and changes no file outside your clone's `.git` directory, where its
+`git fetch` updates what git knows about GitHub. It prints `OK`, `NOTE` and `FAIL`
+lines in three sections:
+
+| Section | What it checks |
+|---|---|
+| 1. this clone | its remote and branch; whether it is behind or ahead of GitHub (as of the last fetch that worked, if this one fails); uncommitted changes. A branch other than `main` gets a note, because your shell reads `env.sh` from whatever is checked out |
+| 2. shell | the output of `setup-user.sh --check` ([section 4](#4-group-environment)), which includes `setup-agents.sh --check` once you have run that; whether `env.sh` is active in this shell; whether `$IDROBOLAB_IMAGE` is the image this clone's `env.sh` gives |
+| 3. leftovers | paths to another idrobolab-env or hpcenvs clone (including renamed copies such as `idrobolab-env.old`), or to the old shared checkout `/global/cfs/cdirs/<project>/env`, in your shell startup files, git and ssh config, crontab and scrontab, `~/bin`, `~/.local/bin`, your Jupyter kernels and your agents' instruction files; links up to three levels below your home directory that point there or nowhere |
+
+A `FAIL` needs fixing; the line says where. The script exits with status 1 when it
+printed one. A `NOTE` is information that may need action. Two are common:
+
+- **`IDROBOLAB_IMAGE=... but this clone's env.sh gives ...`**: `env.sh` keeps a value
+  that is already set, so a shell that started before a `git pull` keeps the old image
+  name. Log out and in again.
+- **`N commit(s) behind GitHub`**: run the `git pull` the line shows
+  ([section 5](#5-keeping-your-clone-current)).
