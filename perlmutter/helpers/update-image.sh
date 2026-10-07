@@ -31,7 +31,11 @@ if [ -z "${STORE_RO:-}" ]; then
 fi
 
 NAME=${1:-idrobolab}
-IMAGE=${IMAGE:-ghcr.io/<username>/$NAME}
+case "$NAME" in
+    idrobolab) OWNER=idrobolab ;;
+    *)         OWNER=<username> ;;
+esac
+IMAGE=${IMAGE:-ghcr.io/$OWNER/$NAME}
 TAG=${TAG:-latest}
 REF="${IMAGE}:${TAG}"
 WHOAMI=${USER:-$(id -un)}       # $USER is not set in every batch/container shell

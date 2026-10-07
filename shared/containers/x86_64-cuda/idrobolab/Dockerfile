@@ -351,6 +351,7 @@ RUN set -eux; \
 FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
 
 LABEL org.opencontainers.image.authors="IdroboLab (https://github.com/IdroboLab)"
+LABEL org.opencontainers.image.source="https://github.com/IdroboLab/idrobolab-env"
 LABEL purpose="idrobolab — DFT/multislice/ptychography/ML-potentials/EM-analysis"
 
 ENV INSTALL_DIR=/opt/software \

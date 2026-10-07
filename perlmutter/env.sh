@@ -112,7 +112,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     unset _hpcenvs_cur _hpcenvs_adopt
 
     # Convenience refs so job scripts and one-liners can stay short.
-    export IDROBOLAB_IMAGE="${IDROBOLAB_IMAGE:-ghcr.io/<username>/idrobolab:latest}"
+    export IDROBOLAB_IMAGE="${IDROBOLAB_IMAGE:-ghcr.io/idrobolab/idrobolab:latest}"
     export OTHERIMAGE_IMAGE="${OTHERIMAGE_IMAGE:-ghcr.io/<username>/otherimage:latest}"
 
     # uv-managed Python interpreters go on /global/common: read-optimized for

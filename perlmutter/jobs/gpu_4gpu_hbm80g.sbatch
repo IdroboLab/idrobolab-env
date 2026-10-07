@@ -57,7 +57,8 @@ GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
     */*) : ;;
-    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
+    idrobolab) IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-latest}" ;;
+    *)         IMAGE="ghcr.io/${IMAGE_OWNER:-<username>}/${IMAGE}:${TAG:-latest}" ;;
 esac
 SCRIPT=${1:?usage: sbatch gpu_4gpu_hbm80g.sbatch script.py [args]}
 shift

@@ -11,7 +11,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-IMAGE=${IMAGE:-ghcr.io/<username>/idrobolab}
+IMAGE=${IMAGE:-ghcr.io/idrobolab/idrobolab}
 TAG=${TAG:-latest}
 ENGINE=${ENGINE:-$(command -v podman || command -v docker || true)}
 : "${ENGINE:?need podman or docker on PATH}"
