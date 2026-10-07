@@ -83,8 +83,7 @@ field:
 | **NERSC HPSS** | the HPSS tape archive | transfers into and out of HPSS from other sites |
 | **NERSC SHARE** | read-only access to some file systems | the shared Globus collection that guest collections are made on (below) |
 
-There is no separate scratch collection: **NERSC DTN** reaches `$SCRATCH`. (NERSC also
-lists an experimental S3 collection, which we do not use.)
+There is no separate scratch collection: **NERSC DTN** reaches `$SCRATCH`.
 
 **Signing in.** NERSC's collections can be used by any NERSC user. In the Globus login
 page, **NERSC** is one of the organisations in the drop-down list, so you can log in to
@@ -145,7 +144,8 @@ NERSC supports sharing through **guest collections** (Globus's *guest collection
   and home cannot.
 - The people you share with need a Globus account but **not** a NERSC account.
 
-To share: tell the maintainer (everything in `gsharing` becomes visible outside the group), create the
+To share: tell the maintainer (what you share through a guest collection becomes readable, outside
+the group, by the people you choose), create the
 directory `gsharing` in the project directory, and
 [open a ticket](https://help.nersc.gov/) with its path: NERSC has to update its
 configuration by hand before that directory can be shared. When NERSC has answered, open the
@@ -162,21 +162,31 @@ the group only:
 chmod -R o-rwx /global/cfs/cdirs/<project>/gsharing
 ```
 
-**Limits and etiquette.** NERSC points to Globus's own limits on the number of files and
-of pending transfers (the figures are in the
-[general page](../03-globus.md#9-limits)) and publishes none of its own. The data transfer
+#### Limits and etiquette
+
+NERSC points to Globus's own limits on the number of files and of pending transfers
+(the [general page](../03-globus.md#5-start-a-transfer-and-follow-it) gives the main
+one) and publishes none of its own. The data transfer
 nodes may be used interactively only for work that prepares data for transfer or is
 directly related to it (downloading, `tar`, `gzip`); do not run databases or tests that
 saturate a node there, and do not use the very small `/tmp` for data
 ([NERSC: data transfer nodes](https://docs.nersc.gov/systems/dtn/)).
 
-**From the command line at NERSC.** `module load globus-tools` provides the Globus CLI
-and its Python library on Perlmutter, and the helper script `transfer_files.py` (with
-`-s dtn -t perlmutter` for the source and target collections; `hpss` is the third
-shortcut). It stores a Globus token in your home directory: never share it, it counts as
-your NERSC password
-([NERSC: Globus](https://docs.nersc.gov/services/globus/)). Elsewhere, the plain
-[CLI](../03-globus.md#8-the-command-line) works as described there.
+#### From the command line at NERSC
+
+`module load globus-tools` provides the Globus CLI on Perlmutter, used as described on the
+[general page](../03-globus.md#8-the-command-line). Its first use stores a Globus token in
+your home directory: never share it, NERSC counts it as your NERSC password
+([NERSC: Globus](https://docs.nersc.gov/services/globus/)). NERSC's helper script
+`transfer_files.py` copies a list of files; its example, from CFS to Perlmutter scratch:
+
+```bash
+transfer_files.py -s dtn -t perlmutter -d /pscratch/sd/<x>/<username>/input_directory -i transfer.txt
+```
+
+`-s` and `-t` name the source and target (`dtn` and `perlmutter` are shortcuts for the
+collections above), `-d` is the directory on the target, and `-i` is a text file that lists
+the full paths of the files to copy.
 
 ### HPSS tape archive
 
