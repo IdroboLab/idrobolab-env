@@ -17,11 +17,10 @@ git clone git@github.com:<owner>/<repository>.git            # creates ./<reposi
 git clone git@github.com:<owner>/<repository>.git code/x     # or into a folder you name
 ```
 
-These commands, like all git commands on this page, are the same in Command Prompt,
-PowerShell, Terminal and a Linux terminal (git accepts `/` in paths on Windows). A
-folder name that starts with `~/` is understood by macOS and Linux shells only; on Windows
-use a relative path as above, or `%USERPROFILE%\...` (Command Prompt) or
-`$env:USERPROFILE\...` (PowerShell).
+Git accepts `/` in paths on Windows. A folder name that starts with `~/` is understood by
+macOS and Linux shells only: Command Prompt does not expand `~`, and Windows PowerShell
+5.1 passes it to git as it is. On Windows use a relative path as above, or
+`%USERPROFILE%\...` (Command Prompt) or `$env:USERPROFILE\...` (PowerShell).
 
 Three kinds of repository come up:
 
@@ -118,15 +117,21 @@ PowerShell:
 cd $env:USERPROFILE\myproject
 ```
 
-### macOS and Linux
+### macOS
+
+```bash
+cd ~/myproject
+```
+
+### Linux
+
+Same as macOS:
 
 ```bash
 cd ~/myproject
 ```
 
 ### Put the folder in git
-
-In every shell:
 
 ```bash
 git init
