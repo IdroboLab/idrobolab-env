@@ -58,7 +58,7 @@ you back where you were. Some things to know:
 
 - The ThinLinc machine **is not Perlmutter** and has its **own home directory**. Use
   the **Perlmutter** button or menu entry to open a terminal logged in to Perlmutter.
-  A plain terminal on the desktop is on the ThinLinc machine.
+  A terminal opened any other way runs on the ThinLinc machine.
 - **The ThinLinc home is separate from your Perlmutter home**, although `$HOME` prints
   the same path on both: files you create on one do not appear on the other. The
   ThinLinc home survives logouts, so `~/.ssh` and your menu entries stay. The
@@ -85,8 +85,8 @@ nionswift-tool, nionswift-usim, nionswift-eels-analysis and nionswift-experiment
 The first time, you have no terminal icon yet. Open a terminal on the ThinLinc
 machine through the run dialog: press `Alt+F2` (if your own computer grabs it, press
 `F8` first and choose *Grab keyboard*), tick **Run in terminal** on MATE, and run
-`bash`
-([details](reference/nionswift-perlmutter-thinlinc.md#53-launching-from-the-keyboard-inside-thinlinc)).
+`bash` (this route has not been tested on NERSC's ThinLinc desktop yet;
+[details](reference/nionswift-perlmutter-thinlinc.md#53-launching-from-the-keyboard-inside-thinlinc)).
 Once the setup has run, use the **Terminal (ThinLinc host)** icon for every step on
 this page that says "in a ThinLinc terminal", such as `sshproxy -u <username>`.
 

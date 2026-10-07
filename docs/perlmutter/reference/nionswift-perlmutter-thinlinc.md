@@ -411,13 +411,13 @@ setup script also installs, in the ThinLinc-side home:
 
 - `~/.config/autostart/idrobolab-desktop-links.desktop`, a freedesktop
   autostart entry ([Desktop Application Autostart
-  Specification](https://specifications.freedesktop.org/autostart-spec/latest/);
+  Specification](https://specifications.freedesktop.org/autostart/latest/);
   `~/.config/autostart/` is the per-user autostart directory). At every
   session start it runs
   `sh -c "mkdir -p ~/Desktop && ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/.local/share/applications/thinlinc-terminal.desktop ~/Desktop/"`,
   which re-creates the two links. `Exec` is written as one double-quoted
   argument without `$`, backticks or backslashes, as the [Desktop Entry
-  Specification](https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html)
+  Specification](https://specifications.freedesktop.org/desktop-entry/latest/exec-variables.html)
   requires for an argument containing reserved characters; `sh` expands
   the `~`. The entry has `NoDisplay=true`.
 - `~/.local/share/applications/thinlinc-terminal.desktop`, a launcher with
@@ -435,7 +435,8 @@ Not verified, because it can only be tested on the ThinLinc desktop:
 whether the autostart entry runs after NERSC's re-creation of the files in
 `~/Desktop` (if it ran before, its links would be removed again), and
 whether `Terminal=true` opens a terminal on that desktop (the Nion Swift
-launcher already relies on it, §5.1).
+launcher already relies on it, §5.1), and whether the run-dialog route to a
+first terminal in §5.3 works there.
 
 ## 6. Longer sessions (> interactive walltime)
 
