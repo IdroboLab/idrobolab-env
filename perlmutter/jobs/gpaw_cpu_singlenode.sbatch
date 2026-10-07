@@ -7,7 +7,7 @@
 # wires up PMI, so `srun` spawns one container per rank and they form one
 # MPI_COMM_WORLD with native Slingshot transport. This is NERSC's documented
 # and supported pattern — there is no need for the Apptainer-style hybrid
-# library-injection gymnastics that the hpcenvs repo's delta/jobs/gpaw_cpu_multinode.sbatch does.
+# library-injection gymnastics that delta/jobs/gpaw_cpu_multinode.sbatch does.
 #
 # Node: 2x AMD EPYC 7763 (Milan), 128 physical cores (256 logical), 512 GB.
 # Charging: walltime x nodes x 1.0 (Perlmutter charge factor is 1.0).
