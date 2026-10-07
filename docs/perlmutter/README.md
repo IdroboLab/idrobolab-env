@@ -4,16 +4,17 @@ A step-by-step introduction for group members (NERSC project **<project>**), fro
 account to running jobs, Python, the group container, Jupyter and Nion Swift. Work
 through the pages in order; each builds on the ones before. The pages are part of the
 group repository [IdroboLab/idrobolab-env](https://github.com/IdroboLab/idrobolab-env),
-which every member clones to `~/idrobolab-env` on Perlmutter. The reference pages one
-level up ([`../`](../)) hold the details, the troubleshooting and the maintainer
-instructions.
+which every member clones to `~/idrobolab-env` on Perlmutter. Start with the general pages
+in [`../`](../README.md) (GitHub, cloning, Globus): page 2 below builds on them. The
+reference notes in [`reference/`](reference/) hold the details, the troubleshooting and
+the maintainer instructions.
 
 | # | Page | What you set up or learn |
 |---|---|---|
+| → | [General pages](../README.md) | **First:** [GitHub and SSH key](../01-github.md), [cloning](../02-cloning.md), [Globus](../03-globus.md). They are not specific to Perlmutter |
 | 1 | [Account and login](01-login.md) | NERSC account, MFA, `sshproxy` (Windows / macOS / Linux), SSH config |
-| → | [GitHub and git](../01-github.md) | GitHub account, SSH key, your clone of `idrobolab-env` (repo-wide page) |
-| 2 | [Shell and group setup](02-shell-setup.md) | oh-my-bash, the group environment |
-| 3 | [Storage and data transfer](03-storage-and-transfer.md) | which file system for what, quotas, rsync, Globus, HPSS |
+| 2 | [Shell and group setup](02-shell-setup.md) | GitHub from Perlmutter, your clone of `idrobolab-env`, oh-my-bash, the group environment |
+| 3 | [Storage and data transfer](03-storage-and-transfer.md) | which file system for what, quotas, rsync, Globus (NERSC's collections and paths, sharing), HPSS |
 | 4 | [Jobs and queues](04-jobs.md) | accounts and cost, `salloc`, `sbatch`, job templates, watching jobs |
 | 5 | [Python with uv](05-python-uv.md) | scripts, projects and environments |
 | 6 | [The idrobolab container](06-containers.md) | the ready-made GPU software stack |

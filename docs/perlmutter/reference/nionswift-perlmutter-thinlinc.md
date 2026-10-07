@@ -200,7 +200,7 @@ into the project directories; only the `.desktop` entry is per-user,
 because the ThinLinc hosts have their own home directories, separate from
 the Perlmutter global home.
 
-One-shot setup with `helpers/setup-nionswift-launcher.sh`. The
+One-shot setup with `perlmutter/helpers/setup-nionswift-launcher.sh`. The
 same script detects which machine it is on:
 
 ```bash
