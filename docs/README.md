@@ -45,3 +45,11 @@ the container image with `delta/get-image.sh`, the job templates per partition i
 checklist), the multi-GPU abTEM verification, and the conventions that avoid Delta's
 common traps. It is one page rather than a numbered series: the general pages above (GitHub,
 cloning) apply on Delta as they do on Perlmutter.
+
+## License
+
+This documentation is copyright (c) 2026, University of Washington, and licensed under
+[Creative Commons Attribution 4.0 International](LICENSE) (CC BY 4.0). The commands and
+code snippets in it may also be used under the repository's
+[BSD 3-Clause License](../LICENSE), so they can be copied into scripts without
+attribution.
