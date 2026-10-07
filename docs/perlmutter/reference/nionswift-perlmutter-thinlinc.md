@@ -389,6 +389,10 @@ gtk-launch nionswift-perlmutter
 `Terminal=true`; typing the raw `ssh` command instead would need "Run in
 terminal" ticked by hand.)
 
+On NERSC's ThinLinc desktop, Nion Swift starts from the `Alt+F2` run
+dialog, also when its `~/Desktop` icon is missing (§5.2): the dialog
+finds the entry in `~/.local/share/applications/`, which persists.
+
 Two gotchas and their fixes:
 
 - **The combo opens your LOCAL launcher instead.** Your own desktop grabs
@@ -435,8 +439,8 @@ Not verified, because it can only be tested on the ThinLinc desktop:
 whether the autostart entry runs after NERSC's re-creation of the files in
 `~/Desktop` (if it ran before, its links would be removed again), and
 whether `Terminal=true` opens a terminal on that desktop (the Nion Swift
-launcher already relies on it, §5.1), and whether the run-dialog route to a
-first terminal in §5.3 works there.
+launcher already relies on it, §5.1), and whether ticking "Run in terminal"
+in the run dialog (§5.3) gives a first terminal there.
 
 ## 6. Longer sessions (> interactive walltime)
 
