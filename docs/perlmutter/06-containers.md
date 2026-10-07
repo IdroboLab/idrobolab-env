@@ -94,6 +94,6 @@ package the image lacks, ask the maintainer to add it to the recipe
 - MPI (GPAW on CPU nodes): use the GPAW templates. They add `--mpi` and
   `GPAW_MPI_BACKEND=cgpaw`, which MPI runs need.
 
-More: [`reference/podman-hpc.md`](reference/podman-hpc.md) (written for the sibling `otherimage`
-image; the commands are the same) and
+More: [`reference/podman-hpc.md`](reference/podman-hpc.md) (podman-hpc traps and image notes)
+and
 [`shared/containers/x86_64-cuda/idrobolab/README.md`](../../shared/containers/x86_64-cuda/idrobolab/README.md).

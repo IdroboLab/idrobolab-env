@@ -281,7 +281,7 @@ All are environment variables; trailing arguments go to `jupyter lab`.
 ```bash
 TIME=00:30:00 ./interactive_jupyter.sh                     # a quick look
 QOS=interactive GPUS=4 ./interactive_jupyter.sh            # whole node
-IMAGE=otherimage PORT=9101 ./interactive_jupyter.sh
+IMAGE=idrobolab PORT=9101 ./interactive_jupyter.sh
 ./interactive_jupyter.sh --ServerApp.root_dir=$SCRATCH     # extra jupyter args
 ```
 

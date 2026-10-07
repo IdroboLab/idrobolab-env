@@ -1,7 +1,7 @@
 # Delta (NCSA) — conventions
 
 Environment setup for NCSA's Delta HPC system (Apptainer container + Slurm job
-templates for another image's GPAW stack). Rules for editing the files in
+templates for the idrobolab container; that image has not been run on Delta yet). Rules for editing the files in
 `delta/`; the member-facing page is `docs/delta/README.md`, the partition matrix and MPI
 launch guide are in `delta/jobs/README.md`. The repo-wide rules are in the root
 `AGENTS.md`.
@@ -17,11 +17,11 @@ Never emit `$SCRATCH` in Delta job scripts.
 
 Container images live in **`$PROJECTS_BASE/software/containers/`** — NOT in
 scratch. Every script defaults `SIF` to
-`$PROJECTS_BASE/software/containers/otherimage_delta.sif`; override per-invocation
+`$PROJECTS_BASE/software/containers/idrobolab.sif`; override per-invocation
 with `SIF=/path/to/image.sif <script>`.
 
 When adding or editing a script that references the image, use
-`${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/otherimage_delta.sif`
+`${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/idrobolab.sif`
 as the default.
 
 ## Environment file
@@ -31,8 +31,7 @@ Delta has no `env.sh` yet; one in the shape of `perlmutter/env.sh` is wanted.
 ## What lives where
 
 - **Container images** → `$PROJECTS_BASE/software/containers/` (shared, provenance
-  via `sha256sum`; `*.sif` is not tracked — only the build recipes: another image's
-  recipe (maintained separately, not in this repo) and the idrobolab recipe under
+  via `sha256sum`; `*.sif` is not tracked — only the build recipe, the idrobolab recipe under
   `shared/containers/x86_64-cuda/idrobolab/`).
 - **Apptainer caches** → `$SCRATCH_BASE/$USER/.apptainer` (keep off `$HOME`;
   do not move to projects).
@@ -44,15 +43,15 @@ Delta has no `env.sh` yet; one in the shape of `perlmutter/env.sh` is wanted.
 
 ## Editable-install import trap — never name a dir after a package
 
-The image installs gpaw / another image / gpaw-weaver / pyslice as **editable**
+The image installs gpaw / gpaw-weaver / abTEM as **editable**
 (namespace-style finder), so a directory named after one of them in your
 current directory **shadows the real package**. `python -c` puts the CWD on
 `sys.path`; Python then treats `./gpaw` as a namespace package, the real
 `gpaw/__init__.py` never runs, and imports fail with e.g.
 `cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw' (unknown location)`.
 
-- Do not create working/output directories named `gpaw`, `otherimage`,
-  `gpaw_weaver`, or `pyslice`. Branch-override checkouts go to
+- Do not create working/output directories named `gpaw`,
+  `gpaw_weaver`, or `abtem`. Branch-override checkouts go to
   `<project-dir>/code/<name>` (bound to `/opt/src/<name>`) — the `code/`
   level keeps them out of any run CWD.
 - For `python -c` preflight checks, use `python -P` (drops CWD from

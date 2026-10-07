@@ -59,7 +59,8 @@ package.
 ```bash
 # 1. stage (in the devcontainer):
 ./prepare_build_context.sh
-# 2. build on a host with docker/podman (layer-cached), then push:
+# 2. build on a host with docker/podman (layer-cached), then push; needs GHCR_USER
+#    (your GitHub username) and GITHUB_PACKAGE_TOKEN (a PAT with write:packages):
 ./publish.sh                              # -> ghcr.io/idrobolab/idrobolab
 # 3. consume:
 apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   # Delta
@@ -89,10 +90,10 @@ on the cluster with a PAT carrying `read:packages`:
 ```bash
 # Perlmutter (login node — pulled images are auto-squashed and visible to
 # compute nodes, so no `podman-hpc migrate` is needed):
-podman-hpc login ghcr.io -u <username>          # paste the PAT at the prompt
+podman-hpc login ghcr.io -u <github-user>         # paste the PAT at the prompt
 
 # Delta:
-export APPTAINER_DOCKER_USERNAME=<username>
+export APPTAINER_DOCKER_USERNAME=<github-user>
 export APPTAINER_DOCKER_PASSWORD=$GITHUB_PACKAGE_TOKEN
 apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest
 ```
@@ -104,7 +105,7 @@ manifest request answers `401` even for a public package, so neither status
 on its own tells you anything.
 
 ```bash
-TOKEN=$(curl -s -u <username>:$GITHUB_PACKAGE_TOKEN \
+TOKEN=$(curl -s -u <github-user>:$GITHUB_PACKAGE_TOKEN \
     "https://ghcr.io/token?service=ghcr.io&scope=repository:idrobolab/idrobolab:pull" \
     | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 curl -s -H "Authorization: Bearer $TOKEN" https://ghcr.io/v2/idrobolab/idrobolab/tags/list

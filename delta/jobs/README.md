@@ -1,15 +1,19 @@
-# Slurm submission files for another image's container on Delta
+# Slurm submission files for the idrobolab container on Delta
 
 The overview of working on Delta is [docs/delta/README.md](../../docs/delta/README.md).
 
 Template job scripts per partition. All take the payload as arguments
 (`sbatch <script>.sbatch my_script.py [args...]`), locate the image via
-`$SIF` (default `$PROJECTS_BASE/software/containers/otherimage_delta.sif`, overridable at
+`$SIF` (default `$PROJECTS_BASE/software/containers/idrobolab.sif`, overridable at
 submit time with `SIF=... sbatch ...`), and bind `/projects`, `/scratch`,
 `/work` when present. Before first use, replace `<project>` in the
 `--account` lines — run `accounts` to list your charge accounts
 (`<project>-delta-cpu` for CPU partitions, `<project>-delta-gpu` for GPU
 partitions; they are charged separately).
+
+The idrobolab image has not been run on Delta yet. The launch patterns marked
+verified below were verified with an earlier image, so work through the
+[first-run checklist](#first-run-checklist) before relying on them.
 
 ## Script ↔ partition matrix
 
@@ -78,11 +82,11 @@ GPU scripts run a single Python process (no MPI); switch the payload to
 accounts                                   # find <project>-delta-{cpu,gpu}
 mkdir -p $PROJECTS_BASE/software/containers
 # get the image: see delta/get-image.sh (docs/delta/README.md, "Getting started")
-sha256sum $PROJECTS_BASE/software/containers/otherimage_delta.sif   # record for provenance
+sha256sum $PROJECTS_BASE/software/containers/idrobolab.sif   # record for provenance
 export APPTAINER_CACHEDIR=$SCRATCH_BASE/$USER/.apptainer   # keep caches off $HOME (quota)
 
 # smoke tests (interactive or short jobs):
-apptainer exec $SIF python -P -c "import gpaw, otherimage; print(gpaw.__version__)"
+apptainer exec $SIF python -P -c "import gpaw, abtem; print(gpaw.__version__)"
 APPTAINERENV_GPAW_MPI_BACKEND=cgpaw apptainer exec $SIF \
     mpiexec -bootstrap fork -n 4 python -P -c "from gpaw.mpi import world; print(world.rank, world.size)"
 srun --mpi=list                                      # note available PMI plugins
@@ -109,14 +113,14 @@ both run the image's `x86-64-v3` code; no per-partition images needed
   straight from the batch step with no launcher, and Slurm's `SLURM_*`
   variables alone do not trip the check. Add it if you switch one of them to
   the commented `mpiexec` payload.
-- **Never name a working directory (or output dir) `gpaw`.** The four dev
-  packages are *editable* installs in the image, so `import gpaw` resolves
+- **Never name a working directory (or output dir) `gpaw`.** The dev
+  packages (gpaw, gpaw_weaver, abtem) are *editable* installs in the image, so `import gpaw` resolves
   through a namespace-style finder. A `gpaw/` subdirectory in your current
   directory shadows the real package: `python -c` puts the CWD on
   `sys.path`, Python treats `./gpaw` as a namespace package, the real
   `gpaw/__init__.py` never runs, and you get
   `ImportError: cannot import name 'GPAW_NO_C_EXTENSION' from 'gpaw'
-  (unknown location)`. Same trap for `otherimage`, `gpaw_weaver`, `pyslice`.
+  (unknown location)`. Same trap for `gpaw_weaver`, `abtem`.
   Fix: rename/move the directory (a branch-override checkout belongs at
   `<project-dir>/code/gpaw`, bound to `/opt/src/gpaw` — not in your run dir).
 - **For one-liner `python -c` checks, use `python -P`** (drops the CWD from

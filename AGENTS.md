@@ -4,11 +4,8 @@ The IdroboLab group's environments: NERSC Perlmutter (project <project>) in `per
 (env.sh, helpers, job templates) and NCSA Delta in `delta/` (get-image.sh, job templates,
 verification launchers), the `idrobolab` container recipe under
 `shared/containers/x86_64-cuda/idrobolab/`, and the documentation in `docs/`. Split out of
-the `hpcenvs` repo, which is frozen and holds nothing this repo needs. The `otherimage`
-recipe that Delta's templates default to is maintained separately in a private repository; a
-reference to it says "another image's recipe (maintained separately, not in this repo)", never a path or a
-link. Rules specific to one cluster are scoped to it below; `delta/AGENTS.md` holds the
-Delta conventions.
+the `hpcenvs` repo, which is frozen and holds nothing this repo needs. Rules specific to one cluster are scoped to it below;
+`delta/AGENTS.md` holds the Delta conventions.
 
 This file is read by every coding agent (Codex reads `AGENTS.md` directly; Claude Code
 through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CLAUDE.md`.
@@ -46,8 +43,9 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 
 ## Delta (delta/)
 
-- The job templates default `SIF` to `$PROJECTS_BASE/software/containers/otherimage_delta.sif`
-  and carry the placeholder `<project>-delta-{cpu,gpu}` in their `--account` lines, which
+- The job templates default `SIF` to `$PROJECTS_BASE/software/containers/idrobolab.sif`
+  (`get-image.sh` pulls `ghcr.io/idrobolab/idrobolab` into it; that image has not been
+  run on Delta yet) and carry the placeholder `<project>-delta-{cpu,gpu}` in their `--account` lines, which
   the user replaces (the verification launchers still carry a concrete account there).
 - The Python payloads of the multi-GPU verification are shared with Perlmutter in
   `shared/verification/multigpu_abtem/`; the launchers in `delta/verification/` and
