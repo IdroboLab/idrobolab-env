@@ -12,6 +12,11 @@ keep ourselves: everything in `main` reaches every member's shell and jobs on th
 You need access to the repository and an SSH key ([GitHub](01-github.md)), and a clone
 of it ([cloning](02-cloning.md)).
 
+The commands below write the clone as `~/idrobolab-env`, which is where it is on
+Perlmutter. On a laptop, use the folder of your clone. On Windows, Command Prompt and
+PowerShell do not expand `~`: open the terminal in the clone (`cd` into it) and leave out
+`-C ~/idrobolab-env`. Everything else is the same in every shell.
+
 1. Start from an up-to-date `main` and make a branch named after the change:
 
    ```bash
