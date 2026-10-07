@@ -4,9 +4,9 @@ The IdroboLab group's environments: NERSC Perlmutter (project <project>) in `per
 (env.sh, helpers, job templates) and NCSA Delta in `delta/` (get-image.sh, job templates,
 verification launchers), the `idrobolab` container recipe under
 `shared/containers/x86_64-cuda/idrobolab/`, and the documentation in `docs/`. Split out of
-the `hpcenvs` repo, which is frozen and holds nothing live. The `otherimage` recipe that
-Delta's templates default to is maintained separately in a private repository; a reference to
-it says "another image's recipe (maintained separately, not in this repo)", never a path or a
+the `hpcenvs` repo, which is frozen and holds nothing this repo needs. The `otherimage`
+recipe that Delta's templates default to is maintained separately in a private repository; a
+reference to it says "another image's recipe (maintained separately, not in this repo)", never a path or a
 link. Rules specific to one cluster are scoped to it below; `delta/AGENTS.md` holds the
 Delta conventions.
 

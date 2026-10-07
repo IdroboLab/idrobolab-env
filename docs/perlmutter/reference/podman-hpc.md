@@ -315,29 +315,24 @@ is granted. See "Supplementary groups are dropped in the container" above.
 
 ## Running your own branches (cluster checkouts)
 
-Same pattern as the Delta image — the dev packages resolve to
+The idrobolab image installs gpaw, gpaw-weaver and abTEM **editable** at
 `/opt/src/<name>`, so mount a checkout over that path:
 
 ```bash
 cd $SCRATCH/code
-git clone git@gitlab.com:<username>/gpaw.git && git -C gpaw checkout <branch>
+git clone https://gitlab.com/gpaw/gpaw.git && git -C gpaw checkout <branch>
 
 podman-hpc run --rm --gpu \
     -v $SCRATCH/code/gpaw:/opt/src/gpaw \
-    otherimage:latest python script.py
+    idrobolab:latest python script.py
 ```
 
-Mount only the repos you want to override. Another image, gpaw-weaver, and
-PySlice are pure Python — any branch just works. For **gpaw**, the compiled
-`_gpaw.so` stashed in site-packages serves clones without one; if your
-branch changes the C sources, rebuild in-place in the mounted clone with the
-container's toolchain:
-
-```bash
-podman-hpc run --rm -v $SCRATCH/code/gpaw:/opt/src/gpaw otherimage:latest \
-    bash -c 'cd /opt/src/gpaw && GPAW_CONFIG=/opt/build/siteconfig.py \
-             python setup.py build_ext --inplace'
-```
+Mount only the repos you want to override. gpaw-weaver and abTEM are pure
+Python — any branch just works. For **gpaw**, the compiled `_gpaw.so` stashed
+in site-packages serves clones without one, so a branch that changes only
+Python files works too. The image is a slim runtime without compilers or the
+GPAW build configuration, so a branch that changes the C sources cannot be
+rebuilt inside it; that needs a new image from the idrobolab recipe.
 
 ## Notes and caveats
 

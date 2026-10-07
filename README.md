@@ -37,7 +37,7 @@ Fixes to the docs are as welcome as fixes to the scripts: see
 ## History
 
 This repo was split out of the `hpcenvs` repo: its Perlmutter and Delta directories moved
-here with their history, and `hpcenvs` holds nothing live any more.
+here with their history, and `hpcenvs` holds nothing this repo needs any more.
 Some identifiers keep the old name so existing setups go on working: the
 `# >>> hpcenvs (<project>) >>>` block that `setup-user.sh` writes into your shell
 startup file and the `HPCENVS_*` variables in `env.sh`.

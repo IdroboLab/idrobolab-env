@@ -79,10 +79,10 @@ likely to bite.
 ## How the branch abTEM is injected (no venv)
 
 The container carries its own abTEM, installed **editable** from a checkout
-staged into the build context (another image's recipe, maintained separately and not in this repo:
-`COPY src/abTEM /opt/src/abTEM` + `pip install -e /opt/src/abTEM`). Do **not**
-identify it by version: the Delta README called it 1.0.9, while the
-Dockerfile in this repo stages an abTEM main **1.1.0** checkout, so which abTEM a
+staged into the build context by another image's recipe (maintained separately, not in
+this repo): `COPY src/abTEM /opt/src/abTEM` + `pip install -e /opt/src/abTEM`. Do
+**not** identify it by version: the Delta README called it 1.0.9, while the
+idrobolab Dockerfile stages an abTEM main **1.1.0** checkout, so which abTEM a
 given image holds — and whether it already carries multi-GPU code — depends on
 what was staged when that image was built. Check `podman-hpc images --digests`
 and section 0's printed path, not a version you expect.

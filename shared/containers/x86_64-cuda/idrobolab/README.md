@@ -6,9 +6,9 @@ analysis), ML interatomic potentials (**fairchem**, **orb-models**), phonons
 (**phonopy**, **hiphive**), **pymatgen**, **dask**, **jupyterlab** — on CUDA
 12.8 / Python 3.12 / x86_64.
 
-Sibling of `otherimage` (another image's recipe, maintained separately, not in this repo): it reuses the **identical
-compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdwxc + GPAW) and
-swaps the Python stack. Builds and distributes the same way (one image for
+Sibling of another image's recipe (maintained separately, not in this repo): it reuses
+the **identical compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdwxc +
+GPAW) and swaps the Python stack. Builds and distributes the same way (one image for
 Delta via Apptainer and Perlmutter via podman-hpc).
 
 ## The one hard constraint: torch 2.8
