@@ -64,9 +64,9 @@ Notes:
 
 ## 4. One-time: Python environment (uv; do this on a Perlmutter login node)
 
-This directory is part of the group repository `IdroboLab/idrobolab-env`;
+These notes are part of the group repository `IdroboLab/idrobolab-env`;
 everyone works from their own clone at `~/idrobolab-env` (set up in
-[docs/01-github.md](../../01-github.md)):
+[page 2](../02-shell-setup.md#2-your-clone-of-idrobolab-env)):
 
 ```bash
 git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env

@@ -16,7 +16,7 @@ There are two ways to run notebooks on Perlmutter, and they complement each othe
    job; pick a GPU node to use the GPU kernel below.
 3. Pick a kernel in the launcher.
 
-**Kernels.** The group setup ([page 2](02-shell-setup.md#2-group-environment))
+**Kernels.** The group setup ([page 2](02-shell-setup.md#4-group-environment))
 linked any shared group kernels into your account. To add your own uv
 environment ([page 5](05-python-uv.md)), on a login node:
 
