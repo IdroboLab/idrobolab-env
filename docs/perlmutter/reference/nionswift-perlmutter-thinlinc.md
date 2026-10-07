@@ -226,7 +226,9 @@ it must then be a complete resource spec incl. QOS/constraint/CPUs, and
 a `-t`/`--time` suppresses the walltime prompt); on a ThinLinc host it
 sets up ssh auth, copies
 the entry + icon from the shared location into the member's ThinLinc
-home, and links the entry onto `~/Desktop` (§5.2). No relogin needed: the
+home, links the entry onto `~/Desktop` (§5.2), and adds a terminal
+launcher and an autostart entry that puts the Desktop links back after
+a new session (§5.4). No relogin needed: the
 menu rescans on next open (`update-desktop-database
 ~/.local/share/applications` nudges it), the Desktop icon is immediate,
 and MATE may ask to mark a new launcher trusted on first click. What it
@@ -321,7 +323,24 @@ Notes:
 ### 5.2 Installing the entry ThinLinc-side (separate home!)
 
 The ThinLinc hosts have their **own home directory** — NOT the Perlmutter
-global home. The `.desktop` entry has to live in the home the ThinLinc
+global home. Observed on one ThinLinc host on 2026-10-07 (NERSC documents
+none of this):
+
+- `$HOME` prints `/global/homes/<x>/<username>` there, the same path as on
+  Perlmutter, but `findmnt -T ~` shows that the directory is an NFS share
+  of the ThinLinc machines themselves, not the Perlmutter global home.
+- A file created in it did not appear in the Perlmutter home, and the
+  Perlmutter home's snapshots never contained the launcher.
+- It persists across sessions and logouts: `~/.ssh` and
+  `~/.local/share/applications` survive.
+- **`~/Desktop` is the exception.** It is reset whenever a new session
+  starts after a complete logout: NERSC's own desktop files (`DTNs`,
+  `Logout`, `Perlmutter`, `tl-disconnect`) are re-created there with the
+  session's start time, and anything else, such as our link to the
+  launcher, is gone. Reconnecting to a running session does not reset
+  it. §5.4 deals with this.
+
+The `.desktop` entry has to live in the home the ThinLinc
 desktop reads, while the job script stays on Perlmutter in the shared
 project bin (it is executed there by the `ssh` in the `Exec` line).
 Running the setup script on the ThinLinc host (§5.1, step 2) does all of
@@ -384,6 +403,39 @@ Two gotchas and their fixes:
   Shortcuts → Add, command `gtk-launch nionswift-perlmutter`. XFCE:
   Settings → Keyboard → Application Shortcuts → Add. This passes through
   even in windowed mode.
+
+### 5.4 After a new session: the autostart entry and the terminal launcher
+
+Because `~/Desktop` is reset at the start of a new session (§5.2), the
+setup script also installs, in the ThinLinc-side home:
+
+- `~/.config/autostart/idrobolab-desktop-links.desktop`, a freedesktop
+  autostart entry ([Desktop Application Autostart
+  Specification](https://specifications.freedesktop.org/autostart-spec/latest/);
+  `~/.config/autostart/` is the per-user autostart directory). At every
+  session start it runs
+  `sh -c "mkdir -p ~/Desktop && ln -sf ~/.local/share/applications/nionswift-perlmutter.desktop ~/.local/share/applications/thinlinc-terminal.desktop ~/Desktop/"`,
+  which re-creates the two links. `Exec` is written as one double-quoted
+  argument without `$`, backticks or backslashes, as the [Desktop Entry
+  Specification](https://specifications.freedesktop.org/desktop-entry-spec/latest/exec-variables.html)
+  requires for an argument containing reserved characters; `sh` expands
+  the `~`. The entry has `NoDisplay=true`.
+- `~/.local/share/applications/thinlinc-terminal.desktop`, a launcher with
+  `Exec=bash -l` and `Terminal=true` (the key the Desktop Entry
+  Specification defines for programs that run in a terminal window): it
+  opens a login shell **on the ThinLinc host** in the desktop's own
+  terminal emulator. Opening a plain terminal there is otherwise hard
+  for members, and the sshproxy step (§5.2) needs one. It is executable
+  and linked onto `~/Desktop` like the Nion Swift launcher, and both
+  launchers are also in the applications menu.
+
+Re-running the setup script overwrites these files; nothing is duplicated.
+
+Not verified, because it can only be tested on the ThinLinc desktop:
+whether the autostart entry runs after NERSC's re-creation of the files in
+`~/Desktop` (if it ran before, its links would be removed again), and
+whether `Terminal=true` opens a terminal on that desktop (the Nion Swift
+launcher already relies on it, §5.1).
 
 ## 6. Longer sessions (> interactive walltime)
 
@@ -473,7 +525,12 @@ update of nionswift reverts the sed patch above.
 
 ### 7.4 X authorization errors on `ssh -X` to the node
 
-`$HOME` (and thus `~/.Xauthority`) is shared, so xauth normally just works. If
+The ThinLinc host's home is separate from the Perlmutter home (§5.2), but that
+does not matter here: the second hop, `ssh -Y` from the login node to the
+compute node, is between two Perlmutter nodes, which share the Perlmutter global
+home and so its `~/.Xauthority`. The ThinLinc side only needs a valid
+`$DISPLAY` and its own cookie in the ThinLinc home, which the session creates.
+This reading follows from the two homes and was not tested separately. If
 forwarding is refused, re-check that the *originating* shell (ThinLinc → login)
 has a valid `$DISPLAY` first; a broken first hop propagates.
 
