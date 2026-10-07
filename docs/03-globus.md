@@ -228,23 +228,69 @@ folders, and with which rights. For NERSC see
 
 Everything above also works from a terminal with the **Globus CLI**, which is the way to
 script or repeat transfers
-([documentation](https://docs.globus.org/cli/)). On your laptop, install it the way
-Globus's instructions say, with `pipx install globus-cli`; pipx first, as its
-[installation page](https://pipx.pypa.io/stable/how-to/install-pipx.html) describes
-(it needs Python 3.10 or newer). In every case, open a **new** terminal after
-`pipx ensurepath`, so that the updated `PATH` takes effect.
+([documentation](https://docs.globus.org/cli/)). Globus recommends installing it with
+pipx; `uv tool install globus-cli` gives the same isolated installation and also needs
+no Python of your own, so the steps below use uv first and pipx as the alternative.
 
-### Windows
+### Install the CLI with uv
 
-The commands are the same in Command Prompt and PowerShell. With
-[Scoop](https://scoop.sh/):
+uv's installer is described on its
+[installation page](https://docs.astral.sh/uv/getting-started/installation/).
+
+#### Windows
+
+In PowerShell, run uv's installer (Astral documents it for PowerShell):
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Then open a **new** window, so that the updated `PATH` takes effect, and install the CLI
+(this works in Command Prompt and PowerShell):
 
 ```
-scoop install pipx
-pipx ensurepath
+uv tool install globus-cli
 ```
 
-Or with pip (use `python3` instead of `py` if Python came from the Microsoft Store):
+#### macOS
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Open a **new** terminal, then:
+
+```bash
+uv tool install globus-cli
+```
+
+#### Linux
+
+Same as macOS:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Open a **new** terminal, then:
+
+```bash
+uv tool install globus-cli
+```
+
+If `globus` is not found afterwards, `uv tool update-shell` adds uv's tool folder to your
+`PATH`. [Perlmutter page 5](perlmutter/05-python-uv.md) introduces uv.
+
+### Install the CLI with pipx instead
+
+If you already have Python 3.10 or newer, pipx works too, as the
+[pipx installation page](https://pipx.pypa.io/stable/how-to/install-pipx.html) describes.
+After `pipx ensurepath`, open a **new** terminal.
+
+#### Windows
+
+With pip (use `python3` instead of `py` if Python came from the Microsoft Store); the
+same in Command Prompt and PowerShell:
 
 ```
 py -m pip install --user pipx
@@ -252,61 +298,40 @@ py -m pip install --user pipx
 
 This often ends with a warning that `pipx.exe` is installed in a directory that is not
 on the `PATH`. Go to that directory (`cd` to the folder the warning names) and run
-`.\pipx.exe ensurepath`, even without the warning.
+`.\pipx.exe ensurepath`, even without the warning. Then, in a new window:
 
-### macOS
+```
+pipx install globus-cli
+```
+
+#### macOS
 
 With [Homebrew](https://brew.sh/):
 
 ```bash
 brew install pipx
 pipx ensurepath
+pipx install globus-cli          # in a new terminal
 ```
 
-### Linux
+#### Linux
 
 ```bash
 sudo apt update && sudo apt install pipx     # Ubuntu 23.04 or newer
 sudo dnf install pipx                        # Fedora
 pipx ensurepath
+pipx install globus-cli                      # in a new terminal
 ```
 
 On other distributions, `python3 -m pip install --user pipx` and then
 `python3 -m pipx ensurepath`; on Ubuntu 23.04+, Debian 12+ and Fedora 38+ that pip
 command fails with "externally-managed-environment", so use the distribution package.
 
-### Install the CLI
-
-After `pipx ensurepath`, in a new terminal, the same in every shell:
-
-```bash
-pipx install globus-cli
-```
-
-#### With uv instead
-
-If you already use `uv` ([Perlmutter page 5](perlmutter/05-python-uv.md) introduces it),
-`uv tool install globus-cli` does the same, with no separate Python needed; if `globus`
-is then not found, `uv tool update-shell` adds uv's tool folder to your `PATH`. To
-install uv itself ([uv installation page](https://docs.astral.sh/uv/getting-started/installation/)):
-
-Windows, in Command Prompt or PowerShell (the same command in both):
-
-```
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-macOS and Linux:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
 ### Using it
 
 On Perlmutter the CLI is already available: `module load globus-tools`
-([NERSC](https://docs.nersc.gov/services/globus/)). The commands are the same everywhere,
-in every shell:
+([NERSC](https://docs.nersc.gov/services/globus/)). The commands are the same
+everywhere:
 
 ```bash
 globus login                                  # log in; follow what it prints
