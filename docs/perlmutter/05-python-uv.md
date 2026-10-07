@@ -6,7 +6,7 @@ installed and tested. Use uv for your own analysis code, small tools, and anythi
 container doesn't have (abTEM from your own environment: [page 7](07-abtem.md#route-2-your-own-uv-environment)).
 
 [uv](https://docs.astral.sh/uv/) installs Python itself and packages, much faster than
-pip or conda. After the group setup ([page 2](02-shell-setup.md#2-group-environment))
+pip or conda. After the group setup ([page 2](02-shell-setup.md#4-group-environment))
 it is on your `PATH` and already configured: Python interpreters come from a group
 folder everyone can read, and the cache goes on `$SCRATCH`. Check with `uv --version`.
 

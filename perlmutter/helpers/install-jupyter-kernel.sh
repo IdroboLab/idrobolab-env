@@ -33,7 +33,7 @@
 # This is a LOGIN-NODE setup script; the kernel itself runs wherever
 # JupyterHub puts it. For a session on a node you allocate yourself, with an
 # ssh tunnel and the exact image the batch jobs use, see
-# ../jobs/interactive_jupyter.sh instead. Both routes: ../jupyter.md
+# ../jobs/interactive_jupyter.sh instead. Both routes: docs/perlmutter/reference/jupyter.md
 set -euo pipefail
 
 BACKEND="" TARGET="" NAME="" DISPLAY="" PREFIX="" GPU=0 FORCE=0 DRY=0
@@ -241,7 +241,7 @@ case "$BACKEND" in
         done
         # --network host is required: the hub connects INTO the kernel, on five
         # ZMQ ports named in {connection_file} and chosen per launch, so -p
-        # cannot publish them. See ../podman-hpc.md, "Networking".
+        # cannot publish them. See docs/perlmutter/reference/podman-hpc.md, "Networking".
         # The connection file's directory has to be mounted, and we cannot know
         # it at install time: a bare KernelManager drops it in tempfile.gettempdir()
         # (/tmp, private to the container), jupyter_server puts it in the runtime

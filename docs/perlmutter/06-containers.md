@@ -45,9 +45,9 @@ srun --pty podman-hpc run --rm -it --gpu --group-add keep-groups \
 ```
 
 `~/idrobolab-env/perlmutter/jobs/interactive_gpu_shared.sh` does both steps for 1 or 2
-GPUs (`GPUS=2` for two, `TIME=02:00:00` for the time; [source](../jobs/interactive_gpu_shared.sh)).
+GPUs (`GPUS=2` for two, `TIME=02:00:00` for the time; [source](../../perlmutter/jobs/interactive_gpu_shared.sh)).
 For a whole node with 4 GPUs, `~/idrobolab-env/perlmutter/jobs/interactive_gpu.sh`
-does both steps ([source](../jobs/interactive_gpu.sh)); it always books a full node,
+does both steps ([source](../../perlmutter/jobs/interactive_gpu.sh)); it always books a full node,
 even with `GPUS=1`.
 
 What the flags do:
@@ -94,6 +94,6 @@ package the image lacks, ask the maintainer to add it to the recipe
 - MPI (GPAW on CPU nodes): use the GPAW templates. They add `--mpi` and
   `GPAW_MPI_BACKEND=cgpaw`, which MPI runs need.
 
-More: [`../podman-hpc.md`](../podman-hpc.md) (written for the sibling `otherimage`
+More: [`reference/podman-hpc.md`](reference/podman-hpc.md) (written for the sibling `otherimage`
 image; the commands are the same) and
 [`shared/containers/x86_64-cuda/idrobolab/README.md`](../../shared/containers/x86_64-cuda/idrobolab/README.md).

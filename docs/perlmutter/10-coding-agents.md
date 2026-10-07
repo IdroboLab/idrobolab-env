@@ -33,7 +33,7 @@ An agent follows three layers of written instructions, each adding to the one be
    under `perlmutter/agents/nersc/` (BSD-3, see the `LICENSE` there). NERSC's updates
    arrive as a pull request from a weekly workflow, and an admin reads them before
    they reach you.
-2. **The group's rules**: [`perlmutter/agents/group.md`](../agents/group.md): accounts,
+2. **The group's rules**: [`perlmutter/agents/group.md`](../../perlmutter/agents/group.md): accounts,
    queues, container, data and provenance. They never relax NERSC's.
 3. **The project's own**: a `CLAUDE.md` or `AGENTS.md` in the project folder (`/init`
    inside the agent drafts one) with what the agent should know about that project.

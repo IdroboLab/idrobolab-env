@@ -2,7 +2,7 @@
 # abTEM from your own uv environment (~/venvs/abtem, not the container) on 1 or
 # 2 A100s of a SHARED GPU node. Use it when the container's abTEM (or another
 # package) is not recent enough; the recipe for the environment is in
-# docs/07-abtem.md. Otherwise the container templates (gpu_1gpu_shared.sbatch,
+# docs/perlmutter/07-abtem.md. Otherwise the container templates (gpu_1gpu_shared.sbatch,
 # gpu_2gpu_shared.sbatch) are the default.
 #
 # The job runs the environment's own python, never `uv run`: compute nodes should
@@ -42,7 +42,7 @@ set -euo pipefail
 VENV=${VENV:-$HOME/venvs/abtem}
 SCRIPT=${1:?usage: sbatch abtem_uv_gpu_shared.sbatch script.py [args]}
 shift
-[ -x "$VENV/bin/python" ] || { echo "no environment at $VENV: create it as described in docs/07-abtem.md" >&2; exit 1; }
+[ -x "$VENV/bin/python" ] || { echo "no environment at $VENV: create it as described in docs/perlmutter/07-abtem.md" >&2; exit 1; }
 
 # One process: the threads it paid for (2 logical CPUs per physical core).
 export OMP_NUM_THREADS=$((SLURM_CPUS_PER_TASK / 2)) OPENBLAS_NUM_THREADS=$((SLURM_CPUS_PER_TASK / 2))

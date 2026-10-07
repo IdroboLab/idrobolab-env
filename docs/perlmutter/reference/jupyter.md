@@ -5,7 +5,7 @@ environments. They are complements, not rivals.
 
 | | **A. jupyter.nersc.gov** | **B. Your own allocation + ssh tunnel** |
 |---|---|---|
-| Set up with | [`helpers/install-jupyter-kernel.sh`](helpers/install-jupyter-kernel.sh) | [`jobs/interactive_jupyter.sh`](jobs/interactive_jupyter.sh) |
+| Set up with | [`perlmutter/helpers/install-jupyter-kernel.sh`](../../../perlmutter/helpers/install-jupyter-kernel.sh) | [`perlmutter/jobs/interactive_jupyter.sh`](../../../perlmutter/jobs/interactive_jupyter.sh) |
 | Tunnel | none | `ssh -L`, one line, printed for you |
 | Terminal to keep open | none | yes — closing it ends the session |
 | Survives a dropped laptop connection | yes | no |
@@ -147,7 +147,7 @@ kernels are not possible this way and only the venv backend works.
 
 **2. Does it actually give the host network namespace?** This is the check that
 matters, because acceptance is not the same as effect. On a compute node
-(`../jobs/interactive_gpu.sh` gets you a shell), in one terminal:
+(`perlmutter/jobs/interactive_gpu.sh` gets you a shell), in one terminal:
 
 ```bash
 podman-hpc run --rm --network host ghcr.io/<username>/idrobolab:latest \
@@ -223,7 +223,7 @@ If step 3 passes and step 4 does not, the difference is the hub's environment
 rather than the container: check that the `argv[0]` in your `kernel.json` is an
 absolute path (the installer bakes one in when run on a login node), and that
 the node the hub gave you can see the image —
-`helpers/update-image.sh` puts it in the shared store.
+`perlmutter/helpers/update-image.sh` puts it in the shared store.
 
 ---
 
@@ -272,7 +272,7 @@ All are environment variables; trailing arguments go to `jupyter lab`.
 | `THREADS` | `CPUS / 2` | Sets `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS` |
 | `SHM_SIZE` | unset | e.g. `32g`, if dask workers hit shared-memory errors |
 | `PUBLISH` | `1` | `0` drops `-p`; the port then will not be reachable |
-| `ACCOUNT` | `<project>_g` | `<project>` for CPU work — see [jobs/README.md](jobs/README.md) |
+| `ACCOUNT` | `<project>_g` | `<project>` for CPU work — see [jobs/README.md](../../../perlmutter/jobs/README.md) |
 
 ```bash
 TIME=00:30:00 ./interactive_jupyter.sh                     # a quick look
@@ -364,7 +364,7 @@ the ~55 GB per GPU comes with them.
 | `channel N: open failed: connect failed` | server already gone, or never reachable | Confirm the session is live; read the `[check]` verdict |
 | `The port 8899 is already in use` | `--port-retries=0` doing its job | `PORT=9101` |
 | `chdir to /global/cfs/…: Permission denied` | supplementary groups dropped | `--group-add keep-groups` (the launcher passes it) |
-| `image not known` | image not in the compute-node-visible store | `helpers/update-image.sh idrobolab` on a login node |
+| `image not known` | image not in the compute-node-visible store | `perlmutter/helpers/update-image.sh idrobolab` on a login node |
 | New kernel missing from the hub launcher | hub caches the kernel list | Restart the server from the Hub Control Panel |
 | Hub kernel dies with `image not known`, though `podman-hpc images` lists it on a login node | the hub runs no login shell, so `env.sh` never sets `PODMANHPC_ADDITIONAL_STORES` | Source `env.sh`, then re-install with `--force` — the installer bakes the store path into the kernel `env` |
 | Container kernel dies at startup | `--network host` may not be accepted | `podman-hpc run --rm --network host <image> true` |

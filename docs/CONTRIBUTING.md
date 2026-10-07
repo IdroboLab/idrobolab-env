@@ -9,7 +9,8 @@ keep ourselves: everything in `main` reaches every member's shell and jobs on th
 
 ## How to propose a change
 
-You need access to the repository and an SSH key ([GitHub and git](github.md)).
+You need access to the repository and an SSH key ([GitHub](01-github.md)), and a clone
+of it ([cloning](02-cloning.md)).
 
 1. Start from an up-to-date `main` and make a branch named after the change:
 
@@ -53,8 +54,8 @@ Not sure how to change something, or only want to point out a problem? Open an
   template with a short time limit, and say in the PR what you ran. For a page, follow
   the commands you changed: they must be complete and pasteable.
 - **Keep pages short** and in the order a newcomer needs them. When you rename or add a
-  page, update the links and the table in
-  [perlmutter/docs/README.md](../perlmutter/docs/README.md).
+  page, update the links and the tables in [README.md](README.md) and
+  [perlmutter/README.md](perlmutter/README.md).
 - **`perlmutter/env.sh` is sourced by every member's shell**: it must stay silent, never
   stop a shell (no `exit`, no `set -e`), and keep a setting someone has already chosen.
   Changes here get the closest review.
@@ -65,7 +66,7 @@ Not sure how to change something, or only want to point out a problem? Open an
 ## What never goes into the repository
 
 - Data, simulation output, job logs, images and other large files: they belong on CFS
-  ([Perlmutter page 3](../perlmutter/docs/03-storage-and-transfer.md)).
+  ([Perlmutter page 3](perlmutter/03-storage-and-transfer.md)).
 - Passwords, tokens, private keys, the `sshproxy` key, anything from `~/.ssh`.
 - Personal settings that only make sense for you. Put those in your own `~/.bashrc`.
 
@@ -86,4 +87,4 @@ Actions.
 Code written with a coding agent is welcome; you are responsible for it like any other
 code, so read it before opening the PR. Agents working in this repo follow its
 [AGENTS.md](../AGENTS.md); add rules for them there
-([Perlmutter page 10](../perlmutter/docs/10-coding-agents.md)).
+([Perlmutter page 10](perlmutter/10-coding-agents.md)).

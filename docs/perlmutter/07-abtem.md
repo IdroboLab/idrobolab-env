@@ -12,7 +12,7 @@ run it here:
 The commands assume your clone of this repository at `~/idrobolab-env` and run on a
 login node, unless a comment in the block says otherwise (compute-node shell, or inside
 the container). A small example script,
-[`abtem_gpu_example.py`](../examples/abtem/abtem_gpu_example.py), runs a HAADF-type probe
+[`abtem_gpu_example.py`](../../perlmutter/examples/abtem/abtem_gpu_example.py), runs a HAADF-type probe
 scan of Si on one GPU (`--device cpu` for a CPU test) and writes `haadf.npy` and
 `structure.cif`. Use it to try each route before you run your own script.
 
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
 Submit it with `gpu_2gpu_shared.sbatch` (2 GPUs) or `gpu_4gpu_node.sbatch` (4 GPUs). On
 4 GPUs a frozen-phonon HAADF benchmark ran faster than on 1
-([`verification/multigpu_abtem/`](../verification/multigpu_abtem/)).
+([`verification/multigpu_abtem/`](../../perlmutter/verification/multigpu_abtem/)).
 
 **Your own abTEM branch** replaces the image's copy when you mount a checkout over
 `/opt/src/abTEM` ([page 6](06-containers.md#using-your-own-version-of-a-package)).

@@ -106,4 +106,4 @@ uv pip install -p ~/venvs/nionswift nionswift nionswift-tool nionswift-usim \
 | Swift exits silently, no window | wrong Python (see above) |
 
 Reference, with the maintainer setup and the full troubleshooting chain:
-[`../nionswift-perlmutter-thinlinc.md`](../nionswift-perlmutter-thinlinc.md).
+[`reference/nionswift-perlmutter-thinlinc.md`](reference/nionswift-perlmutter-thinlinc.md).

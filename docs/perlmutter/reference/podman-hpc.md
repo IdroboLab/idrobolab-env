@@ -12,7 +12,7 @@ base image, same versions, same build steps. **Status: built and published.**
 public, and idrobolab has been pulled and **verified end to end on Perlmutter**:
 a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
 invariant to GPU count (job <jobid>; log under
-`verification/multigpu_abtem/`, analysis in
+`perlmutter/verification/multigpu_abtem/`, analysis in
 `shared/containers/x86_64-cuda/idrobolab/README.md`).
 
 ## Fit to Perlmutter
@@ -171,8 +171,8 @@ that explicitly creates `0700` still gets `0700`. The permissions have to be
 re-applied after whatever wrote the store:
 
 ```bash
-helpers/fix-store-perms.sh           # fix $PODMAN_STORE and verify
-helpers/fix-store-perms.sh --check   # report only; exit 1 if broken (cron-safe)
+~/idrobolab-env/perlmutter/helpers/fix-store-perms.sh           # fix $PODMAN_STORE and verify
+~/idrobolab-env/perlmutter/helpers/fix-store-perms.sh --check   # report only; exit 1 if broken (cron-safe)
 ```
 
 `update-image.sh` calls it after every pull, so the normal workflow stays
@@ -238,7 +238,7 @@ ss -ltn | grep 8899
 curl -sI http://localhost:8899/
 ```
 
-`jobs/interactive_jupyter.sh` runs that check automatically when its
+`perlmutter/jobs/interactive_jupyter.sh` runs that check automatically when its
 reachability probe fails, via `srun --overlap` into the live allocation; see
 `jupyter.md` for the whole story.
 
@@ -246,8 +246,8 @@ reachability probe fails, via `srun --overlap` into the live allocation; see
 2026-08-27: with it, a server bound inside the container appears in `ss -ltn`
 on the node with no `-p` at all. Use it where per-launch ports rule out `-p` —
 a Jupyter *kernel*, for instance, whose five ZMQ ports are chosen at start-up
-(`helpers/install-jupyter-kernel.sh`). For a single known port, `-p` is the
-narrower tool and is what `jobs/interactive_jupyter.sh` uses.
+(`perlmutter/helpers/install-jupyter-kernel.sh`). For a single known port, `-p` is the
+narrower tool and is what `perlmutter/jobs/interactive_jupyter.sh` uses.
 
 MPI is unaffected by any of this — `podman-hpc run --mpi` handles rank
 rendezvous itself, and needs no published ports.
@@ -259,7 +259,7 @@ non-existent inside the container, which surfaces as *"not a writable
 location"* from anything that resolves `~`, and quietly sends writes into the
 ephemeral overlay. `-v "$HOME:$HOME"` works because podman resolves the source
 symlink but creates the destination exactly as given. The `add_mount` helper in
-`jobs/*` and `helpers/install-jupyter-kernel.sh` mounts both spellings.
+`perlmutter/jobs/*` and `perlmutter/helpers/install-jupyter-kernel.sh` mounts both spellings.
 
 Two consequences of running as root worth knowing:
 
@@ -284,7 +284,7 @@ sees:
 ssh -N -L 8899:nidXXXXXX:8899 <user>@perlmutter.nersc.gov
 ```
 
-`jobs/interactive_jupyter.sh` does the whole sequence and prints that line
+`perlmutter/jobs/interactive_jupyter.sh` does the whole sequence and prints that line
 with the node filled in.
 
 ## The container runs as root, and that is correct here

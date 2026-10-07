@@ -64,9 +64,9 @@ Notes:
 
 ## 4. One-time: Python environment (uv; do this on a Perlmutter login node)
 
-This directory is part of the group repository `IdroboLab/idrobolab-env`;
+These notes are part of the group repository `IdroboLab/idrobolab-env`;
 everyone works from their own clone at `~/idrobolab-env` (set up in
-[docs/github.md](../docs/github.md)):
+[page 2](../02-shell-setup.md#2-your-clone-of-idrobolab-env)):
 
 ```bash
 git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
@@ -200,7 +200,7 @@ into the project directories; only the `.desktop` entry is per-user,
 because the ThinLinc hosts have their own home directories, separate from
 the Perlmutter global home.
 
-One-shot setup with `helpers/setup-nionswift-launcher.sh`. The
+One-shot setup with `perlmutter/helpers/setup-nionswift-launcher.sh`. The
 same script detects which machine it is on:
 
 ```bash
