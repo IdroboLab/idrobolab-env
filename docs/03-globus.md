@@ -193,7 +193,7 @@ pipx install globus-cli
 ```
 
 (`pipx` itself comes from your package manager or [pipx's installation
-page](https://pipx.pypa.io/stable/installation/). If you already use `uv`, which
+page](https://pipx.pypa.io/stable/how-to/install-pipx.html). If you already use `uv`, which
 [Perlmutter page 5](perlmutter/05-python-uv.md) introduces, `uv tool install globus-cli`
 does the same.) On Perlmutter the CLI is already available: `module load globus-tools`
 ([NERSC](https://docs.nersc.gov/services/globus/)). The commands are the same everywhere:
@@ -212,7 +212,8 @@ globus task wait <task-id>                    # block until it finishes
 Collections are named by their ID (a UUID) here; `globus ls`, `transfer` and the options of
 the table in section 5 are in the [command reference](https://docs.globus.org/cli/reference/).
 As in the documentation's example, write a folder's path with a trailing `/` and add
-`--recursive` to copy folders. The CLI keeps a login token on your machine: don't share it or put it in a repository.
+`--recursive` to copy folders. The CLI keeps a login token on your machine: don't share it
+or put it in a repository.
 
 **NERSC.** The collections, paths, sign-in and sharing rules for our Perlmutter data are in
 [Perlmutter page 3](perlmutter/03-storage-and-transfer.md#globus-large-data-many-files-or-unattended).

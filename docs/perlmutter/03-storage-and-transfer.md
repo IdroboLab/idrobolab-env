@@ -175,18 +175,22 @@ saturate a node there, and do not use the very small `/tmp` for data
 #### From the command line at NERSC
 
 `module load globus-tools` provides the Globus CLI on Perlmutter, used as described on the
-[general page](../03-globus.md#8-the-command-line). Its first use stores a Globus token in
+[general page](../03-globus.md#8-the-command-line). The module also has NERSC's helper
+scripts; their first use stores a Globus token in
 your home directory: never share it, NERSC counts it as your NERSC password
 ([NERSC: Globus](https://docs.nersc.gov/services/globus/)). NERSC's helper script
-`transfer_files.py` copies a list of files; its example, from CFS to Perlmutter scratch:
+`transfer_files.py` copies a list of files; its example, from CFS to Perlmutter scratch,
+first writes the list of what to copy (a folder in the list is copied with everything in it):
 
 ```bash
+module load globus-tools
+ls -d /global/cfs/cdirs/<project>/<dir> > transfer.txt
 transfer_files.py -s dtn -t perlmutter -d /pscratch/sd/<x>/<username>/input_directory -i transfer.txt
 ```
 
 `-s` and `-t` name the source and target (`dtn` and `perlmutter` are shortcuts for the
-collections above), `-d` is the directory on the target, and `-i` is a text file that lists
-the full paths of the files to copy.
+collections above), `-d` is the directory on the target, and `-i` is that list: one full path
+per line, of a file or a folder.
 
 ### HPSS tape archive
 
