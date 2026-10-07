@@ -324,7 +324,7 @@ git clone https://gitlab.com/gpaw/gpaw.git && git -C gpaw checkout <branch>
 
 podman-hpc run --rm --gpu \
     -v $SCRATCH/code/gpaw:/opt/src/gpaw \
-    idrobolab:latest python script.py
+    "$IDROBOLAB_IMAGE" python script.py
 ```
 
 Mount only the repos you want to override. gpaw-weaver and abTEM are pure
