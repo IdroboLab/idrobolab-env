@@ -54,9 +54,8 @@ setup.
 #### Windows
 
 Windows has no built-in rsync, but its OpenSSH client includes `scp`, which does the same
-job for a copy to or from Perlmutter. The commands are the same in Command Prompt and
-PowerShell (`-r` copies a folder with everything in it; use paths relative to the
-current folder):
+job for a copy to or from Perlmutter (`-r` copies a folder with everything in it; use
+paths relative to the current folder):
 
 ```
 scp -r mydata nersc-dtn:/pscratch/sd/<x>/<username>/
@@ -66,10 +65,10 @@ scp -r nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results .
 The first line copies the folder `mydata` into your scratch directory; the second creates
 `results` in the current folder. (NERSC's scp page suggests the graphical WinSCP for
 Windows; the OpenSSH `scp` that comes with Windows works as well.) For rsync, use it
-inside WSL (the macOS and Linux instructions below, with the SSH config entries and an
+inside WSL (the Linux instructions below, with the SSH config entries and an
 `sshproxy` key in WSL's own `~/.ssh`), or use Globus.
 
-#### macOS and Linux
+#### macOS
 
 ```bash
 # laptop -> Perlmutter scratch
@@ -83,6 +82,20 @@ rsync -azPv nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results/ ./resu
 Re-running the same command copies only what changed. The trailing `/` on the source
 means "the contents of"; without it, rsync creates `mydata/mydata`. `scp -r` as above
 works here too.
+
+#### Linux
+
+Same as macOS:
+
+```bash
+# laptop -> Perlmutter scratch
+rsync -azPv mydata/ nersc-dtn:/pscratch/sd/<x>/<username>/mydata/
+
+# Perlmutter project dir -> laptop
+rsync -azPv nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results/ ./results/
+```
+
+The options and the trailing `/` mean the same as under macOS.
 
 ### Globus (large data, many files, or unattended)
 

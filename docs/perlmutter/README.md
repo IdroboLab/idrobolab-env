@@ -62,7 +62,7 @@ Six things to remember:
 | Disk usage | `showquota` |
 | Hours left | <https://iris.nersc.gov> |
 | Go to scratch / group project dir | `cds` / `cdp` |
-| Copy to Perlmutter (on your laptop) | `rsync -azPv data/ nersc-dtn:/pscratch/sd/<x>/<username>/data/` |
+| Copy to Perlmutter (on your laptop) | `rsync -azPv data/ nersc-dtn:/pscratch/sd/<x>/<username>/data/`; on Windows `scp -r data nersc-dtn:/pscratch/sd/<x>/<username>/` ([page 3](03-storage-and-transfer.md#rsync--scp-up-to-about-10-gb)) |
 
 ## Acknowledging NERSC
 
