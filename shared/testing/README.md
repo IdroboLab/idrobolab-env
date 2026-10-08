@@ -1,0 +1,19 @@
+# Running test suites in the idrobolab container
+
+The image has no pytest and none of the test dependencies of the packages it carries.
+`run_pytest.py` installs the test dependencies the project under test declares in its
+`pyproject.toml` (the `test` dependency group, or else the `test` optional dependencies)
+into the throwaway container (pytest alone for a project that declares none), prints which copy of the package Python imports, and runs
+pytest with the arguments it is given. Its docstring explains each step.
+
+On Perlmutter, inside a GPU allocation, for a checkout or worktree `$WT` of abTEM:
+
+```bash
+srun podman-hpc run --rm --group-add keep-groups --gpu -v $SCRATCH:$SCRATCH -v $CFS:$CFS -v $HOME:$HOME \
+    -e PYTHONPATH=$WT --workdir $WT idrobolab:latest \
+    python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short
+```
+
+The working directory is the project (`--workdir $WT`); from anywhere else, pass
+`--project <dir>` before the pytest arguments. With `--project`, pass the test path as an
+absolute path: pytest finds the rootdir and its configuration from it.
