@@ -10,7 +10,7 @@ On Perlmutter, for a checkout or worktree `$WT` of abTEM: first a GPU allocation
 a GPU does not run without one; the shell lands on the compute node), then the run:
 
 ```bash
-salloc -C gpu -q shared_interactive -A <project> -t 00:30:00 -n 1 -c 32 --gpus-per-task=1
+salloc -C gpu -q shared_interactive -A <account> -t 00:30:00 -n 1 -c 32 --gpus-per-task=1
 export WT=<path to the checkout>
 srun podman-hpc run --rm --group-add keep-groups --gpu -v $SCRATCH:$SCRATCH -v $CFS:$CFS -v $HOME:$HOME \
     -e PYTHONPATH=${WT:?} --workdir $WT idrobolab:latest \
