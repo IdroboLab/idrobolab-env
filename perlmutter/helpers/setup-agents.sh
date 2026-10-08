@@ -8,10 +8,10 @@
 #     ~/idrobolab-env/perlmutter/helpers/setup-agents.sh --check   # report only, change nothing
 #     ~/idrobolab-env/perlmutter/helpers/setup-agents.sh --undo    # remove what it added
 #
-# The sources are in perlmutter/agents/: nersc/ (NERSC's files, vendored) and
-# group.md (the group's rules). An agent is handled only if its config directory
-# exists (start it once to create it): ${CLAUDE_CONFIG_DIR:-~/.claude} and
-# ${CODEX_HOME:-~/.codex}.
+# The sources are in perlmutter/agents/: nersc/ (NERSC's files, vendored),
+# group.md (the group's rules) and skills/ (the group's skills, one directory
+# each). An agent is handled only if its config directory exists (start it once
+# to create it): ${CLAUDE_CONFIG_DIR:-~/.claude} and ${CODEX_HOME:-~/.codex}.
 #
 #   Claude Code  CLAUDE.md gets a marked block at the top that imports both files
 #                from this clone, so a `git pull` updates them. Your own text
@@ -22,6 +22,15 @@
 #                heading (above the block, or between it and the heading) moves
 #                below the heading, so nothing you wrote is lost. Re-run after a
 #                `git pull`; --check says when the copy is stale.
+#   Skills       Each skill in skills/ becomes a symlink to this clone, so a
+#                `git pull` updates it: ${CLAUDE_CONFIG_DIR:-~/.claude}/skills/<name>
+#                for Claude Code and ~/.agents/skills/<name> for Codex (its user-level
+#                skills folder, https://developers.openai.com/codex/skills). They are
+#                made only when the agent's config directory exists, and never inside
+#                a git work tree. A link to another clone's skill (for example after you
+#                moved your clone) is replaced; any other link, directory or file of
+#                that name is yours and is left alone, with a warning. --undo removes
+#                the links named like the skill they point to.
 #
 # When your own text or the file's layout changes (not on a plain refresh of the
 # managed text) it first saves a copy, <file>.bak-<UTC time>, and prints the path;
@@ -30,8 +39,8 @@
 # twice) is refused, in every mode, with the line numbers. A file inside a git
 # work tree (after resolving symlinks) is never written: for Claude the lines to
 # add are printed; use a config dir outside the tree for Codex. --undo removes
-# the block or managed part and keeps everything else. --check exits 1 when
-# something needs action.
+# the block or managed part and the skill links, and keeps everything else.
+# --check exits 1 when something needs action.
 set -euo pipefail
 
 CHECK=0 UNDO=0
@@ -52,11 +61,13 @@ AGENTS=$(dirname "$HELPERS")/agents
 NERSC_CLAUDE=$AGENTS/nersc/claude/.claude/CLAUDE.md
 NERSC_CODEX=$AGENTS/nersc/codex/.codex/AGENTS.md
 GROUP=$AGENTS/group.md
+SKILLS=$AGENTS/skills
 
 CLAUDE_DIR=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 CODEX_DIR=${CODEX_HOME:-$HOME/.codex}
 CLAUDE_FILE=$CLAUDE_DIR/CLAUDE.md
 CODEX_FILE=$CODEX_DIR/AGENTS.md
+CODEX_SKILLS=$HOME/.agents/skills   # Codex's user-level skills folder, not under CODEX_HOME
 
 CL_BEGIN='# >>> idrobolab-env agent rules >>>'
 CL_END='# <<< idrobolab-env agent rules <<<'
@@ -68,6 +79,7 @@ MAX_BYTES=32768   # Codex reads at most 32 KiB of AGENTS.md text in total
 for f in "$NERSC_CLAUDE" "$NERSC_CODEX" "$GROUP"; do
     [ -f "$f" ] || { echo "missing $f: is this a complete clone?" >&2; exit 1; }
 done
+[ -d "$SKILLS" ] || { echo "missing $SKILLS: is this a complete clone?" >&2; exit 1; }
 
 # warn counts a problem; more continues its message.
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }
@@ -316,15 +328,68 @@ codex() {
     fi
 }
 
+# --- Skills ------------------------------------------------------------------
+# $1 = an agent's skills directory. Each directory of skills/ is linked into it
+# under its own name. A link to any clone of this repo's skill (target ending in
+# /perlmutter/agents/skills/<name>, whichever way the clone's path is spelled or
+# wherever it was) is ours; anything else of that name is the user's.
+skill_links() {
+    local dir=$1 src name link target n=0 up=$1
+    if [ "$UNDO" = 1 ]; then
+        for link in "$dir"/*; do
+            [ -L "$link" ] || continue
+            case $(readlink "$link") in
+                */perlmutter/agents/skills/"${link##*/}") rm "$link"; act "removed the skill link $(tilde "$link")"; n=$((n + 1)) ;;
+            esac
+        done
+        [ "$n" -gt 0 ] || ok "no skill links to remove"
+        return
+    fi
+    while [ ! -d "$up" ]; do up=$(dirname "$up"); done
+    if in_git_tree "$up/x"; then
+        if [ "$dir" = "$CODEX_SKILLS" ]; then
+            warn "$(tilde "$dir") lies inside a git work tree (your \$HOME?), so no skill links are made"
+            more "link the skills by hand with ln -s (page 10 of the docs says how)"
+        else
+            warn "$(tilde "$dir") lies inside a git work tree, so no skill links are made: use a config dir outside it"
+        fi
+        return
+    fi
+    for src in "$SKILLS"/*/; do
+        src=${src%/}; name=${src##*/}; link=$dir/$name; target=
+        if [ -L "$link" ]; then
+            target=$(readlink "$link")
+            if [ "$(readlink -f -- "$link")" = "$(readlink -f -- "$src")" ]; then ok "skill $name linked"; continue; fi
+            case $target in
+                */perlmutter/agents/skills/"$name") ;;
+                *) warn "skill $name: $(tilde "$link") is your own link (to $target), so it is left alone"
+                   more "rename or remove it to use the group's skill"
+                   continue ;;
+            esac
+        elif [ -e "$link" ]; then
+            warn "skill $name: $(tilde "$link") is your own, so it is left alone"
+            more "rename or remove it to use the group's skill"
+            continue
+        fi
+        if [ "$CHECK" = 1 ]; then
+            warn "skill $name: $([ -n "$target" ] && echo "link points to $target" || echo "not linked") (run without --check)"
+            continue
+        fi
+        mkdir -p "$dir"
+        ln -sfn "$src" "$link"
+        act "skill $name: $(tilde "$link") -> $(tilde "$src")${target:+ (replaced a link to $target)}"
+    done
+}
+
 # --- main --------------------------------------------------------------------
 echo "idrobolab-env coding-agent setup"
 [ "$CHECK" = 1 ] && echo "(--check: reporting only, nothing will be changed)"
 echo
 handled=0
-if [ -d "$CLAUDE_DIR" ]; then claude; handled=1
+if [ -d "$CLAUDE_DIR" ]; then claude; skill_links "$CLAUDE_DIR/skills"; handled=1
 else echo "Claude Code: $(tilde "$CLAUDE_DIR") not found, skipped; start Claude Code once and re-run"; fi
 echo
-if [ -d "$CODEX_DIR" ]; then codex; handled=1
+if [ -d "$CODEX_DIR" ]; then codex; skill_links "$CODEX_SKILLS"; handled=1
 else echo "Codex: $(tilde "$CODEX_DIR") not found, skipped; start Codex once and re-run"; fi
 echo
 if [ "$handled" = 0 ]; then
