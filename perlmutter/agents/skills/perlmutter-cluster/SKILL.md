@@ -108,6 +108,10 @@ same pull command works on both clusters).
 - **`salloc` without a command opens the shell on the compute node** (confirmed 2026-10-06);
   `salloc <command>` runs the command on the login node, so a script started
   that way reaches the allocation only through `srun`. `exit` releases the allocation.
+- **`srun` on a GPU (`podman-hpc run --gpu`, `--gpus`) needs an allocation**: from a login
+  shell it does not run. Give the user the `salloc` line with every such `srun` command; the
+  lines are in `docs/perlmutter/04-jobs.md`, with `<account>` the group's GPU account
+  (`<project>_g`).
 - **Interactive first.** For any check short enough to want the answer immediately (a
   preflight, a single test file, a small correctness script — under about an hour), use
   `salloc` with `shared_interactive` and the explicit counts above (unless the check needs

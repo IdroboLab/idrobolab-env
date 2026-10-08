@@ -70,12 +70,18 @@ pytest's `rootdir` comes from the test path argument, not from the shell's worki
 pass the absolute, in-container test path (`$WT/test/`, `/opt/src/<package>/test/...`). A
 wrong-looking rootdir is not fixed by `--workdir` or by `cd`.
 
-abTEM on Perlmutter, inside an allocation, for a worktree `$WT` (`${WT:?}` stops the command
-when `WT` is unset; the README in `shared/testing/` says why):
+abTEM on Perlmutter for a worktree `$WT`, first the allocation (the shell lands on the compute
+node), then the run (`${WT:?}` stops the command when `WT` is unset; without it `--workdir`
+vanishes, podman takes the image name for the working directory and pulls `python:latest`):
 
 ```bash
-srun podman-hpc run --rm --group-add keep-groups --gpu -v $CFS:$CFS -v $SCRATCH:$SCRATCH -v $PSCRATCH:$PSCRATCH -v $HOME:$HOME -e PYTHONPATH=${WT:?} --workdir $WT idrobolab:latest python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short 2>&1 | tail -30
+salloc -C gpu -q shared_interactive -A <account> -t 00:30:00 -n 1 -c 32 --gpus-per-task=1
+srun podman-hpc run --rm --group-add keep-groups --gpu -v $CFS:$CFS -v $SCRATCH:$SCRATCH -v $HOME:$HOME -e PYTHONPATH=${WT:?} --workdir $WT idrobolab:latest python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short 2>&1 | tail -30
 ```
+
+The repo's sbatch templates (`perlmutter/jobs/`) pass no `PYTHONPATH`, so a batch run through
+them tests the image's own copy, unless the template's `MOUNTS` line binds a checkout over
+`/opt/src/<name>`; the import path `run_pytest.py` prints shows which copy ran.
 
 ## Versus a uv environment with newer CuPy
 
