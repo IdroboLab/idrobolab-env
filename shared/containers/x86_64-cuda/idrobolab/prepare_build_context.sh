@@ -5,14 +5,17 @@
 # Unlike another image's recipe, requirements-idrobolab.txt is HAND-MAINTAINED
 # (its packages — nionswift, ptyrad, hiphive, pymatgen, fairchem, … — are not
 # in the ROCm dev venv, so there is nothing to scrape). This script only stages
-# the three editable source trees the image installs from /opt/src:
-#   gpaw (its MASTER branch, via git archive — not the working tree;
-#   GPAW_REF=<ref> overrides), gpaw-weaver, abTEM.
+# the three editable source trees the image installs from /opt/src, each from
+# committed files via git archive, never from the working tree:
+#   gpaw (its MASTER branch; GPAW_REF=<ref> overrides), and gpaw-weaver and
+#   abTEM (the commit each dev checkout has checked out).
+# The image is public, so nothing untracked may reach it: a working tree holds
+# agent session data (.claude/), other branches' worktrees (.worktrees/),
+# caches and local scratch files.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 CODE_DIR=${CODE_DIR:-/workspaces/code}
-EXCLUDES=(.git build __pycache__ '*.so' '*.egg-info' .venv .pytest_cache ./run '*.code-workspace')
 
 mkdir -p src
 
@@ -31,21 +34,12 @@ echo "gpaw staged from ${GPAW_REF} ($(git -C "${CODE_DIR}/gpaw" log -1 --format=
 for repo in gpaw-weaver abTEM; do
     rm -rf "src/${repo}"
     mkdir -p "src/${repo}"
-    tar_excludes=()
-    for pat in "${EXCLUDES[@]}"; do
-        tar_excludes+=(--exclude="$pat")
-    done
-    tar -C "${CODE_DIR}/${repo}" "${tar_excludes[@]}" -cf - . \
-        | tar -C "src/${repo}" -xf -
-    # The tar captures the WORKING TREE, so say exactly what goes into the
-    # next build: current branch, commit, and whether uncommitted changes ride
-    # along (untracked files are included too, hence plain --porcelain).
+    git -C "${CODE_DIR}/${repo}" archive HEAD | tar -xf - -C "src/${repo}"
     branch=$(git -C "${CODE_DIR}/${repo}" branch --show-current)
     dirty=$(git -C "${CODE_DIR}/${repo}" status --porcelain)
-    echo "${repo} staged from working tree on branch '${branch:-<detached HEAD>}'" \
-        "($(git -C "${CODE_DIR}/${repo}" log -1 --format='%h %cs'))${dirty:+ — WARNING: includes uncommitted/untracked changes}"
+    echo "${repo} staged from HEAD of branch '${branch:-<detached HEAD>}'" \
+        "($(git -C "${CODE_DIR}/${repo}" log -1 --format='%h %cs'))${dirty:+ — note: uncommitted changes and untracked files in the checkout are NOT included}"
 done
-find src -xtype l -delete   # drop symlinks left dangling by the excludes
 
 echo "Build context staged under ./src ($(du -sh src | cut -f1))"
 echo "Next: podman build -t idrobolab:latest .   (or ./publish.sh)"

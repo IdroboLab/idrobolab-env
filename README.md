@@ -34,6 +34,20 @@ Every change reaches `main` through a pull request, which an admin reviews and m
 Fixes to the docs are as welcome as fixes to the scripts: see
 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
+## License
+
+Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/`.
+
+- The scripts, job templates, container recipe, agent instructions and everything else
+  outside `docs/` and `perlmutter/agents/nersc/` are under the
+  [BSD 3-Clause License](LICENSE).
+- The documentation in `docs/` is under
+  [Creative Commons Attribution 4.0 International](docs/LICENSE) (CC BY 4.0). The
+  commands and code snippets in it may also be used under the BSD 3-Clause License, so
+  they can be copied into scripts without attribution.
+- The files in `perlmutter/agents/nersc/` are NERSC's and keep their own
+  [BSD 3-Clause License](perlmutter/agents/nersc/LICENSE).
+
 ## History
 
 This repo was split out of the `hpcenvs` repo: its Perlmutter and Delta directories moved

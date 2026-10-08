@@ -27,7 +27,7 @@ there is **no** `data.pyg.org` companion-wheel step. If you ever need torch
 | `Dockerfile` | The recipe (base: NGC `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04`) |
 | `requirements-idrobolab.txt` | Curated Python stack — **hand-maintained** (not scraped from a dev venv) |
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
-| `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/` |
+| `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`) |
 | `publish.sh` | Build + push to `ghcr.io/idrobolab/idrobolab` |
 
 ### Multi-GPU abTEM (dask-cuda)
@@ -49,8 +49,10 @@ build fails loudly if the install moves `torch` off the fairchem 2.8 ceiling.
 
 **Editable** installs from `/opt/src` (bind a cluster checkout over
 `/opt/src/<name>` to run any branch, as in another image): **gpaw** (vanilla
-`master`, staged from the committed tree by `prepare_build_context.sh`;
-`GPAW_REF=<ref>` overrides), **gpaw-weaver**, **abTEM**. Everything else comes
+`master`; `GPAW_REF=<ref>` overrides), **gpaw-weaver** and **abTEM** (the commit
+each dev checkout has checked out), all three staged from committed files by
+`prepare_build_context.sh` (its header says why): commit a change, and `git add`
+a new file, before building if it should be in the image. Everything else comes
 from the pinned requirements. PAW datasets come from the `gpaw-data` pip
 package.
 
