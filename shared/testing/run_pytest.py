@@ -43,6 +43,9 @@ def main(argv):
     project = Path.cwd()
     if argv[:1] == ["--project"]:
         project, argv = Path(argv[1]).resolve(), argv[2:]
+    if not (project / "pyproject.toml").is_file():
+        sys.exit(f"run_pytest.py: no pyproject.toml in {project}. Run from the project "
+                 "(--workdir) or pass --project DIR, and check the checkout is bind-mounted.")
     pyproject = tomllib.loads((project / "pyproject.toml").read_text())
 
     requirements = group_requirements(pyproject.get("dependency-groups", {}), "test")
