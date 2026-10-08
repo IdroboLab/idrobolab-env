@@ -70,10 +70,11 @@ pytest's `rootdir` comes from the test path argument, not from the shell's worki
 pass the absolute, in-container test path (`$WT/test/`, `/opt/src/<package>/test/...`). A
 wrong-looking rootdir is not fixed by `--workdir` or by `cd`.
 
-abTEM on Perlmutter, inside an allocation, for a worktree `$WT`:
+abTEM on Perlmutter, inside an allocation, for a worktree `$WT` (`${WT:?}` stops the command
+when `WT` is unset; the README in `shared/testing/` says why):
 
 ```bash
-srun podman-hpc run --rm --group-add keep-groups --gpu -v $CFS:$CFS -v $SCRATCH:$SCRATCH -v $PSCRATCH:$PSCRATCH -v $HOME:$HOME -e PYTHONPATH=$WT --workdir $WT idrobolab:latest python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short 2>&1 | tail -30
+srun podman-hpc run --rm --group-add keep-groups --gpu -v $CFS:$CFS -v $SCRATCH:$SCRATCH -v $PSCRATCH:$PSCRATCH -v $HOME:$HOME -e PYTHONPATH=${WT:?} --workdir $WT idrobolab:latest python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short 2>&1 | tail -30
 ```
 
 ## Versus a uv environment with newer CuPy
