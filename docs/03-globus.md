@@ -199,7 +199,7 @@ example `~/,0,1` for your home folder, writable and not shareable, then `-stop` 
   Personal collection needs a subscription, and so, according to that FAQ, does a transfer
   between two Personal collections (it needs a guest collection on one of them); another
   Globus FAQ describes that point differently. To move data between two laptops, copy
-  through a site's collection, or ask the maintainer.
+  through a site's collection, or ask an admin.
 
 ## 7. Sharing data with someone
 

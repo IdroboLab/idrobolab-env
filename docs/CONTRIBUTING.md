@@ -51,7 +51,7 @@ clone (`cd` into it) and leave out `-C ~/idrobolab-env`, or write the clone's fo
    ```
 
 Not sure how to change something, or only want to point out a problem? Open an
-**issue** on GitHub instead, or ask the maintainer.
+**issue** on GitHub instead, or ask an admin.
 
 ## What makes a change easy to merge
 

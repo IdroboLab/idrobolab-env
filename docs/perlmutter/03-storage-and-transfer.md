@@ -176,7 +176,7 @@ NERSC supports sharing through **guest collections** (Globus's *guest collection
   and home cannot.
 - The people you share with need a Globus account but **not** a NERSC account.
 
-To share: tell the maintainer (what you share through a guest collection becomes readable, outside
+To share: tell an admin (what you share through a guest collection becomes readable, outside
 the group, by the people you choose), create the
 directory `gsharing` in the project directory, and
 [open a ticket](https://help.nersc.gov/) with its path: NERSC has to update its

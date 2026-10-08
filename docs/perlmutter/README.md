@@ -83,5 +83,5 @@ BES-ERCAP0038959 is the award for project <project>. Source:
 - NERSC documentation: <https://docs.nersc.gov>
 - NERSC tickets (account problems, lost MFA token, broken nodes): <https://help.nersc.gov>
 - Outages and maintenance: <https://www.nersc.gov/live-status/motd/>
-- Anything about the group setup (container, templates, Nion Swift): ask the maintainer, or open
+- Anything about the group setup (container, templates, Nion Swift): ask an admin, or open
   an issue or pull request on `idrobolab-env`.

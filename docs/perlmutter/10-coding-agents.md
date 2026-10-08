@@ -109,7 +109,7 @@ approval_policy = "on-request"
   move or change their permissions.
 - **Secrets and data.** Never paste passwords, tokens or private keys into a prompt.
   NERSC advises against sending unpublished research data to external AI services;
-  when in doubt, ask the maintainer before an agent reads collaborators' data.
+  when in doubt, ask an admin before an agent reads collaborators' data.
 - **Notes outlive the conversation.** Agents forget long sessions. Have them write
   plans and findings into Markdown files in the project, and commit those with git.
 - **Check the results.** Review diffs before committing, and check numbers against
