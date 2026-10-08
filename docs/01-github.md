@@ -71,7 +71,7 @@ installed; if not, install your distribution's OpenSSH client package.
    authentication** → **Enable two-factor authentication**. Scan the QR code with an
    authenticator app, enter the six-digit code, and store the recovery codes somewhere safe:
    they get you back into your account if you lose the phone.
-3. Send the maintainer your GitHub username. He adds you to the **IdroboLab** organisation, and with
+3. Send an admin your GitHub username. They add you to the **IdroboLab** organisation, and with
    it to `idrobolab-env`, which is private. GitHub emails you an invitation with a link;
    click it to accept.
 

@@ -100,7 +100,7 @@ Commit one logical change at a time, and say in the message what and why. To cha
 Analysis code, job scripts and notes belong in git: it is your history, your backup and
 the way a colleague gets the same code. Create the repository on GitHub (profile picture →
 **Your repositories** → **New**; choose **Private** unless you intend to publish; the
-group's repositories under IdroboLab are created after asking the maintainer), then put your folder
+group's repositories under IdroboLab are created after asking an admin), then put your folder
 in it. First go into the folder:
 
 ### Windows
@@ -170,4 +170,4 @@ it by its exact name, which avoids the `.txt` extension that Notepad's Save dial
 add.
 
 `git status` shows what is not yet in git; check it before every `git add`. If a large
-file or a secret has already been committed, stop and ask the maintainer before pushing.
+file or a secret has already been committed, stop and ask an admin before pushing.
