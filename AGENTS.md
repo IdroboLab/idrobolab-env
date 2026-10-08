@@ -73,5 +73,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   Other branches run by a bind mount over `/opt/src/<name>`.
 - MPI stays MPICH-ABI (`libmpi.so.12`). The image is x86_64-cuda: never point it, or
   anything compiled in it, at another architecture.
+- The image has no test tooling: test suites run through `shared/testing/run_pytest.py`, which
+  installs the project's declared test dependencies into the throwaway container.
 - Record the image digest (`podman-hpc images --digests` on Perlmutter, `sha256sum` of the
   `.sif` on Delta) with campaign results.
