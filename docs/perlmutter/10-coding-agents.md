@@ -70,6 +70,19 @@ every `git pull` of `~/idrobolab-env`:
   resolved) is never written: for Claude the script prints the lines to add; for Codex
   use a `CODEX_HOME` outside the tree. `--undo` removes the block or managed part and
   keeps everything else.
+- **Skills:** the script also links the group's agent skills,
+  [`perlmutter/agents/skills/`](../../perlmutter/agents/skills/) (`perlmutter-cluster`:
+  Perlmutter gotchas; `idrobolab-container`: using the group image), into the agent's
+  skills folder: `~/.claude/skills/<name>` (or under `$CLAUDE_CONFIG_DIR`) for Claude
+  Code, `~/.agents/skills/<name>` for Codex
+  ([Codex skills](https://developers.openai.com/codex/skills)). Each is a symlink into
+  your clone, so a `git pull` updates it. They are made only for an agent whose config
+  directory exists, and never inside a git work tree. A link to another clone's skill (for
+  example after you moved your clone) is replaced; any other link, directory or file of
+  that name is yours and is left alone, with a warning. `--undo` removes the links named
+  like the skill they point to. If your `$HOME` is a git work tree (dotfiles), Codex's
+  folder is refused: link the skills by hand, e.g.
+  `mkdir -p ~/.agents/skills && ln -s ~/idrobolab-env/perlmutter/agents/skills/* ~/.agents/skills/`.
 - Restart the agent afterwards.
 
 For Codex, NERSC recommends this `~/.codex/config.toml`:

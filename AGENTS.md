@@ -56,8 +56,11 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 ## Agent instructions (perlmutter/agents/)
 
 `perlmutter/agents/` holds the rules `helpers/setup-agents.sh` installs for members' agents
-(`group.md`); its vendored `nersc/` files change only through `sync-nersc.sh` or the
-`nersc-agents-sync` workflow, never by hand.
+(`group.md`) and the skills it links into their skills folders (`skills/<name>/SKILL.md`: the
+directory name is the skill's `name`, the `description` stays under 1024 characters and
+carries the trigger words, no reference to private skills or to files outside the clone); its
+vendored `nersc/` files change only through `sync-nersc.sh` or the `nersc-agents-sync`
+workflow, never by hand.
 
 ## The idrobolab container recipe
 

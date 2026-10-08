@@ -74,7 +74,8 @@ and after your first login (which creates `~/.codex`):
 ```
 
 Your own preferences always go **below the `## Local additions` heading**. Codex cannot
-import files, so run the script again after each `git pull` of `~/idrobolab-env`.
+import files, so run the script again after each `git pull` of `~/idrobolab-env`. It also
+links the group's skills into `~/.agents/skills`, where Codex looks for personal skills.
 [Page 10](10-coding-agents.md#instructions-three-layers) describes what it does, for
 both agents.
 
