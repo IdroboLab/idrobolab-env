@@ -59,6 +59,8 @@ for d in "${folders[@]}"; do
     list+=("$d")
 done
 
+tmp=$out.tmp.$$
+trap 'rm -f "$tmp"' EXIT
 {
     echo '{'
     echo '  "folders": ['
@@ -90,7 +92,13 @@ done
     echo '    }'
     echo '  }'
     echo '}'
-} > "$out"
+} > "$tmp" 2>/dev/null || true
+# A full quota or a read-only directory leaves no file, or a cut-off one.
+if [ "$(tail -n 1 "$tmp" 2>/dev/null)" != "}" ]; then
+    echo "cannot write $out (quota or permissions?)" >&2
+    exit 1
+fi
+mv -f "$tmp" "$out"
 
 echo "wrote $out:"
 printf '  %s\n' "${list[@]}"
