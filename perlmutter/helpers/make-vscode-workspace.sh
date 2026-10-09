@@ -16,10 +16,10 @@
 # list of past sessions to the FIRST folder of the window, so every window opened from
 # this file shows the same sessions. A bare folder gives its own list.
 #
-# Shared filesystems are protected: the workspace tells VS Code not to watch the CFS
-# tree, any DIR or $SCRATCH (the explorer then needs its refresh button to show new
-# files), not to watch the caches under $HOME, and not to follow symlinks when
-# searching.
+# The workspace tells VS Code not to watch the CFS tree, any DIR or $SCRATCH (the
+# explorer then needs its refresh button to show new files), nor the cache folders under
+# $HOME, and not to follow symlinks when searching. It does not stop Find in Files or
+# Quick Open from walking those folders when used.
 set -euo pipefail
 
 out=$HOME/perlmutter.code-workspace
@@ -34,6 +34,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 if [ "$if_absent" = 1 ] && [ -e "$out" ]; then echo "$out exists, left alone"; exit 0; fi
+[ -d "$(dirname -- "$out")" ] || { echo "no such directory for $out" >&2; exit 1; }
 
 # Quote $1 as a JSON string.
 js() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
@@ -41,17 +42,20 @@ js() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
 folders=("$HOME")
 cfs=/global/cfs/cdirs/${NERSC_PROJECT:-<project>}
 if [ -d "$cfs" ]; then folders+=("$cfs"); fi
-for d in "$@"; do folders+=("${d%/}"); done
+# The folders you name are written as absolute paths: VS Code resolves a relative one
+# against the workspace file, not against where you ran this.
+for d in "$@"; do folders+=("$(realpath -s -- "$d")"); done
 scratch=${SCRATCH:-${PSCRATCH:-}}
-if [ -n "$scratch" ]; then folders+=("${scratch%/}"); fi
+if [ -n "$scratch" ] && [ -d "$scratch" ]; then scratch=${scratch%/}; folders+=("$scratch"); else scratch=; fi
 
 # Reject missing folders and drop repeats (by resolved path).
-list=() seen=" "
+nl=$'\n'
+list=() seen=$nl
 for d in "${folders[@]}"; do
     [ -d "$d" ] || { echo "not a directory: $d" >&2; exit 1; }
     real=$(readlink -f "$d")
-    case "$seen" in *" $real "*) continue ;; esac
-    seen+="$real "
+    case "$seen" in *"$nl$real$nl"*) continue ;; esac
+    seen+="$real$nl"
     list+=("$d")
 done
 
@@ -62,7 +66,7 @@ done
         d=${list[i]}
         name=home sep=,
         [ "$i" -gt 0 ] && name=$(basename "$d")
-        [ -n "$scratch" ] && [ "$d" = "${scratch%/}" ] && name=scratch
+        [ -n "$scratch" ] && [ "$d" = "$scratch" ] && name=scratch
         [ "$i" -eq $((${#list[@]} - 1)) ] && sep=
         echo "    { \"path\": $(js "$d"), \"name\": $(js "$name") }$sep"
     done

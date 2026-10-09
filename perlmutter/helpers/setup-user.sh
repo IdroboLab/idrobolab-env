@@ -193,8 +193,11 @@ if [ -e "$WORKSPACE" ]; then
 elif [ "$CHECK" = 1 ]; then
     warn "$WORKSPACE is missing (run without --check to write it)"
 else
-    "$HELPERS/make-vscode-workspace.sh" --if-absent | sed 's/^/  /'
-    act "open it in VS Code with File > Open Workspace from File ($DOCS/11-vscode.md)"
+    if "$HELPERS/make-vscode-workspace.sh" --if-absent | sed 's/^/  /'; then
+        act "open it in VS Code with File > Open Workspace from File ($DOCS/11-vscode.md)"
+    else
+        warn "could not write $WORKSPACE (see above); run $HELPERS/make-vscode-workspace.sh by hand"
+    fi
 fi
 
 # Coding-agent rules: only for users who ran setup-agents.sh (its marker is in
