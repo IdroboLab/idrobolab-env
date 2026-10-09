@@ -7,6 +7,8 @@
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh           # do it
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --check   # report only, change nothing
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo    # remove the block it added
+#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --vscode-workspace
+#                                                               # also write the VS Code workspace
 #
 # The block sources env.sh from the clone the script runs from. A block written
 # from another checkout is reported, not replaced: --undo, then run it again.
@@ -16,16 +18,18 @@
 #   2. links the project's shared Jupyter kernels into your own kernel dir
 #   3. checks the things that silently break later: project group membership,
 #      whether the shared image store is actually readable by you, $SCRATCH
-#   4. writes ~/perlmutter.code-workspace for VS Code (home, the project's CFS
-#      tree and $SCRATCH in one window), unless the file exists; --undo keeps it
+#   4. only with --vscode-workspace: writes ~/perlmutter.code-workspace for VS Code
+#      (home, the project's CFS tree and $SCRATCH in one window) unless the file
+#      exists; otherwise just reports whether it is there. --undo keeps the file
 #   5. if you ran setup-agents.sh, shows its --check result
 set -euo pipefail
 
-CHECK=0 UNDO=0
+CHECK=0 UNDO=0 VSCODE=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --check)   CHECK=1;   shift ;;
         --undo)    UNDO=1;    shift ;;
+        --vscode-workspace) VSCODE=1; shift ;;
         -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
         *) echo "unknown option: $1 (try --help)" >&2; exit 1 ;;
     esac
@@ -190,14 +194,14 @@ echo "4. VS Code workspace"
 WORKSPACE="$HOME/perlmutter.code-workspace"
 if [ -e "$WORKSPACE" ]; then
     ok "$WORKSPACE exists (make-vscode-workspace.sh rewrites it; setup-user.sh never does)"
-elif [ "$CHECK" = 1 ]; then
-    warn "$WORKSPACE is missing (run without --check to write it)"
-else
+elif [ "$VSCODE" = 1 ] && [ "$CHECK" = 0 ]; then
     if "$HELPERS/make-vscode-workspace.sh" --if-absent | sed 's/^/  /'; then
         act "open it in VS Code with File > Open Workspace from File ($DOCS/11-vscode.md)"
     else
         warn "could not write $WORKSPACE (see above); run $HELPERS/make-vscode-workspace.sh by hand"
     fi
+else
+    ok "no VS Code workspace file (optional: run setup-user.sh --vscode-workspace)"
 fi
 
 # Coding-agent rules: only for users who ran setup-agents.sh (its marker is in
