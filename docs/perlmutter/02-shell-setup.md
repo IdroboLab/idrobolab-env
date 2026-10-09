@@ -96,6 +96,9 @@ The script:
    ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
    that you can read the shared container store, and that `$SCRATCH` exists.
+4. Writes `~/perlmutter.code-workspace`, the VS Code workspace with your home directory,
+   the project's CFS tree and `$SCRATCH` ([page 11](11-vscode.md#4-one-window-for-home-projects-and-scratch)),
+   unless that file already exists.
 
 On the first run, a warning that `PODMANHPC_ADDITIONAL_STORES` is unset is expected:
 the new settings only apply to shells started afterwards. Log out, log in again, and
@@ -105,7 +108,8 @@ confirm with `--check`, which only reports and changes nothing:
 ~/idrobolab-env/perlmutter/helpers/setup-user.sh --check
 ```
 
-Re-run the script any time; it is safe to repeat. `--undo` removes the block again.
+Re-run the script any time; it is safe to repeat. `--undo` removes the block again
+(it leaves the workspace file, which is yours).
 
 **If you used the old shared checkout** (`/global/cfs/cdirs/<project>/env`), the script
 reports that your `~/.bashrc` block points "somewhere else". Switch it to your clone:

@@ -35,10 +35,10 @@ needs setting up for a login node.
 The login node is shared with every other user, and the VS Code server and every
 extension you install on Perlmutter run on it. So:
 
-- **Open a project folder, not your whole home directory or `/global/cfs/cdirs/<project>`.**
-  VS Code watches and searches every file under the folder you open. To see your home
-  directory, a project and `$SCRATCH` in one window, use a workspace file that turns the
-  watching off for the big folders ([§4](#4-one-window-for-home-projects-and-scratch)).
+- **Open the workspace file (§4), or a project folder; do not open your home directory or
+  `/global/cfs/cdirs/<project>` as a bare folder.** VS Code watches and searches every file
+  under a folder you open. The workspace file shows both, with the watching turned off
+  for the large folders.
 - **Run computations on a compute node** (§3), not in the VS Code terminal on a login
   node.
 - **Close the remote window when you are done** (File → Close Remote Connection), rather
@@ -134,17 +134,23 @@ for a second allocation, charged on top of the first.
 
 ## 4. One window for home, projects and scratch
 
-A workspace file lists several folders for one window. Make yours on a login node, naming
-the project folders you want:
+`setup-user.sh` ([page 2](02-shell-setup.md#4-group-environment)) writes
+`~/perlmutter.code-workspace`, a workspace file that shows three folders in one window:
+your home directory, `/global/cfs/cdirs/<project>` (the whole project tree) and `$SCRATCH`.
+Open it with **File → Open Workspace from File…** instead of **Open Folder…**; VS Code
+remembers it under **File → Open Recent**. A setup run before this file existed writes it
+when you run `setup-user.sh` again.
+
+To change the folders, for example to add a folder outside these three, rewrite the file
+with the folders you want added:
 
 ```bash
-~/idrobolab-env/perlmutter/helpers/make-vscode-workspace.sh /global/cfs/cdirs/<project>/projects/<project>
+~/idrobolab-env/perlmutter/helpers/make-vscode-workspace.sh /path/to/folder
 ```
 
-This writes `~/perlmutter.code-workspace` with your home directory, the folders you
-named and `$SCRATCH`, in that order. Open it with **File → Open Workspace from File…**
-instead of **Open Folder…**; VS Code remembers it under **File → Open Recent**. Re-run the
-script after changing the folders (it overwrites the file).
+It always writes home first, then the project tree, then the folders you name, then
+`$SCRATCH`. `setup-user.sh` never replaces an existing file, so edits you make by hand
+stay until you run the script above.
 
 - **Why home comes first.** The Claude Code extension takes its working directory, its
   memory and its list of past sessions from the **first** folder of the window. Every
@@ -152,8 +158,8 @@ script after changing the folders (it overwrites the file).
   a bare project folder shows that folder's own, different list. Sessions you start with
   `claude` in a terminal belong to the folder you started them in: start them in `~` to
   see them in the window too.
-- **What it turns off.** The file tells VS Code not to watch the project folders and
-  `$SCRATCH` (they are large, shared filesystems), nor `~/.cache`, `~/.local`,
+- **What it turns off.** The file tells VS Code not to watch the project tree, any folder
+  you add and `$SCRATCH` (they are large, shared filesystems), nor `~/.cache`, `~/.local`,
   `~/.vscode-server` and similar, and not to follow symlinks when searching. The
   consequence: the explorer does not pick up files created by jobs on its own, so use its
   refresh button. Searching a large folder is still slow; search inside a subfolder.
