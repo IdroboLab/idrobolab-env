@@ -4,12 +4,14 @@
 #
 # It detects which machine it is on:
 #   1. on a Perlmutter login node (MAINTAINER, once): installs the shared job
-#      script, desktop entry, and icon into the project directories (§5.1);
+#      script, desktop entry, and icons into the project directories, and the
+#      command nionswift-idrobolab, a link to the job script (§5.1);
 #   2. on a ThinLinc host (EACH group member, once): sets up ssh auth, copies
 #      the desktop entry + icon from the shared location into the ThinLinc
 #      home, adds a terminal launcher for the ThinLinc host, and links both
 #      into the folder ~/Desktop/IdroboLab, which survives the reset of
-#      ~/Desktop at a new session (§5.2, §5.4).
+#      ~/Desktop at a new session, and gives that folder the group logo
+#      (§5.2, §5.4).
 #
 # Idempotent — safe to re-run after changing the knobs below (or the
 # NIONSWIFT_* environment variables of the same names).
@@ -30,14 +32,18 @@ SALLOC_OPTS="${NIONSWIFT_SALLOC_OPTS:-}"
 BIN_DIR="/global/common/software/${ACCOUNT}/bin"
 SHARE_DIR="/global/common/software/${ACCOUNT}/share/nionswift"
 JOB="$BIN_DIR/nionswift-job.sh"
+COMMAND_LINK="$BIN_DIR/nionswift-idrobolab"
 DESKTOP_SRC="$SHARE_DIR/nionswift-perlmutter.desktop"
 ICON_SRC="$SHARE_DIR/nionswift.png"
+FOLDER_ICON_SRC="$SHARE_DIR/idrobolab-folder.png"
+FOLDER_ICON_ASSET="$(dirname "$(readlink -f "$0")")/../../assets/idrobolab-folder.png"
 
 # ThinLinc-side per-user install locations.
 DESKTOP_REL=".local/share/applications/nionswift-perlmutter.desktop"
 TERMINAL_REL=".local/share/applications/thinlinc-terminal.desktop"
 FOLDER_REL="Desktop/IdroboLab"
 ICON_REL=".local/share/icons/hicolor/256x256/apps/nionswift.png"
+FOLDER_ICON_REL=".local/share/icons/idrobolab-folder.png"
 
 install_ssh_config() {
     if ! grep -qs 'IdentityFile ~/.ssh/nersc' ~/.ssh/config; then
@@ -176,6 +182,16 @@ EOF
         -e "s|@EXTRA_OPTS@|${SALLOC_OPTS}|g" \
         "$JOB"
     chmod 755 "$JOB"
+    ln -sfn nionswift-job.sh "$COMMAND_LINK"
+
+    # group logo for the ThinLinc desktop folder, shipped in this clone
+    FOLDER_ICON_DONE=0
+    if [ -f "$FOLDER_ICON_ASSET" ]; then
+        install -m 644 "$FOLDER_ICON_ASSET" "$FOLDER_ICON_SRC"
+        FOLDER_ICON_DONE=1
+    else
+        echo "note: $FOLDER_ICON_ASSET not found - the folder keeps its stock icon" >&2
+    fi
 
     cat > "$DESKTOP_SRC" <<EOF
 [Desktop Entry]
@@ -193,8 +209,10 @@ EOF
     SELF="$(readlink -f "$0")"
     echo "Shared install done (account: $ACCOUNT, env: $ENV):"
     echo "  $JOB"
+    echo "  $COMMAND_LINK -> nionswift-job.sh"
     echo "  $DESKTOP_SRC"
     [ "$ICON_NAME" = nionswift ] && echo "  $ICON_SRC"
+    [ "$FOLDER_ICON_DONE" = 1 ] && echo "  $FOLDER_ICON_SRC"
     echo
     echo "Next: EACH group member, in a terminal INSIDE the ThinLinc desktop:"
     echo "  scp perlmutter.nersc.gov:idrobolab-env/perlmutter/helpers/$(basename "$SELF") ~"
@@ -216,6 +234,10 @@ else
     scp "perlmutter.nersc.gov:$ICON_SRC" ~/"$ICON_REL" \
         || echo "note: no shared icon at $ICON_SRC - a stock icon will show" >&2
 
+    # folder icon (non-fatal), set on the folder below
+    scp "perlmutter.nersc.gov:$FOLDER_ICON_SRC" ~/"$FOLDER_ICON_REL" \
+        || echo "note: no shared folder icon at $FOLDER_ICON_SRC - the folder keeps its stock icon" >&2
+
     mkdir -p ~/.local/share/applications ~/"$FOLDER_REL"
     if ! scp "perlmutter.nersc.gov:$DESKTOP_SRC" ~/"$DESKTOP_REL"; then
         echo "error: could not fetch the desktop entry from Perlmutter." >&2
@@ -235,6 +257,12 @@ else
         sed -i "s|^Icon=nionswift$|Icon=$HOME/$ICON_REL|" ~/"$DESKTOP_REL"
     fi
     ln -sf ~/"$DESKTOP_REL" ~/"$FOLDER_REL"/nionswift-perlmutter.desktop
+
+    # Caja (MATE) reads the folder icon from GVFS metadata
+    if [ -f ~/"$FOLDER_ICON_REL" ] && command -v gio >/dev/null 2>&1; then
+        gio set ~/"$FOLDER_REL" metadata::custom-icon "file://$HOME/$FOLDER_ICON_REL" \
+            || echo "note: could not set the folder icon with gio" >&2
+    fi
 
     # terminal on the ThinLinc host itself (Terminal=true: the desktop opens
     # it in its own terminal emulator); executable for the same reason as above

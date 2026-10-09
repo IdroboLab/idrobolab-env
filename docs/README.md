@@ -46,6 +46,13 @@ checklist), the multi-GPU abTEM verification, and the conventions that avoid Del
 common traps. It is one page rather than a numbered series: the general pages above (GitHub,
 cloning) apply on Delta as they do on Perlmutter.
 
+## Windows
+
+The [IdroboLab Uploads tool](../windows/idrobolab-uploads/README.md) is for the IdroboLab
+measurement PCs (Windows): a desktop shortcut uploads folders, files or a Nion Swift
+project to the group's Google Drive. It is an installer plus the upload tool, not part
+of the numbered pages.
+
 ## License
 
 This documentation is copyright (c) 2026, University of Washington, and licensed under

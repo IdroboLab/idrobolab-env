@@ -264,6 +264,13 @@ needs no activation — the entry script's shebang pins the env. The setup
 script generates this file, and if the env is a conda one it inserts the
 §7.6 `LD_PRELOAD` automatically — it detects `$ENV/lib/libexpat.so.1`.)
 
+`/global/common/software/mXXXX/bin/nionswift-idrobolab`, a relative symbolic
+link to `nionswift-job.sh`, so that a member can type `nionswift-idrobolab` in
+a Perlmutter terminal (`env.sh` puts the directory on `PATH`). The job script
+does not depend on how it is started: run that way it asks the same questions,
+and its `ssh -Y` to the node needs the `$DISPLAY` of the ThinLinc session, which
+a terminal opened from the Perlmutter button has.
+
 `/global/common/software/mXXXX/share/nionswift/nionswift-perlmutter.desktop`
 (plus `nionswift.png` beside it — §5.2 copies both to the ThinLinc side):
 
@@ -306,6 +313,13 @@ Notes:
   absolute local path, because name-based icon lookup is unreliable on
   the ThinLinc hosts' older MATE/GTK (symptom: a generic text-file icon).
   Falls back to a stock icon if all of that fails.
+- Folder icon: the setup script installs the group logo from
+  `assets/idrobolab-folder.png` (a 256x256 PNG; the clone
+  that runs the script supplies it) to `share/nionswift/idrobolab-folder.png`.
+  If the file is missing from the clone, the script prints a note and goes on.
+  Like writing the job script, installing the file and the
+  `nionswift-idrobolab` link stops the script if the shared directory cannot be
+  written. §5.4 covers the ThinLinc side.
 - For non-interactive ThinLinc→Perlmutter auth, point ssh at the sshproxy
   key in `~/.ssh/config` — this must be on the **ThinLinc side**, where
   the `Exec` ssh runs (see §5.2 for getting the key there):
@@ -426,6 +440,12 @@ the setup script puts its desktop links in the folder
   for members, and the sshproxy step (§5.2) needs one. It is executable
   like the Nion Swift launcher, and both launchers are also in the
   applications menu.
+- The icon of the folder itself: the script copies the group logo from
+  the shared `share/nionswift/idrobolab-folder.png` (§5.1) to
+  `~/.local/share/icons/idrobolab-folder.png` and, if `gio` exists, runs
+  `gio set ~/Desktop/IdroboLab metadata::custom-icon file://$HOME/.local/share/icons/idrobolab-folder.png`.
+  A failing `scp` or `gio` only prints a note; the folder then keeps its stock
+  icon.
 
 Re-running the setup script overwrites these files; nothing is duplicated.
 It also removes what older versions of it installed for the same purpose:
@@ -435,9 +455,14 @@ those links themselves. The copy of the script in the ThinLinc home does
 not update itself: to migrate, pull the clone on Perlmutter, fetch the
 script again (§5.1) and run it.
 
+Caja (MATE) shows the folder icon set through `gio` (it reads GVFS metadata
+for that): checked on the ThinLinc desktop with the same `scp` and `gio set`
+commands the script runs.
+
 Not verified, because it can only be tested on the ThinLinc desktop:
-whether symbolic links inside `~/Desktop/IdroboLab` survive a new session
-as the folder does, and whether Caja launches them from the folder;
+whether symbolic links inside `~/Desktop/IdroboLab`
+survive a new session as the folder does, and whether Caja launches them
+from the folder;
 whether `Terminal=true` opens a terminal on that desktop (the Nion Swift
 launcher already relies on it, §5.1); and whether ticking "Run in terminal"
 in the run dialog (§5.3) gives a first terminal there.

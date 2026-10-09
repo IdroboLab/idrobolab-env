@@ -100,8 +100,10 @@ scp perlmutter.nersc.gov:idrobolab-env/perlmutter/helpers/setup-nionswift-launch
 bash ~/setup-nionswift-launcher.sh
 ```
 
-This first `scp` may ask for password+OTP; the setup script then configures the
-key. It adds **Nion Swift (Perlmutter)** to the menu, plus a second menu entry,
+Without a valid `sshproxy` key, this first `scp` and each of the script's own three
+`scp` calls (icon, folder icon, desktop entry) may ask for password+OTP, so run
+`sshproxy -u <username>` first. The setup script then configures the key. It adds
+**Nion Swift (Perlmutter)** to the menu, plus a second menu entry,
 **Terminal (ThinLinc host)**, which opens a terminal on the ThinLinc machine (not on
 Perlmutter), and puts icons for both in a folder **IdroboLab** on the desktop. MATE
 may ask you to trust the icons on their first click. Run the script again whenever
@@ -111,6 +113,7 @@ nothing. If you ran an older version of the script, update your clone on Perlmut
 lines above again: the copy in your ThinLinc home does not update itself. The new
 version moves the icons into the folder and removes the autostart entry the older
 version installed.
+The **IdroboLab** folder gets the group logo as its icon, if the desktop shows it.
 
 ### Starting Nion Swift
 
@@ -128,7 +131,11 @@ Swift opens.
 - Put the Swift library and working data on `$SCRATCH` for speed. Keep the master
   copies of your raw data on CFS ([page 3](03-storage-and-transfer.md)).
 
-**Without the launcher**, from the Perlmutter terminal in ThinLinc:
+**Without the launcher**, type `nionswift-idrobolab` in the Perlmutter terminal in
+ThinLinc. It asks the same questions as the launcher (memory and wall time) and starts
+Nion Swift the same way. It needs the display of the ThinLinc desktop, which a terminal
+opened with the **Perlmutter** button or menu entry has. To do the same steps by hand,
+in that terminal:
 
 ```bash
 salloc -C cpu -q shared_interactive -A <project> -t 4:00:00 -n 1 -c 32

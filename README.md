@@ -12,6 +12,8 @@ first, then the step-by-step Perlmutter introduction or the Delta page.
 | [docs/](docs/) | All documentation: the general pages ([GitHub](docs/01-github.md), [cloning](docs/02-cloning.md), [Globus](docs/03-globus.md)), [contributing](docs/CONTRIBUTING.md), the Perlmutter introduction and reference notes in [docs/perlmutter/](docs/perlmutter/), and the Delta page in [docs/delta/](docs/delta/README.md) |
 | [perlmutter/](perlmutter/) | The files for Perlmutter: `env.sh`, helpers, job templates, examples, agent rules |
 | [delta/](delta/) | The files for Delta (NCSA): `get-image.sh`, job templates per partition, the multi-GPU verification launchers, agent rules |
+| [windows/idrobolab-uploads/](windows/idrobolab-uploads/) | The IdroboLab Uploads tool for the Windows measurement PCs: upload folders, files or a Nion Swift project to the group's Google Drive (PowerShell script, installer, README) |
+| [assets/](assets/) | The IdroboLab logo and the icons made from it (ThinLinc folder, upload tool), under CC BY 4.0 with their own copyright holder ([license](assets/LICENSE)) |
 | [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/idrobolab/idrobolab`) |
 | [shared/verification/multigpu_abtem/](shared/verification/multigpu_abtem/) | Payloads for the abTEM multi-GPU verification launched from `perlmutter/verification/` and `delta/verification/` |
 
@@ -36,10 +38,11 @@ Fixes to the docs are as welcome as fixes to the scripts: see
 
 ## License
 
-Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/`.
+Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/` and
+`assets/`.
 
 - The scripts, job templates, container recipe, agent instructions and everything else
-  outside `docs/` and `perlmutter/agents/nersc/` are under the
+  outside `docs/`, `assets/` and `perlmutter/agents/nersc/` are under the
   [BSD 3-Clause License](LICENSE).
 - The documentation in `docs/` is under
   [Creative Commons Attribution 4.0 International](docs/LICENSE) (CC BY 4.0). The
@@ -47,6 +50,9 @@ Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/`.
   they can be copied into scripts without attribution.
 - The files in `perlmutter/agents/nersc/` are NERSC's and keep their own
   [BSD 3-Clause License](perlmutter/agents/nersc/LICENSE).
+- The IdroboLab logo and the icons made from it, in `assets/`, are copyright (c) 2026,
+  IdroboLab, and under [Creative Commons Attribution 4.0 International](assets/LICENSE)
+  (CC BY 4.0).
 
 ## History
 
