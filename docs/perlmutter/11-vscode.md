@@ -29,14 +29,14 @@ needs setting up for a login node.
    choose **Linux**.
 3. The first connection installs the VS Code server into `~/.vscode-server` on
    Perlmutter, which takes a minute.
-4. **File → Open Workspace from File…** and open `~/perlmutter.code-workspace`
-   ([§4](#4-one-window-for-home-projects-and-scratch)), or **File → Open Folder…** and open
-   one project folder, for example `~/idrobolab-env`.
+4. **File → Open Folder…** and open one project folder, for example `~/idrobolab-env`.
+   To see your home directory, the project tree and `$SCRATCH` in one window instead, use
+   the optional workspace file ([§4](#4-one-window-for-home-projects-and-scratch)).
 
 The login node is shared with every other user, and the VS Code server and every
 extension you install on Perlmutter run on it. So:
 
-- **Open the workspace file (§4) or one project folder; never your home directory or
+- **Open one project folder, or the workspace file (§4); never your home directory or
   `/global/cfs/cdirs/<project>` as a bare folder.** VS Code watches and searches every file
   under a folder you open. The workspace file lists both, with watching turned off for the
   CFS tree and `$SCRATCH` and for the cache folders in your home directory.
@@ -135,12 +135,17 @@ for a second allocation, charged on top of the first.
 
 ## 4. One window for home, projects and scratch
 
-`setup-user.sh` ([page 2](02-shell-setup.md#4-group-environment)) writes
-`~/perlmutter.code-workspace`, a workspace file that shows three folders in one window:
-your home directory, `/global/cfs/cdirs/<project>` (the whole project tree) and `$SCRATCH`.
-Open it with **File → Open Workspace from File…** instead of **Open Folder…**; VS Code
-remembers it under **File → Open Recent**. A setup run before this file existed writes it
-when you run `setup-user.sh` again.
+This is optional. Write the workspace file once, on a login node:
+
+```bash
+~/idrobolab-env/perlmutter/helpers/setup-user.sh --vscode-workspace
+```
+
+It creates `~/perlmutter.code-workspace`, a workspace file that shows three folders in
+one window: your home directory, `/global/cfs/cdirs/<project>` (the whole project tree) and
+`$SCRATCH`. The setup script ([page 2](02-shell-setup.md#4-group-environment)) never
+replaces an existing file. Open the file with **File → Open Workspace from File…**
+instead of **Open Folder…**; VS Code remembers it under **File → Open Recent**.
 
 To change the folders, for example to add a folder outside these three, rewrite the file
 with the folders you want added:
@@ -150,8 +155,7 @@ with the folders you want added:
 ```
 
 It always writes home first, then the project tree, then the folders you name, then
-`$SCRATCH`. `setup-user.sh` never replaces an existing file, so edits you make by hand
-stay until you run the script above.
+`$SCRATCH`. Edits you make to the file by hand stay until you run the script above.
 
 - **Why home comes first.** The Claude Code extension takes its working directory, its
   memory and its list of past sessions from the **first** folder of the window. Every

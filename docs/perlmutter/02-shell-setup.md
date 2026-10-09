@@ -96,9 +96,11 @@ The script:
    ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
    that you can read the shared container store, and that `$SCRATCH` exists.
-4. Writes `~/perlmutter.code-workspace`, the VS Code workspace with your home directory,
-   the project's CFS tree and `$SCRATCH` ([page 11](11-vscode.md#4-one-window-for-home-projects-and-scratch)),
-   unless that file already exists.
+
+With `--vscode-workspace` it also writes `~/perlmutter.code-workspace`, a VS Code
+workspace with your home directory, the project's CFS tree and `$SCRATCH`
+([page 11](11-vscode.md#4-one-window-for-home-projects-and-scratch)). Without that option
+it only reports whether the file exists.
 
 On the first run, a warning that `PODMANHPC_ADDITIONAL_STORES` is unset is expected:
 the new settings only apply to shells started afterwards. Log out, log in again, and
