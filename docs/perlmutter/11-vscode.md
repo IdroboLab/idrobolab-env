@@ -29,16 +29,17 @@ needs setting up for a login node.
    choose **Linux**.
 3. The first connection installs the VS Code server into `~/.vscode-server` on
    Perlmutter, which takes a minute.
-4. **File → Open Folder…** and open one project folder, for example `~/idrobolab-env`
-   or your project directory on CFS.
+4. **File → Open Workspace from File…** and open `~/perlmutter.code-workspace`
+   ([§4](#4-one-window-for-home-projects-and-scratch)), or **File → Open Folder…** and open
+   one project folder, for example `~/idrobolab-env`.
 
 The login node is shared with every other user, and the VS Code server and every
 extension you install on Perlmutter run on it. So:
 
-- **Open the workspace file (§4), or a project folder; do not open your home directory or
+- **Open the workspace file (§4) or one project folder; never your home directory or
   `/global/cfs/cdirs/<project>` as a bare folder.** VS Code watches and searches every file
-  under a folder you open. The workspace file shows both, with the watching turned off
-  for the large folders.
+  under a folder you open. The workspace file lists both, with watching turned off for the
+  CFS tree and `$SCRATCH` and for the cache folders in your home directory.
 - **Run computations on a compute node** (§3), not in the VS Code terminal on a login
   node.
 - **Close the remote window when you are done** (File → Close Remote Connection), rather
@@ -159,10 +160,15 @@ stay until you run the script above.
   `claude` in a terminal belong to the folder you started them in: start them in `~` to
   see them in the window too.
 - **What it turns off.** The file tells VS Code not to watch the project tree, any folder
-  you add and `$SCRATCH` (they are large, shared filesystems), nor `~/.cache`, `~/.local`,
-  `~/.vscode-server` and similar, and not to follow symlinks when searching. The
-  consequence: the explorer does not pick up files created by jobs on its own, so use its
-  refresh button. Searching a large folder is still slow; search inside a subfolder.
+  you add and `$SCRATCH` (they are large, shared filesystems), and not to watch folders
+  named `.cache`, `.local`, `.conda`, `.cupy`, `.nv`, `.venv`, `node_modules` and
+  `__pycache__` (inside projects too), nor `~/.vscode-server`, and not to follow symlinks
+  when searching. The consequence: the explorer may not pick up files created by jobs on
+  its own, so use its refresh button.
+- **What it does not turn off.** Find in Files and Quick Open (`Ctrl+P`) walk every
+  folder of the window when you use them, and so can extensions that index the workspace.
+  On the project tree or `$SCRATCH` that is slow and loads the login node: search inside
+  a subfolder (right-click it → **Find in Folder…**) instead.
 
 ## 5. Python and coding agents in VS Code
 
