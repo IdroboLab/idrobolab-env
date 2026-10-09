@@ -16,7 +16,9 @@
 #   2. links the project's shared Jupyter kernels into your own kernel dir
 #   3. checks the things that silently break later: project group membership,
 #      whether the shared image store is actually readable by you, $SCRATCH
-#   4. if you ran setup-agents.sh, shows its --check result
+#   4. writes ~/perlmutter.code-workspace for VS Code (home, the project's CFS
+#      tree and $SCRATCH in one window), unless the file exists; --undo keeps it
+#   5. if you ran setup-agents.sh, shows its --check result
 set -euo pipefail
 
 CHECK=0 UNDO=0
@@ -183,12 +185,24 @@ fi
 # will produce. Point people at the right filesystem before they fill it.
 ok "keep data on \$SCRATCH or \$CFS, not \$HOME (run 'myquota' to see why)"
 
+echo
+echo "4. VS Code workspace"
+WORKSPACE="$HOME/perlmutter.code-workspace"
+if [ -e "$WORKSPACE" ]; then
+    ok "$WORKSPACE exists (make-vscode-workspace.sh rewrites it; setup-user.sh never does)"
+elif [ "$CHECK" = 1 ]; then
+    warn "$WORKSPACE is missing (run without --check to write it)"
+else
+    "$HELPERS/make-vscode-workspace.sh" --if-absent | sed 's/^/  /'
+    act "open it in VS Code with File > Open Workspace from File ($DOCS/11-vscode.md)"
+fi
+
 # Coding-agent rules: only for users who ran setup-agents.sh (its marker is in
 # either file). It names the same files setup-agents.sh writes.
 if grep -qsF 'idrobolab-env agent rules >>>' \
         "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/CLAUDE.md" "${CODEX_HOME:-$HOME/.codex}/AGENTS.md"; then
     echo
-    echo "4. coding-agent rules (setup-agents.sh --check)"
+    echo "5. coding-agent rules (setup-agents.sh --check)"
     "$HELPERS/setup-agents.sh" --check | sed 's/^/  /' || warn "setup-agents.sh --check found something to do"
 fi
 

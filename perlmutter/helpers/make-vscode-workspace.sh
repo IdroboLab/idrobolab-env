@@ -1,34 +1,46 @@
 #!/bin/bash
-# make-vscode-workspace.sh — write a VS Code workspace file with your home directory,
-# your $SCRATCH and any project folders you name, for use over Remote - SSH.
-# Run it on a login node:
+# make-vscode-workspace.sh — write the group's VS Code workspace file: your home
+# directory, the project's CFS tree and your $SCRATCH in one window, for use over
+# Remote - SSH. setup-user.sh runs it once; run it by hand to change the folders:
 #
 #     ~/idrobolab-env/perlmutter/helpers/make-vscode-workspace.sh [-o FILE] [DIR ...]
+#     ~/idrobolab-env/perlmutter/helpers/make-vscode-workspace.sh --if-absent
 #
-# It writes FILE (default ~/perlmutter.code-workspace) and nothing else. Open that file
-# with File > Open Workspace from File... instead of opening a bare folder.
+# It writes FILE (default ~/perlmutter.code-workspace) and nothing else, replacing it
+# if it exists; --if-absent leaves an existing file alone. Open the file with
+# File > Open Workspace from File... instead of opening a bare folder.
 #
-# Folders, in this order: $HOME, each DIR (in the order given), $SCRATCH. Home comes
-# first on purpose: the Claude Code extension scopes its working directory, its memory
-# and its list of past sessions to the FIRST folder of the window, so every window
-# opened from this file shows the same sessions. A bare folder gives its own list.
+# Folders, in this order: $HOME, /global/cfs/cdirs/$NERSC_PROJECT (<project> unless
+# NERSC_PROJECT is set), each DIR (in the order given), $SCRATCH. Home comes first on
+# purpose: the Claude Code extension scopes its working directory, its memory and its
+# list of past sessions to the FIRST folder of the window, so every window opened from
+# this file shows the same sessions. A bare folder gives its own list.
 #
-# Shared filesystems are protected: the workspace tells VS Code not to watch DIR or
-# $SCRATCH (the explorer then needs its refresh button to show new files), not to watch
-# the caches under $HOME, and not to follow symlinks when searching. Re-run the script
-# after changing the folders; it overwrites FILE.
+# Shared filesystems are protected: the workspace tells VS Code not to watch the CFS
+# tree, any DIR or $SCRATCH (the explorer then needs its refresh button to show new
+# files), not to watch the caches under $HOME, and not to follow symlinks when
+# searching.
 set -euo pipefail
 
 out=$HOME/perlmutter.code-workspace
-case "${1:-}" in
-    -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
-    -o) [ $# -ge 2 ] || { echo "-o needs a file name" >&2; exit 1; }; out=$2; shift 2 ;;
-esac
+if_absent=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
+        -o) [ $# -ge 2 ] || { echo "-o needs a file name" >&2; exit 1; }; out=$2; shift 2 ;;
+        --if-absent) if_absent=1; shift ;;
+        -*) echo "unknown option: $1 (try --help)" >&2; exit 1 ;;
+        *) break ;;
+    esac
+done
+if [ "$if_absent" = 1 ] && [ -e "$out" ]; then echo "$out exists, left alone"; exit 0; fi
 
 # Quote $1 as a JSON string.
 js() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
 
 folders=("$HOME")
+cfs=/global/cfs/cdirs/${NERSC_PROJECT:-<project>}
+if [ -d "$cfs" ]; then folders+=("$cfs"); fi
 for d in "$@"; do folders+=("${d%/}"); done
 scratch=${SCRATCH:-${PSCRATCH:-}}
 if [ -n "$scratch" ]; then folders+=("${scratch%/}"); fi
