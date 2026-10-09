@@ -29,14 +29,17 @@ needs setting up for a login node.
    choose **Linux**.
 3. The first connection installs the VS Code server into `~/.vscode-server` on
    Perlmutter, which takes a minute.
-4. **File → Open Folder…** and open one project folder, for example `~/idrobolab-env`
-   or your project directory on CFS.
+4. **File → Open Folder…** and open one project folder, for example `~/idrobolab-env`.
+   To see your home directory, the project tree and `$SCRATCH` in one window instead, use
+   the optional workspace file ([§4](#4-one-window-for-home-projects-and-scratch)).
 
 The login node is shared with every other user, and the VS Code server and every
 extension you install on Perlmutter run on it. So:
 
-- **Open a project folder, not your whole home directory or `/global/cfs/cdirs/<project>`.**
-  VS Code watches and searches every file under the folder you open.
+- **Open one project folder, or the workspace file (§4); never your home directory or
+  `/global/cfs/cdirs/<project>` as a bare folder.** VS Code watches and searches every file
+  under a folder you open. The workspace file lists both, with watching turned off for the
+  CFS tree and `$SCRATCH` and for the cache folders in your home directory.
 - **Run computations on a compute node** (§3), not in the VS Code terminal on a login
   node.
 - **Close the remote window when you are done** (File → Close Remote Connection), rather
@@ -130,7 +133,48 @@ ssh shell on the node, not part of the `salloc` session: the `SLURM_*` variables
 set there, so `srun`, or a helper such as `interactive_gpu_shared.sh`, would ask Slurm
 for a second allocation, charged on top of the first.
 
-## 4. Python and coding agents in VS Code
+## 4. One window for home, projects and scratch
+
+This is optional. Write the workspace file once, on a login node:
+
+```bash
+~/idrobolab-env/perlmutter/helpers/setup-user.sh --vscode-workspace
+```
+
+It creates `~/perlmutter.code-workspace`, a workspace file that shows three folders in
+one window: your home directory, `/global/cfs/cdirs/<project>` (the whole project tree) and
+`$SCRATCH`. The setup script ([page 2](02-shell-setup.md#4-group-environment)) never
+replaces an existing file. Open the file with **File → Open Workspace from File…**
+instead of **Open Folder…**; VS Code remembers it under **File → Open Recent**.
+
+To change the folders, for example to add a folder outside these three, rewrite the file
+with the folders you want added:
+
+```bash
+~/idrobolab-env/perlmutter/helpers/make-vscode-workspace.sh /path/to/folder
+```
+
+It always writes home first, then the project tree, then the folders you name, then
+`$SCRATCH`. Edits you make to the file by hand stay until you run the script above.
+
+- **Why home comes first.** The Claude Code extension takes its working directory, its
+  memory and its list of past sessions from the **first** folder of the window. Every
+  window opened from this file therefore shows the same sessions, and a window opened on
+  a bare project folder shows that folder's own, different list. Sessions you start with
+  `claude` in a terminal belong to the folder you started them in: start them in `~` to
+  see them in the window too.
+- **What it turns off.** The file tells VS Code not to watch the project tree, any folder
+  you add and `$SCRATCH` (they are large, shared filesystems), and not to watch folders
+  named `.cache`, `.local`, `.conda`, `.cupy`, `.nv`, `.venv`, `node_modules` and
+  `__pycache__` (inside projects too), nor `~/.vscode-server`, and not to follow symlinks
+  when searching. The consequence: the explorer may not pick up files created by jobs on
+  its own, so use its refresh button.
+- **What it does not turn off.** Find in Files and Quick Open (`Ctrl+P`) walk every
+  folder of the window when you use them, and so can extensions that index the workspace.
+  On the project tree or `$SCRATCH` that is slow and loads the login node: search inside
+  a subfolder (right-click it → **Find in Folder…**) instead.
+
+## 5. Python and coding agents in VS Code
 
 - **Your own environments:** with the Python extension installed on Perlmutter, run
   **Python: Select Interpreter** and pick a uv environment from
@@ -143,7 +187,7 @@ for a second allocation, charged on top of the first.
 - **Coding agents** (Claude Code, Codex, also as VS Code extensions): set them up as on
   [page 10](10-coding-agents.md) first. The rules there apply however you start them.
 
-## 5. When it does not connect
+## 6. When it does not connect
 
 One row per symptom, with its usual cause and the fix.
 
