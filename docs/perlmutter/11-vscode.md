@@ -36,7 +36,9 @@ The login node is shared with every other user, and the VS Code server and every
 extension you install on Perlmutter run on it. So:
 
 - **Open a project folder, not your whole home directory or `/global/cfs/cdirs/<project>`.**
-  VS Code watches and searches every file under the folder you open.
+  VS Code watches and searches every file under the folder you open. To see your home
+  directory, a project and `$SCRATCH` in one window, use a workspace file that turns the
+  watching off for the big folders ([§4](#4-one-window-for-home-projects-and-scratch)).
 - **Run computations on a compute node** (§3), not in the VS Code terminal on a login
   node.
 - **Close the remote window when you are done** (File → Close Remote Connection), rather
@@ -130,7 +132,33 @@ ssh shell on the node, not part of the `salloc` session: the `SLURM_*` variables
 set there, so `srun`, or a helper such as `interactive_gpu_shared.sh`, would ask Slurm
 for a second allocation, charged on top of the first.
 
-## 4. Python and coding agents in VS Code
+## 4. One window for home, projects and scratch
+
+A workspace file lists several folders for one window. Make yours on a login node, naming
+the project folders you want:
+
+```bash
+~/idrobolab-env/perlmutter/helpers/make-vscode-workspace.sh /global/cfs/cdirs/<project>/projects/<project>
+```
+
+This writes `~/perlmutter.code-workspace` with your home directory, the folders you
+named and `$SCRATCH`, in that order. Open it with **File → Open Workspace from File…**
+instead of **Open Folder…**; VS Code remembers it under **File → Open Recent**. Re-run the
+script after changing the folders (it overwrites the file).
+
+- **Why home comes first.** The Claude Code extension takes its working directory, its
+  memory and its list of past sessions from the **first** folder of the window. Every
+  window opened from this file therefore shows the same sessions, and a window opened on
+  a bare project folder shows that folder's own, different list. Sessions you start with
+  `claude` in a terminal belong to the folder you started them in: start them in `~` to
+  see them in the window too.
+- **What it turns off.** The file tells VS Code not to watch the project folders and
+  `$SCRATCH` (they are large, shared filesystems), nor `~/.cache`, `~/.local`,
+  `~/.vscode-server` and similar, and not to follow symlinks when searching. The
+  consequence: the explorer does not pick up files created by jobs on its own, so use its
+  refresh button. Searching a large folder is still slow; search inside a subfolder.
+
+## 5. Python and coding agents in VS Code
 
 - **Your own environments:** with the Python extension installed on Perlmutter, run
   **Python: Select Interpreter** and pick a uv environment from
@@ -143,7 +171,7 @@ for a second allocation, charged on top of the first.
 - **Coding agents** (Claude Code, Codex, also as VS Code extensions): set them up as on
   [page 10](10-coding-agents.md) first. The rules there apply however you start them.
 
-## 5. When it does not connect
+## 6. When it does not connect
 
 One row per symptom, with its usual cause and the fix.
 
