@@ -143,7 +143,9 @@ difference here.
 
 ### Windows
 
-1. Download the installer from <https://app.globus.org/file-manager/gcp> and run it.
+1. Download the installer from <https://app.globus.org/file-manager/gcp>, or directly as
+   [globusconnectpersonal-latest.exe](https://downloads.globus.org/globus-connect-personal/windows/stable/globusconnectpersonal-latest.exe),
+   and run it.
    Click **Install**; if you have no administrator rights, click **Browse** and choose a
    folder you may write to.
 2. Click **Log In**, authenticate with Globus, grant the consents it asks for, and
@@ -155,8 +157,9 @@ difference here.
 
 ### macOS
 
-1. Download Globus Connect Personal from <https://app.globus.org/file-manager/gcp>, open
-   the installer and drag the icon onto **Applications**.
+1. Download Globus Connect Personal from <https://app.globus.org/file-manager/gcp> (or
+   [globusconnectpersonal-latest.dmg](https://downloads.globus.org/globus-connect-personal/mac/stable/globusconnectpersonal-latest.dmg)
+   directly), then open the installer and drag the icon onto **Applications**.
 2. Open **Globus Connect Personal** from Applications, click **Log In**, authenticate,
    grant the consents, and enter the details of your collection.
 3. A menu bar icon shows that GCP runs. **Folders:** click that icon → **Preferences…** →
@@ -169,12 +172,16 @@ Download and unpack the tarball, then set it up and start it from the unpacked f
 ```bash
 wget https://downloads.globus.org/globus-connect-personal/linux/stable/globusconnectpersonal-latest.tgz
 tar xzf globusconnectpersonal-latest.tgz
-cd globusconnectpersonal-<version>          # the folder tar created
+cd globusconnectpersonal-*/                 # the folder tar created, e.g. globusconnectpersonal-3.3.1
 ./globusconnectpersonal -setup              # log in and name the collection
 ./globusconnectpersonal -start &            # start it
 ./globusconnectpersonal -status             # is it running?
 ./globusconnectpersonal -stop
 ```
+
+If you unpacked an older version before, `cd` stops with "too many arguments": delete the
+old folder (`rm -r globusconnectpersonal-<old version>`) or `cd` into the new one by name.
+A second `wget` saves `globusconnectpersonal-latest.tgz.1`, so delete the old `.tgz` first.
 
 The graphical interface needs Tcl/Tk (`sudo apt-get install tk tcllib` on Debian and
 Ubuntu); `-start` runs without it. **Folders:** edit `~/.globusonline/lta/config-paths`,

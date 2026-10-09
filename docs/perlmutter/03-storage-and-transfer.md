@@ -51,6 +51,31 @@ in full; on Perlmutter, `echo $SCRATCH` shows yours. rsync and scp use the `ners
 alias from your SSH config ([page 1](01-login.md#4-ssh-config)) and need no other
 setup.
 
+Both commands copy from a source to a destination, in that order, and each side is
+written `host:path`:
+
+```
+scp   [options] host1:/path/to/file/on/host1  host2:/path/to/file/on/host2
+rsync [options] host1:/path/to/file/on/host1  host2:/path/to/file/on/host2
+```
+
+- `host` is an SSH alias from your SSH config (`nersc-dtn`) or `username@hostname`.
+- If one side is the local computer, the one you type the command on, leave out its
+  `host:` and write only the path: absolute (`/home/me/data`) or relative to the current
+  folder (`mydata`, `.`). On Windows, use relative paths, as below.
+- A remote path that does not start with `/` is relative to your home directory there.
+- rsync needs one side to be the local computer.
+- A folder needs `scp -r`; rsync's `-a` (below) already copies folders.
+
+So the usual copies of a single file are:
+
+```
+scp mydata.h5 nersc-dtn:/pscratch/sd/<x>/<username>/     # laptop -> Perlmutter
+scp nersc-dtn:/pscratch/sd/<x>/<username>/result.h5 .   # Perlmutter -> laptop
+```
+
+`.` is the current folder.
+
 #### Windows
 
 Windows has no built-in rsync, but its OpenSSH client includes `scp`, which does the same
