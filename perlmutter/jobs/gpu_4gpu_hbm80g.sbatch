@@ -25,6 +25,8 @@
 #SBATCH --exclusive
 #SBATCH --mem=220G                     # full 256 GB GPU node
 #SBATCH --time=06:00:00
+# NERSC file-system licenses: see docs/perlmutter/04-jobs.md
+#SBATCH --licenses=scratch,cfs
 #SBATCH --output=%x_%j.out
 
 set -euo pipefail

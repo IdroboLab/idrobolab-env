@@ -139,8 +139,9 @@ fi
 # runs on a shared login node, with no GPU, while the allocation sits idle.
 # (`salloc` with NO command is the case that drops you onto the compute node;
 # passing a command overrides that.)
+# --licenses: NERSC file-system licenses, see docs/perlmutter/04-jobs.md
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=shared_interactive \
-    --nodes=1 --ntasks=1 --cpus-per-task="$CPUS" $GPU_FLAGS --time="$TIME" \
+    --nodes=1 --ntasks=1 --cpus-per-task="$CPUS" $GPU_FLAGS --time="$TIME" --licenses=scratch,cfs \
     srun $SRUN_FLAGS podman-hpc run --rm $GROUP_FLAGS $TTY_FLAGS --gpu \
         $MOUNTS --workdir "$WORKDIR" -e HOME="$HOME" -e SCRATCH="${SCRATCH:-}" \
         "$IMAGE" "${CMD[@]}"
