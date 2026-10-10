@@ -112,6 +112,8 @@ same pull command works on both clusters).
   shell it does not run. Give the user the `salloc` line with every such `srun` command; the
   lines are in `docs/perlmutter/04-jobs.md`, with `<account>` the group's GPU account
   (`<project>_g`).
+- **Declare `-L` (`--licenses`) for exactly the file systems the job touches**, and for no
+  others; names and cases in `docs/perlmutter/04-jobs.md`, *File system licenses*.
 - **Interactive first.** For any check short enough to want the answer immediately (a
   preflight, a single test file, a small correctness script — under about an hour), use
   `salloc` with `shared_interactive` and the explicit counts above (unless the check needs

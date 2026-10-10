@@ -29,6 +29,8 @@
 # 64 GB is 38 cores at the node's ~1.7 GB per logical core. The slice comes
 # with its proportional share (~55 GB per GPU) without asking.
 #SBATCH --time=04:00:00
+# NERSC file-system licenses: see docs/perlmutter/04-jobs.md
+#SBATCH --licenses=scratch,cfs
 #SBATCH --output=%x_%j.out
 
 set -euo pipefail

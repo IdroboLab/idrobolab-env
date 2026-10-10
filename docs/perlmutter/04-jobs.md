@@ -42,6 +42,29 @@ times as much, because you pay for the whole node and use a quarter of it. In a 
 QOS, always give the CPU count explicitly: 32 hardware threads per GPU (`-c 32` for
 1 GPU, `-c 64` for 2).
 
+## File system licenses
+
+A job can declare the file systems it uses as Slurm **licenses**, with `-L` / `--licenses`. The names are `scratch`, `cfs`, `dna`, `cvmfs` and `hpss`. A batch job does not start while a declared file system is down for maintenance or an outage. A job without the option gets an automatic best guess from NERSC, which is conservative and can hold a job that could have run ([NERSC: file system licenses](https://docs.nersc.gov/jobs/best-practices/#file-system-licenses)).
+
+```bash
+#SBATCH --licenses=scratch,cfs          # or the short form: #SBATCH -L scratch,cfs
+```
+
+**Declare a license only for a file system you know the job uses, and then exactly those.** Declaring one the job never touches can keep it waiting for no reason; where you do not know, leave the option out and NERSC's guess applies.
+
+| License | The job uses |
+|---|---|
+| `scratch` | `$SCRATCH` (`/pscratch/...`): reads, writes, `-v $SCRATCH:$SCRATCH` |
+| `cfs` | `$CFS` (`/global/cfs/cdirs/<project>`): reads, writes, `-v $CFS:$CFS`, and the group's podman-hpc image store |
+
+`$HOME` and `/global/common` have no license to declare. CFS also has a read-only mount at `/dvs_ro/cfs` (NERSC's page); the group's image store is read through it, and this page counts it as `cfs`.
+
+- **Container jobs: `scratch,cfs`.** The standard `podman-hpc run` line binds `$SCRATCH`, `$CFS` and `$HOME`, and the image comes from the CFS image store. The templates and `interactive_*.sh` helpers in `perlmutter/jobs/` that use the container declare both.
+- **uv templates.** `abtem_uv_gpu_node.sbatch` requires `$SCRATCH` for its output and declares `scratch`. `abtem_uv_gpu_shared.sbatch` runs whatever script you give it and declares nothing: add the licenses for what your script uses.
+- **Your own job:** the minimal uv job below uses the uv cache on `$SCRATCH` (set by `env.sh`), so it declares `scratch`; add what your script reads and writes.
+- **`salloc` and `srun`** take the same option ([salloc](https://slurm.schedmd.com/salloc.html), [srun](https://slurm.schedmd.com/srun.html)). NERSC's page describes the option for batch jobs only, so what an outage does to a pending `salloc` is not documented there. The examples below leave it out because they do not say which file systems you will use; add `-L` for yours.
+- **Change a submitted job** with `scontrol update job=<jobid> Licenses=<comma separated list>` (NERSC's page shows this command).
+
 ## Interactive sessions (`salloc`)
 
 `salloc` waits for the resources, then gives you a shell **on the compute node**.
@@ -94,7 +117,7 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 
 To change the time, name or resources, copy a template into your project folder and
 edit its `#SBATCH` lines, or override them on the command line
-(`sbatch -t 08:00:00 -J myrun ...`). Details and pitfalls: [`../jobs/README.md`](../../perlmutter/jobs/README.md).
+(`sbatch -t 08:00:00 -J myrun ...`). Keep the `#SBATCH --licenses=` line matching what your copy touches (see above). Details and pitfalls: [`../jobs/README.md`](../../perlmutter/jobs/README.md).
 
 A minimal job of your own, here a uv script ([page 5](05-python-uv.md)) on part of a
 CPU node:
@@ -108,6 +131,7 @@ CPU node:
 #SBATCH -c 16                 # 16 hardware threads = 8 cores
 #SBATCH -t 02:00:00           # always set a time limit
 #SBATCH -J analysis
+#SBATCH -L scratch             # the uv cache is on $SCRATCH; add what analyse.py uses
 #SBATCH -o %x_%j.out          # <job name>_<job id>.out
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=<your email>

@@ -206,8 +206,9 @@ echo "  (Ctrl-C and retry with QOS=interactive GPUS=4 if this does not start)" >
 #
 # So: the inner shell (login node) reads the node name from $SLURM_NODELIST for
 # the tunnel, and srun places the container on it.
+# --licenses: NERSC file-system licenses, see docs/perlmutter/04-jobs.md
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos="$QOS" \
-    --nodes="$NODES" $SALLOC_RES --time="$TIME" --job-name=jupyter \
+    --nodes="$NODES" $SALLOC_RES --time="$TIME" --job-name=jupyter --licenses=scratch,cfs \
     bash -c '
         node=$(scontrol show hostnames "$SLURM_NODELIST" | head -1)
         cat >&2 <<EOF

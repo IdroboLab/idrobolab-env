@@ -223,7 +223,8 @@ arbitrary extra salloc options into the job script, appended after the
 sized arguments so they win where Slurm takes the last occurrence; a
 `--mem*` in it suppresses the memory prompt AND the automatic sizing, so
 it must then be a complete resource spec incl. QOS/constraint/CPUs, and
-a `-t`/`--time` suppresses the walltime prompt); on a ThinLinc host it
+a `-t`/`--time` suppresses the walltime prompt; `-L <licenses>` declares the file
+systems your data is on, [page 4](../04-jobs.md#file-system-licenses)); on a ThinLinc host it
 sets up ssh auth, copies
 the entry + icon from the shared location into the member's ThinLinc
 home, adds a terminal launcher, and links both into the folder

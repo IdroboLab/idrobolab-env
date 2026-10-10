@@ -35,6 +35,7 @@
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=04:00:00
+# File-system licenses: add #SBATCH --licenses=... for what your script uses (docs/perlmutter/04-jobs.md).
 #SBATCH --output=%x_%j.out
 
 set -euo pipefail

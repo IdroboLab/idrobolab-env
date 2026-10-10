@@ -74,6 +74,8 @@
 #                                      # want the node's full 256 GB
 #SBATCH --mem=220G                     # full 256 GB GPU node
 #SBATCH --time=00:10:00
+# NERSC file-system licenses: see docs/perlmutter/04-jobs.md
+#SBATCH --licenses=scratch,cfs
 #SBATCH --output=%x_%j.out
 #
 # QOS: `debug` caps at 30 minutes and 8 nodes, queues fast, and is charged at

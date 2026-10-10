@@ -23,6 +23,8 @@
 #SBATCH --cpus-per-task=2              # 2 x floor(128/tasks_per_node) logical CPUs
 #SBATCH --mem=440G                     # 512 GB CPU node (~86% as with 220G/256G)
 #SBATCH --time=02:00:00
+# NERSC file-system licenses: see docs/perlmutter/04-jobs.md
+#SBATCH --licenses=scratch,cfs
 #SBATCH --output=%x_%j.out
 
 set -euo pipefail

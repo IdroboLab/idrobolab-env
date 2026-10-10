@@ -18,6 +18,8 @@
 #SBATCH --gpus-per-node=1
 #SBATCH --mem=220G                     # whole node in debug QOS
 #SBATCH --time=00:20:00                # debug hard limit is 00:30:00
+# NERSC file-system licenses: see docs/perlmutter/04-jobs.md
+#SBATCH --licenses=scratch,cfs
 #SBATCH --output=%x_%j.out
 
 set -euo pipefail

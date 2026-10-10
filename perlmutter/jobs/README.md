@@ -56,21 +56,23 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 
 ## Script ↔ resource matrix
 
-| Script | Constraint / QOS | Resources | Cost per wallclock hour | Intended use |
-|---|---|---|---|---|
-| `gpaw_cpu_singlenode.sbatch` | `cpu` / `regular` | 1 node, 128 ranks, 512 GB | 1 CPU node-hr | GPAW MPI on one node |
-| `gpaw_cpu_multinode.sbatch` | `cpu` / `regular` | 4 nodes × 128 ranks | 4 CPU node-hr | Large GPAW SCF |
-| `gpu_1gpu_shared.sbatch` | `gpu` / `shared` | 1 A100, 32 logical cores | **0.25** GPU node-hr | **Default for GPU work** — dev, abTEM, orb, torch |
-| `gpu_2gpu_shared.sbatch` | `gpu` / `shared` | 2 A100, 64 logical cores | **0.5** GPU node-hr | One process, or one abTEM calculation over 2 GPUs (dask-cuda) |
-| `abtem_uv_gpu_shared.sbatch` | `gpu` / `shared` | 1 or 2 A100 (two `#SBATCH` lines), 32 or 64 logical cores | **0.25** / **0.5** GPU node-hr | abTEM from your own uv environment (`~/venvs/abtem`), no container |
-| `abtem_uv_gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4 tasks × 1 A100 | 1 GPU node-hr | Four independent single-GPU abTEM runs (a sweep) from `~/venvs/abtem` |
-| `gpu_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | One process driving 4 GPUs |
-| `gpu_4gpu_hbm80g.sbatch` | `gpu&hbm80g` / `regular` | 1 node, 4×A100 **80 GB** | 1 GPU node-hr | complex128 EMCD, exact-S₂, big S-matrix budgets |
-| `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | GPU-parallel GPAW, distributed torch |
-| `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | Smoke tests before a long run |
-| `interactive_gpu.sh` | `gpu` / `interactive` | 1 node, ≤4 h | 1 GPU node-hr | Shell in the container (helper, not sbatch) |
-| `interactive_gpu_shared.sh` | `gpu` / `shared_interactive` | 1 or 2 A100 (`GPUS=`), 32 or 64 logical cores, ≤4 h | **0.25** / **0.5** GPU node-hr | Shell in the container (helper, not sbatch) |
-| `interactive_jupyter.sh` | `gpu` / `shared_interactive` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
+| Script | Constraint / QOS | Resources | Cost per wallclock hour | Licenses | Intended use |
+|---|---|---|---|---|---|
+| `gpaw_cpu_singlenode.sbatch` | `cpu` / `regular` | 1 node, 128 ranks, 512 GB | 1 CPU node-hr | `scratch,cfs` | GPAW MPI on one node |
+| `gpaw_cpu_multinode.sbatch` | `cpu` / `regular` | 4 nodes × 128 ranks | 4 CPU node-hr | `scratch,cfs` | Large GPAW SCF |
+| `gpu_1gpu_shared.sbatch` | `gpu` / `shared` | 1 A100, 32 logical cores | **0.25** GPU node-hr | `scratch,cfs` | **Default for GPU work** — dev, abTEM, orb, torch |
+| `gpu_2gpu_shared.sbatch` | `gpu` / `shared` | 2 A100, 64 logical cores | **0.5** GPU node-hr | `scratch,cfs` | One process, or one abTEM calculation over 2 GPUs (dask-cuda) |
+| `abtem_uv_gpu_shared.sbatch` | `gpu` / `shared` | 1 or 2 A100 (two `#SBATCH` lines), 32 or 64 logical cores | **0.25** / **0.5** GPU node-hr | none (set by you) | abTEM from your own uv environment (`~/venvs/abtem`), no container |
+| `abtem_uv_gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4 tasks × 1 A100 | 1 GPU node-hr | `scratch` | Four independent single-GPU abTEM runs (a sweep) from `~/venvs/abtem` |
+| `gpu_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | `scratch,cfs` | One process driving 4 GPUs |
+| `gpu_4gpu_hbm80g.sbatch` | `gpu&hbm80g` / `regular` | 1 node, 4×A100 **80 GB** | 1 GPU node-hr | `scratch,cfs` | complex128 EMCD, exact-S₂, big S-matrix budgets |
+| `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | `scratch,cfs` | GPU-parallel GPAW, distributed torch |
+| `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | `scratch,cfs` | Smoke tests before a long run |
+| `interactive_gpu.sh` | `gpu` / `interactive` | 1 node, ≤4 h | 1 GPU node-hr | `scratch,cfs` | Shell in the container (helper, not sbatch) |
+| `interactive_gpu_shared.sh` | `gpu` / `shared_interactive` | 1 or 2 A100 (`GPUS=`), 32 or 64 logical cores, ≤4 h | **0.25** / **0.5** GPU node-hr | `scratch,cfs` | Shell in the container (helper, not sbatch) |
+| `interactive_jupyter.sh` | `gpu` / `shared_interactive` | 1 A100, 32 logical cores, 2 h | **0.25** GPU node-hr | `scratch,cfs` | JupyterLab in the container + the `ssh -L` line to reach it (helper, not sbatch) |
+
+**Licenses** are the NERSC file-system licenses each script declares; choosing them: [page 4](../../docs/perlmutter/04-jobs.md#file-system-licenses).
 
 Which of these to use for abTEM, in the container or from your own uv environment, is
 the subject of [page 7](../../docs/perlmutter/07-abtem.md).

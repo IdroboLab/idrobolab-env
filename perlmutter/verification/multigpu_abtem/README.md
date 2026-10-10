@@ -197,6 +197,8 @@ Perlmutter GPU nodes are **1× AMD EPYC 7763 (64 physical / 128 logical cores),
   allocation. **Replace `<project>_g` in every `.sbatch` here before first use**
   (`iris`, or `sacctmgr show assoc user=$USER format=account`, lists yours).
 - **Constraint**: `#SBATCH -C gpu` (add `&hbm80g` only if you need 80 GB cards).
+- **File system licenses**: see [page 4](../../../docs/perlmutter/04-jobs.md#file-system-licenses);
+  the `.sbatch` files and the interactive `salloc` below declare them.
 - **Charge** = `walltime × nodes × QOS factor`, on *actual* walltime, with
   Perlmutter's charge factor 1.0. A 10-minute verification on one node costs
   ~0.17 GPU node-hours; a 3-hour benchmark costs 3.
@@ -251,7 +253,7 @@ Options worth knowing (`python verify_multigpu.py --help` for all):
 ### Interactive smoke test
 
 ```bash
-salloc -A <project>_g -C gpu -q interactive -N 1 --gpus-per-node=4 -t 01:00:00
+salloc -A <project>_g -C gpu -q interactive -N 1 --gpus-per-node=4 -t 01:00:00 -L scratch,cfs
 # ...the allocation shell runs ON the compute node, so podman-hpc runs there:
 PAYLOAD=$(cd ../../../shared/verification/multigpu_abtem && pwd)
 podman-hpc run --rm --gpu \
