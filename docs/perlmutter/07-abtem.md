@@ -129,7 +129,7 @@ abTEM and CuPy versions and the CUDA runtime and driver versions before it compu
 
 ```bash
 # on a login node; the shell that salloc gives you is on the compute node
-salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
+salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1 -L scratch
 srun ~/venvs/abtem/bin/python ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
 exit
 ```

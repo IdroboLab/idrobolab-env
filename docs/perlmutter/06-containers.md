@@ -37,7 +37,7 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 On 1 GPU (the usual case), first get a node, then start the container on it:
 
 ```bash
-salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
+salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1 -L scratch,cfs
 
 srun --pty podman-hpc run --rm -it --gpu --group-add keep-groups \
     -v $HOME:$HOME -v $SCRATCH:$SCRATCH -v $CFS:$CFS -e HOME=$HOME \
@@ -49,6 +49,8 @@ GPUs (`GPUS=2` for two, `TIME=02:00:00` for the time; [source](../../perlmutter/
 For a whole node with 4 GPUs, `~/idrobolab-env/perlmutter/jobs/interactive_gpu.sh`
 does both steps ([source](../../perlmutter/jobs/interactive_gpu.sh)); it always books a full node,
 even with `GPUS=1`.
+
+`-L` declares the file systems the session uses ([page 4](04-jobs.md#file-system-licenses)).
 
 What the flags do:
 

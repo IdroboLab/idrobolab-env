@@ -125,6 +125,8 @@ the maximum). Up to 256 GB it books a slice of a CPU node (`shared_interactive`,
 charged for the slice). Above that, it books a whole node. Once the job starts, Nion
 Swift opens.
 
+- To declare the file systems your data is on, put `-L <licenses>` into `NIONSWIFT_SALLOC_OPTS` when running
+  `setup-nionswift-launcher.sh` ([page 4](04-jobs.md#file-system-licenses)).
 - Closing Nion Swift ends the job, and with it the charge. Closing the terminal while
   the job is still waiting cancels it.
 - The allocation is charged while Swift sits idle, so close it when you're done.

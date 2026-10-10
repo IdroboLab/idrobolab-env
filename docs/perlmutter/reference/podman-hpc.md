@@ -184,6 +184,9 @@ srun -N 2 --ntasks-per-node=16 -c 8 \
     "$IDROBOLAB_IMAGE" python gpaw_script.py
 ```
 
+These examples mount nothing, so they touch only the image store: run them in an allocation
+that declares `-L cfs` ([page 4](../04-jobs.md#file-system-licenses)).
+
 Check the current NERSC podman-hpc docs for the exact `--mpi`/`--gpu` flag
 names and srun integration — these follow NERSC's documented patterns but
 may evolve.
