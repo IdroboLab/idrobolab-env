@@ -143,7 +143,7 @@ in that terminal:
 salloc -C cpu -q shared_interactive -A <project> -t 4:00:00 -n 1 -c 32
 hostname               # must print nid..., not login...
 echo $DISPLAY          # must not be empty
-/global/common/software/<project>/venvs/nionswift-py313/bin/nionswift
+env HDF5_USE_FILE_LOCKING=FALSE /global/common/software/<project>/venvs/nionswift-py313/bin/nionswift
 ```
 
 If `$DISPLAY` is empty, keep the allocation and open a second Perlmutter terminal.
@@ -159,7 +159,7 @@ node:
 uv venv --python 3.13 ~/venvs/nionswift
 uv pip install -p ~/venvs/nionswift nionswift nionswift-tool nionswift-usim \
     nionswift-eels-analysis nionswift-experimental      # + any plugins
-~/venvs/nionswift/bin/nionswift                           # inside an allocation, as above
+env HDF5_USE_FILE_LOCKING=FALSE ~/venvs/nionswift/bin/nionswift   # inside an allocation, as above
 ```
 
 - Use **Python 3.13**: Nion's UI crashes on 3.14.
@@ -175,6 +175,7 @@ uv pip install -p ~/venvs/nionswift nionswift nionswift-tool nionswift-usim \
 | Window blank, black or crashing | before starting Swift: `export QT_XCB_GL_INTEGRATION=none QT_OPENGL=software LIBGL_ALWAYS_SOFTWARE=1` |
 | `salloc` refused | the interactive wall-time limit is 4 h. Longer sessions: see the reference doc |
 | Swift exits silently, no window | wrong Python (see above) |
+| `Error reading ... .h5 ([Errno 524] ... unable to lock file ...)` | start Swift with `env HDF5_USE_FILE_LOCKING=FALSE` as above, and open a project in one Swift session at a time ([details](reference/nionswift-perlmutter-thinlinc.md#77-error-reading--h5-errno-524--unable-to-lock-file-)) |
 
 Reference, with the maintainer setup and the full troubleshooting chain:
 [`reference/nionswift-perlmutter-thinlinc.md`](reference/nionswift-perlmutter-thinlinc.md).

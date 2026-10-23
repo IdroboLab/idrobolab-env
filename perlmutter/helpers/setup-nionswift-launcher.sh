@@ -169,8 +169,10 @@ if [ "$ASK_TIME" = 1 ]; then
     TIME_ARGS="-t $TIME"
 fi
 
+# CFS does not support the lock HDF5 takes on every file open (errno 524),
+# so it is switched off (runbook §7.7).
 salloc -A @ACCOUNT@ $SALLOC_ARGS $TIME_ARGS $EXTRA_OPTS -J nionswift \
-     bash -c "ssh -Y \"\$SLURM_NODELIST\" '@PRELOAD@@ENV@/bin/nionswift'" \
+     bash -c "ssh -Y \"\$SLURM_NODELIST\" 'env HDF5_USE_FILE_LOCKING=FALSE @PRELOAD@@ENV@/bin/nionswift'" \
   || pause_fail "salloc failed (see message above; interactive QOS walltime cap is 4h)"
 EOF
     sed -i \
