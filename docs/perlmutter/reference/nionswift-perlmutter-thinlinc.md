@@ -184,8 +184,8 @@ ssh -X nidXXXXXX
 Launch:
 
 ```bash
-/global/common/software/mXXXX/venvs/nionswift-py313/bin/nionswift
-# (conda-env alternative: activate it and launch with the §4 LD_PRELOAD)
+env HDF5_USE_FILE_LOCKING=FALSE /global/common/software/mXXXX/venvs/nionswift-py313/bin/nionswift
+# (HDF5_USE_FILE_LOCKING: §7.7; conda-env alternative: activate it and launch with the §4 LD_PRELOAD)
 ```
 
 First run: create the project/library on `$SCRATCH` (all-flash Lustre, intended
@@ -256,7 +256,7 @@ Core allocation line (see the generated file for the full logic):
 
 ```bash
 salloc -A mXXXX $SALLOC_ARGS -t "$TIME" -J nionswift \
-     bash -c "ssh -Y \"\$SLURM_NODELIST\" '$ENV/bin/nionswift'"
+     bash -c "ssh -Y \"\$SLURM_NODELIST\" 'env HDF5_USE_FILE_LOCKING=FALSE $ENV/bin/nionswift'"
 ```
 
 (`salloc` runs its command on the *login* node, so the script uses the
@@ -636,6 +636,21 @@ Reported upstream 2026-08-26 as
 https://github.com/nion-software/nionswift/issues/1946 (don't swallow the
 ImportError, null-check the bootstrap result, propagate the wrapper exit
 code, isolate the bundled Qt from system libexpat).
+
+### 7.7 `Error reading ... .h5 ([Errno 524] ... unable to lock file ...)`
+
+Swift reports this for every data file of a project on CFS (or `$HOME`).
+HDF5 takes a `flock` on each file it opens, and these file systems, as the
+compute nodes mount them, do not support it (errno 524 is `ENOTSUPP`).
+Start Swift with `HDF5_USE_FILE_LOCKING=FALSE`: the job script from §5.1
+does, and §5 shows it for a manual launch. The shared job script gets it
+when the maintainer re-runs `setup-nionswift-launcher.sh` (§5.1, step 1).
+
+Nothing then stops two Swift sessions from opening the same project, on
+any file system, and the second one can overwrite the first one's
+changes. HDF5's lock covers a data file only while it is open, and never
+the project index (`.nsproj`), so it did not prevent that either. Open a
+project in one Swift session at a time.
 
 ## 8. Sanity-check sequence for first bring-up
 

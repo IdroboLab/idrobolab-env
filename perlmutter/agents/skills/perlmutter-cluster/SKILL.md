@@ -1,6 +1,6 @@
 ---
 name: perlmutter-cluster
-description: Conventions and gotchas for running jobs and GUI/native tools on NERSC Perlmutter — NERSC's command guard for AI agents, podman-hpc container quirks, bind-mount asymmetry, CUDA/CuPy toolchain conflicts, Slurm mail/queue conventions (exclusive vs shared QOS, requesting a partial GPU node), interactive-first testing, Python on a login node, Pacific-time timestamps. Use when writing or debugging a Perlmutter sbatch/salloc script, running tests or benchmarks inside a Perlmutter container (the pytest, rootdir and package-shadowing traps are in idrobolab-container), diagnosing a CUDA/CuPy version mismatch there, setting up a native (non-container) tool in a shared Perlmutter environment, or when NERSC's filesystem-guard hook blocks a shell command an AI agent runs on a login node.
+description: Conventions and gotchas for running jobs and GUI/native tools on NERSC Perlmutter — NERSC's command guard for AI agents, podman-hpc container quirks, bind-mount asymmetry, CUDA/CuPy toolchain conflicts, Slurm mail/queue conventions (exclusive vs shared QOS, requesting a partial GPU node), interactive-first testing, Python on a login node, Pacific-time timestamps, HDF5 or uv file-locking errors (errno 524) on CFS or $HOME. Use when writing or debugging a Perlmutter sbatch/salloc script, running tests or benchmarks inside a Perlmutter container (the pytest, rootdir and package-shadowing traps are in idrobolab-container), diagnosing a CUDA/CuPy version mismatch there, setting up a native (non-container) tool in a shared Perlmutter environment, or when NERSC's filesystem-guard hook blocks a shell command an AI agent runs on a login node.
 ---
 
 # NERSC Perlmutter conventions
@@ -161,6 +161,12 @@ default cache under `$HOME/.cache/uv` fails with `Could not acquire lock ... Unk
 doing anything. `perlmutter/env.sh` in the idrobolab-env clone sets it (`$SCRATCH/uv-cache`,
 guarded, pre-set value respected); a shell that has not sourced that file needs
 `export UV_CACHE_DIR=$PSCRATCH/uv-cache` by hand.
+
+**HDF5 files on CFS or `$HOME` fail to open from a compute node with `unable to lock file,
+errno = 524`.** HDF5 (h5py included) takes a `flock` on every open, which those mounts do not
+support. Set `HDF5_USE_FILE_LOCKING=FALSE` in the process that opens them (for a command run
+through `ssh` to the node, inside the remote command: an `export` on the login node does not
+cross). With the lock off, nothing guards one file against two writers.
 
 
 ## Native (non-container) tools in a shared environment
