@@ -21,8 +21,9 @@ group meeting.
 
 - **Run in `$SCRATCH`, keep on CFS, archive to HPSS.** Scratch is purged after 8 weeks
   without access.
-- Group data lives in `/global/cfs/cdirs/<project>/projects/<project>/`. Use one folder per
-  project; agree on the name with the people involved.
+- Group data lives in `/global/cfs/cdirs/<project>/projects/<name>/<project>/`: each person
+  has one folder under `projects/` (`<name>`, a short name of your choice), with a
+  subfolder per project.
 - Keep shared folders **group-readable** (`chmod -R g+rX <folder>`).
 - **Never delete, move, overwrite or change the permissions of someone else's files**,
   even where the file system lets you. Ask the owner (`ls -l` shows who).

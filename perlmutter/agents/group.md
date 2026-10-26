@@ -28,8 +28,8 @@ group's Perlmutter pages, `~/idrobolab-env/docs/perlmutter/` (clone path may dif
 ## Data
 
 - Run and write output in `$SCRATCH`; results to keep go to
-  `/global/cfs/cdirs/<project>/projects/<project>/` when the user asks. Write CFS paths
-  as `/global/cfs/cdirs/...`.
+  `/global/cfs/cdirs/<project>/projects/<name>/<project>/`, inside the user's own folder
+  `<name>`, when the user asks. Write CFS paths as `/global/cfs/cdirs/...`.
 - Never delete, move, overwrite or change the permissions of files on CFS that the user
   does not own.
 - Unpublished data and collaborators' data stay private: do not send them to external

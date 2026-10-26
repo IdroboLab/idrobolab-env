@@ -44,7 +44,7 @@ This runs the same container image the batch jobs use, on 1 GPU, for 2 hours by
 default:
 
 ```bash
-cd /global/cfs/cdirs/<project>/projects/<dir>      # notebooks start here
+cd /global/cfs/cdirs/<project>/projects/<name>/<project>  # notebooks start here
 ~/idrobolab-env/perlmutter/jobs/interactive_jupyter.sh
 ```
 

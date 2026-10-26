@@ -21,8 +21,9 @@ and scratch, shared by the whole group for CFS and common.
   noticing: never keep the only copy of anything there.
 - **Where your work goes:** run in `$SCRATCH`, copy what you want to keep to CFS, and
   archive finished projects to HPSS. Group work lives under
-  `/global/cfs/cdirs/<project>/projects/` (the `cdp` alias goes there). Make a folder for
-  your project or your name.
+  `/global/cfs/cdirs/<project>/projects/` (the `cdp` alias goes there): each person has one
+  folder there, `projects/<name>/` (a short name of your choice), with a subfolder per
+  project.
 - **Sharing:** files on CFS must be group-readable for colleagues to see them. If
   someone can't read your folder, run `chmod -R g+rX <folder>`.
 - Always write CFS paths as `/global/cfs/cdirs/...`, not `/global/cfs/projectdirs/...`.
@@ -84,7 +85,7 @@ paths relative to the current folder):
 
 ```
 scp -r mydata nersc-dtn:/pscratch/sd/<x>/<username>/
-scp -r nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results .
+scp -r nersc-dtn:/global/cfs/cdirs/<project>/projects/<name>/<project>/results .
 ```
 
 The first line copies the folder `mydata` into your scratch directory; the second creates
@@ -100,7 +101,7 @@ inside WSL (the Linux instructions below, with the SSH config entries and an
 rsync -azPv mydata/ nersc-dtn:/pscratch/sd/<x>/<username>/mydata/
 
 # Perlmutter project dir -> laptop
-rsync -azPv nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results/ ./results/
+rsync -azPv nersc-dtn:/global/cfs/cdirs/<project>/projects/<name>/<project>/results/ ./results/
 ```
 
 `-azPv`: keep times and permissions, compress, resume partial files, show progress.
@@ -117,7 +118,7 @@ Same as macOS:
 rsync -azPv mydata/ nersc-dtn:/pscratch/sd/<x>/<username>/mydata/
 
 # Perlmutter project dir -> laptop
-rsync -azPv nersc-dtn:/global/cfs/cdirs/<project>/projects/<dir>/results/ ./results/
+rsync -azPv nersc-dtn:/global/cfs/cdirs/<project>/projects/<name>/<project>/results/ ./results/
 ```
 
 The options and the trailing `/` mean the same as under macOS.
@@ -157,7 +158,7 @@ this page. NERSC's Globus examples use them for scratch and CFS:
 |---|---|
 | Scratch | `/pscratch/sd/<x>/<username>/` (`echo $SCRATCH` shows it) |
 | Home | `/global/homes/<x>/<username>/` |
-| The group's project directory | `/global/cfs/cdirs/<project>/` (yours: `/global/cfs/cdirs/<project>/projects/<dir>/`) |
+| The group's project directory | `/global/cfs/cdirs/<project>/` (yours: `/global/cfs/cdirs/<project>/projects/<name>/<project>/`) |
 
 NERSC's Globus page gives no path examples for home, so if a path does not open, type `/`
 into **Path** and click your way down to the folder.
@@ -170,8 +171,8 @@ into **Path** and click your way down to the folder.
    collections, and that a Personal collection is for transfers to and from a local
    laptop or computer.
 2. At <https://app.globus.org>, open **File Manager**, enter **NERSC DTN** in the
-   **Collection** field, sign in, and type `/global/cfs/cdirs/<project>/projects/<dir>/` into
-   **Path**.
+   **Collection** field, sign in, and type
+   `/global/cfs/cdirs/<project>/projects/<name>/<project>/` into **Path**.
 3. Click **Transfer or Sync to...** and choose your Personal collection in the second
    panel. Select the files in the panel they are in, give the transfer a label, and click
    **Start**. Follow it on **Activity**.
@@ -241,7 +242,7 @@ first writes the list of what to copy (a folder in the list is copied with every
 
 ```bash
 module load globus-tools
-ls -d /global/cfs/cdirs/<project>/<dir> > transfer.txt
+ls -d /global/cfs/cdirs/<project>/projects/<name>/<project> > transfer.txt
 transfer_files.py -s dtn -t perlmutter -d /pscratch/sd/<x>/<username>/input_directory -i transfer.txt
 ```
 
