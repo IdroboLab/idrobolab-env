@@ -14,7 +14,7 @@
 #
 # The first form splits one reconstruction over the 2 GPUs. The second runs
 # 2 independent reconstructions instead, one per GPU, with random seeds
-# FIRST_SEED, FIRST_SEED+1, ...; do not also pass --seed then.
+# FIRST_SEED, FIRST_SEED+1000000, ...; do not also pass --seed then.
 #
 # The params file is a ptyrad .yaml (`ptyrad get-templates` writes starters);
 # relative paths in it resolve against the directory you submit from. Options
@@ -142,7 +142,8 @@ for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "$PWD"; do
 done
 WORKDIR=$(pwd -P)
 
-# accelerate starts one process per GPU: split the 32 physical cores between them.
+# One process per GPU (accelerate's, or one run per seed): split the 32
+# physical cores between them.
 THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 
 # HDF5 (through h5py) locks every file it opens, and CFS does not support
@@ -156,16 +157,20 @@ THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
 
 # FIRST_SEED=<n> switches to independent runs: one `ptyrad run` per GPU, with
-# seeds n, n+1, ... ptyrad names its output folder from the params and the
+# seeds n, n+1000000, ... ptyrad re-seeds every iteration with seed+iteration,
+# so seeds closer together than the iteration count would replay each other's
+# batch orders, shifted by a few iterations. ptyrad names its output folder from the params and the
 # date, not the seed, so each run reads a copy of the params whose
 # recon_params.postfix ends in seed<k>, keeping the folders apart. Paths in the
 # params resolve against the working directory, so the copy lives in the
-# container's /tmp. Each run's console output goes to <job name>_<job id>_seed<k>.out.
+# container's /tmp. --jobid prefixes each run's log file name, ptyrad's way of
+# keeping parallel workers' logs apart. Each run's console output goes to
+# <job name>_<job id>_seed<k>.out.
 RUN_SEEDS=$(cat <<'EOF'
 n=$1 seed=$2 tag=$3 params=$4
 shift 4
 pids=()
-for ((gpu = 0; gpu < n; gpu++, seed++)); do
+for ((gpu = 0; gpu < n; gpu++, seed += 1000000)); do
     copy=/tmp/params_seed$seed.yaml
     python -c '
 import sys, yaml
