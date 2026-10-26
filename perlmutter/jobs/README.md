@@ -65,6 +65,9 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 | `abtem_uv_gpu_shared.sbatch` | `gpu` / `shared` | 1 or 2 A100 (two `#SBATCH` lines), 32 or 64 logical cores | **0.25** / **0.5** GPU node-hr | none (set by you) | abTEM from your own uv environment (`~/venvs/abtem`), no container |
 | `abtem_uv_gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4 tasks × 1 A100 | 1 GPU node-hr | `scratch` | Four independent single-GPU abTEM runs (a sweep) from `~/venvs/abtem` |
 | `gpu_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | `scratch,cfs` | One process driving 4 GPUs |
+| `ptyrad_1gpu_shared.sbatch` | `gpu` / `shared` | 1 A100, 32 logical cores | **0.25** GPU node-hr | `scratch,cfs` | **Default for ptyrad**: `ptyrad run <params.yaml>` on one GPU |
+| `ptyrad_2gpu_shared.sbatch` | `gpu` / `shared` | 2 A100, 64 logical cores | **0.5** GPU node-hr | `scratch,cfs` | One ptyrad reconstruction over 2 GPUs (`accelerate launch`) |
+| `ptyrad_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | `scratch,cfs` | One ptyrad reconstruction over 4 GPUs (`accelerate launch`) |
 | `gpu_4gpu_hbm80g.sbatch` | `gpu&hbm80g` / `regular` | 1 node, 4×A100 **80 GB** | 1 GPU node-hr | `scratch,cfs` | complex128 EMCD, exact-S₂, big S-matrix budgets |
 | `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | `scratch,cfs` | GPU-parallel GPAW, distributed torch |
 | `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | `scratch,cfs` | Smoke tests before a long run |
@@ -311,6 +314,7 @@ ID, date, image digest and result in the PR) and update this table.
 | `gpaw_cpu_multinode.sbatch` | not yet run |
 | `abtem_uv_gpu_shared.sbatch` | not yet run |
 | `abtem_uv_gpu_node.sbatch` | not yet run |
+| `ptyrad_1gpu_shared.sbatch`, `ptyrad_2gpu_shared.sbatch`, `ptyrad_4gpu_node.sbatch` | not yet run as jobs (their `ptyrad run` and `accelerate launch` commands ran by hand in an interactive container on 2 A100s, 2026-10-26, ptyrad 1.0.0) |
 | `examples/abtem/abtem_gpu_example.py` | not yet run on Perlmutter (only `--device cpu`, on a workstation, 2026-10-06) |
 | `interactive_gpu.sh` | not yet run since its `srun` fix of 2026-08-27 |
 | `interactive_gpu_shared.sh` | not yet run |
