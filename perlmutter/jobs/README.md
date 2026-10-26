@@ -67,8 +67,8 @@ sacctmgr -nP show assoc user=$USER format=account | sort -u
 | `abtem_uv_gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4 tasks × 1 A100 | 1 GPU node-hr | `scratch` | Four independent single-GPU abTEM runs (a sweep) from `~/venvs/abtem` |
 | `gpu_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | `scratch,cfs` | One process driving 4 GPUs |
 | `ptyrad_1gpu_shared.sbatch` | `gpu` / `shared` | 1 A100, 32 logical cores | **0.25** GPU node-hr | `scratch,cfs` | **Default for ptyrad**: `ptyrad run <params.yaml>` on one GPU |
-| `ptyrad_2gpu_shared.sbatch` | `gpu` / `shared` | 2 A100, 64 logical cores | **0.5** GPU node-hr | `scratch,cfs` | One ptyrad reconstruction over 2 GPUs (`accelerate launch`), or with `FIRST_SEED=<n>` two independent ones with seeds n, n+1 |
-| `ptyrad_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | `scratch,cfs` | One ptyrad reconstruction over 4 GPUs (`accelerate launch`), or with `FIRST_SEED=<n>` four independent ones with seeds n…n+3 |
+| `ptyrad_2gpu_shared.sbatch` | `gpu` / `shared` | 2 A100, 64 logical cores | **0.5** GPU node-hr | `scratch,cfs` | One ptyrad reconstruction over 2 GPUs (`accelerate launch`), or with `FIRST_SEED=<n>` two independent ones with seeds n, n+10⁶ |
+| `ptyrad_4gpu_node.sbatch` | `gpu` / `regular` | 1 node, 4×A100 40 GB, 256 GB | 1 GPU node-hr | `scratch,cfs` | One ptyrad reconstruction over 4 GPUs (`accelerate launch`), or with `FIRST_SEED=<n>` four independent ones with seeds n, n+10⁶, n+2·10⁶, n+3·10⁶ |
 | `gpu_4gpu_hbm80g.sbatch` | `gpu&hbm80g` / `regular` | 1 node, 4×A100 **80 GB** | 1 GPU node-hr | `scratch,cfs` | complex128 EMCD, exact-S₂, big S-matrix budgets |
 | `gpu_multinode_mpi.sbatch` | `gpu` / `regular` | 2 nodes × 4 ranks, 1 GPU/rank | 2 GPU node-hr | `scratch,cfs` | GPU-parallel GPAW, distributed torch |
 | `debug_gpu.sbatch` | `gpu` / `debug` | 1 GPU, ≤30 min | 1 GPU node-hr | `scratch,cfs` | Smoke tests before a long run |

@@ -111,7 +111,7 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 | `gpu_2gpu_shared.sbatch` | 2 GPUs, shared, 4 h |
 | `gpu_4gpu_node.sbatch` / `gpu_4gpu_hbm80g.sbatch` | a whole node, 4×A100 40 GB / 80 GB |
 | `gpu_multinode_mpi.sbatch` | 2 nodes, one MPI rank per GPU |
-| `ptyrad_1gpu_shared.sbatch` / `ptyrad_2gpu_shared.sbatch` / `ptyrad_4gpu_node.sbatch` | ptyrad: `sbatch <template> params.yaml` on 1, 2 or 4 GPUs; with `FIRST_SEED=<n> sbatch ...` the 2- and 4-GPU ones run independent reconstructions with seeds n, n+1, … instead. One GPU is the default |
+| `ptyrad_1gpu_shared.sbatch` / `ptyrad_2gpu_shared.sbatch` / `ptyrad_4gpu_node.sbatch` | ptyrad: `sbatch <template> params.yaml` on 1, 2 or 4 GPUs; with `FIRST_SEED=<n> sbatch ...` the 2- and 4-GPU ones run independent reconstructions with seeds n, n+10⁶, … instead. One GPU is the default |
 | `gpaw_cpu_singlenode.sbatch` / `gpaw_cpu_multinode.sbatch` | GPAW with MPI on 1 / 4 CPU nodes |
 | `abtem_uv_gpu_shared.sbatch` | 1 or 2 GPUs, shared: abTEM from your own uv environment instead of the container ([page 7](07-abtem.md)) |
 | `abtem_uv_gpu_node.sbatch` | a whole node: four independent single-GPU abTEM runs (a sweep) from your uv environment |
