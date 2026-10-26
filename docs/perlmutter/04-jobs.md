@@ -100,7 +100,7 @@ inside the group container ([page 6](06-containers.md)) and take the script as a
 argument:
 
 ```bash
-cd /global/cfs/cdirs/<project>/projects/<dir>        # output files land here
+cd /global/cfs/cdirs/<project>/projects/<name>/<project>  # output files land here
 sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 ```
 
