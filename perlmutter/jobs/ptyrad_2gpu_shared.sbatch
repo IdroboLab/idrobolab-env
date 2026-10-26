@@ -1,15 +1,20 @@
 #!/bin/bash
 # ptyrad (ptychographic reconstruction) on two A100s of a SHARED GPU node:
 # one reconstruction split over both GPUs by HuggingFace accelerate (data
-# parallel, one process per GPU). Worth it only when one GPU is the
-# bottleneck: a large dataset or a large batch size. Each update synchronizes
-# the gradients, which costs more than it saves on small data.
+# parallel, one process per GPU), or two independent reconstructions with
+# different random seeds (FIRST_SEED, below). Splitting pays only when one GPU
+# is the bottleneck.
 #
 # NERSC policy: jobs needing only 1 or 2 GPUs SHOULD use the shared QOS.
 #   2 GPU -> 32 physical cores + 128 GB -> 0.5 node-hour per wallclock hour
 # Max walltime 48 h, max half a node.
 #
 # Usage:  sbatch ptyrad_2gpu_shared.sbatch params.yaml [ptyrad run options...]
+#         FIRST_SEED=1 sbatch ptyrad_2gpu_shared.sbatch params.yaml [ptyrad run options...]
+#
+# The first form splits one reconstruction over the 2 GPUs. The second runs
+# 2 independent reconstructions instead, one per GPU, with random seeds
+# FIRST_SEED, FIRST_SEED+1, ...; do not also pass --seed then.
 #
 # The params file is a ptyrad .yaml (`ptyrad get-templates` writes starters);
 # relative paths in it resolve against the directory you submit from. Options
@@ -145,15 +150,52 @@ THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 #
 #   OSError: [Errno 524] Unable to synchronously create file (unable to lock file, errno = 524, ...)
 #
-# Locking guards against concurrent writers, which one ptyrad run does not have.
+# Locking guards against concurrent writers of one file, which ptyrad does not
+# have: under accelerate only the main process saves, and independent runs
+# write separate folders.
 HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
+# FIRST_SEED=<n> switches to independent runs: one `ptyrad run` per GPU, with
+# seeds n, n+1, ... ptyrad names its output folder from the params and the
+# date, not the seed, so each run reads a copy of the params whose
+# recon_params.postfix ends in seed<k>, keeping the folders apart. Paths in the
+# params resolve against the working directory, so the copy lives in the
+# container's /tmp. Each run's console output goes to <job name>_<job id>_seed<k>.out.
+RUN_SEEDS=$(cat <<'EOF'
+n=$1 seed=$2 tag=$3 params=$4
+shift 4
+pids=()
+for ((gpu = 0; gpu < n; gpu++, seed++)); do
+    copy=/tmp/params_seed$seed.yaml
+    python -c '
+import sys, yaml
+src, dst, label = sys.argv[1:]
+params = yaml.safe_load(open(src))
+recon = params.setdefault("recon_params", {})
+recon["postfix"] = "_".join(filter(None, [recon.get("postfix"), label]))
+yaml.safe_dump(params, open(dst, "w"), sort_keys=False)
+' "$params" "$copy" "seed$seed" || exit 1
+    ptyrad run "$copy" --gpuid "$gpu" --seed "$seed" --jobid "$((gpu + 1))" "$@" \
+        > "${tag}_seed$seed.out" 2>&1 &
+    pids+=($!)
+done
+status=0
+for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+exit $status
+EOF
+)
+if [ -n "${FIRST_SEED:-}" ]; then
+    PAYLOAD=(bash -c "$RUN_SEEDS" run_seeds 2 "$FIRST_SEED" "${SLURM_JOB_NAME}_${SLURM_JOB_ID}" "$PARAMS" "$@")
+else
+    PAYLOAD=(accelerate launch --multi_gpu --num_processes=2 --mixed_precision=no
+             -m ptyrad run "$PARAMS" --gpuid acc "$@")
+fi
 
 echo "IMAGE=$IMAGE  gpus=2  mounts=$MOUNTS"
 time srun -c "$SLURM_CPUS_PER_TASK" --cpu-bind=cores \
     podman-hpc run --rm $GROUP_FLAGS --gpu \
         $MOUNTS --workdir "$WORKDIR" \
         $THREAD_ENV $HDF5_ENV \
-        "$IMAGE" accelerate launch --multi_gpu --num_processes=2 --mixed_precision=no \
-            -m ptyrad run "$PARAMS" --gpuid acc "$@"
+        "$IMAGE" "${PAYLOAD[@]}"
 
 # For 1 GPU, use ptyrad_1gpu_shared.sbatch; for 4, ptyrad_4gpu_node.sbatch.

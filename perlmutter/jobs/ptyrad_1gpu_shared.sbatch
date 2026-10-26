@@ -142,7 +142,9 @@ THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 #
 #   OSError: [Errno 524] Unable to synchronously create file (unable to lock file, errno = 524, ...)
 #
-# Locking guards against concurrent writers, which one ptyrad run does not have.
+# Locking guards against concurrent writers of one file, which ptyrad does not
+# have: under accelerate only the main process saves, and independent runs
+# write separate folders.
 HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
 
 echo "IMAGE=$IMAGE  gpus=1  mounts=$MOUNTS"
