@@ -137,6 +137,12 @@ WORKDIR=$(pwd -P)
 
 THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
 # Confirm you actually landed on 80 GB parts before a long run — a job that
 # silently gets 40 GB will OOM hours in.
 echo "IMAGE=$IMAGE  requesting hbm80g"
@@ -147,4 +153,4 @@ time srun --cpu-bind=none \
     podman-hpc run --rm $GROUP_FLAGS --gpu \
         $MOUNTS --workdir "$WORKDIR" \
         $THREAD_ENV \
-        "$IMAGE" python "$SCRIPT" "$@"
+        $HDF5_ENV "$IMAGE" python "$SCRIPT" "$@"

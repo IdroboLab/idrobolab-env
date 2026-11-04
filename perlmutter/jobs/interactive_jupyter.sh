@@ -189,9 +189,15 @@ JUPYTER_ARGS="--no-browser --ip=0.0.0.0 --port=$PORT --port-retries=0 --allow-ro
 # kernels, jupyter settings and installed extensions survive the session.
 HOME_ENV="-e HOME=$HOME"
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
 # Everything the inner shell needs, passed through the environment rather than
 # through another layer of quoting (salloc exports the caller's environment).
-export MOUNTS WORKDIR IMAGE PORT GROUP_FLAGS RUN_GPU_FLAGS SHM_FLAGS THREAD_ENV HOME_ENV PUBLISH_FLAGS JUPYTER_ARGS
+export MOUNTS WORKDIR IMAGE PORT GROUP_FLAGS RUN_GPU_FLAGS SHM_FLAGS THREAD_ENV HOME_ENV HDF5_ENV PUBLISH_FLAGS JUPYTER_ARGS
 
 # Say what is being asked for BEFORE salloc blocks: if it does queue, this is
 # the line that tells you which QOS to blame.
@@ -270,7 +276,7 @@ EOF
               "ss -ltn 2>/dev/null | grep :$PORT || echo none" >&2
           ) &
         exec srun --unbuffered podman-hpc run --rm -i $GROUP_FLAGS $RUN_GPU_FLAGS $SHM_FLAGS \
-            $PUBLISH_FLAGS $MOUNTS --workdir "$WORKDIR" $THREAD_ENV $HOME_ENV \
+            $PUBLISH_FLAGS $MOUNTS --workdir "$WORKDIR" $THREAD_ENV $HOME_ENV $HDF5_ENV \
             "$IMAGE" jupyter lab $JUPYTER_ARGS "$@"
     ' bash "$@"
 

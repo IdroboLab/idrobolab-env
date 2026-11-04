@@ -46,6 +46,12 @@ export OUT=${OUT:-${SCRATCH:?SCRATCH is not set}/abtem-sweep-$SLURM_JOB_ID}   # 
 export OMP_NUM_THREADS=16 OPENBLAS_NUM_THREADS=16
 export PYTHONUNBUFFERED=1
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+export HDF5_USE_FILE_LOCKING=FALSE
+
 echo "python=$VENV/bin/python  script=$SCRIPT  out=$OUT"
 # The sweep: task i runs the script at the i-th electron energy (keV; the work per
 # task is the same) and writes to its own output directory.

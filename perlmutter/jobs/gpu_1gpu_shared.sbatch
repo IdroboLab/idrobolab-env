@@ -139,11 +139,17 @@ WORKDIR=$(pwd -P)
 # Give the one process the threads it paid for (16 physical cores).
 THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
 echo "IMAGE=$IMAGE  gpus=1  mounts=$MOUNTS"
 time srun --cpu-bind=cores \
     podman-hpc run --rm $GROUP_FLAGS --gpu \
         $MOUNTS --workdir "$WORKDIR" \
         $THREAD_ENV \
-        "$IMAGE" python "$SCRIPT" "$@"
+        $HDF5_ENV "$IMAGE" python "$SCRIPT" "$@"
 
 # For 2 GPUs in the same QOS, use gpu_2gpu_shared.sbatch.

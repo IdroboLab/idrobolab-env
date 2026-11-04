@@ -143,12 +143,18 @@ GPAW_ENV="-e GPAW_MPI_BACKEND=cgpaw -e OMP_NUM_THREADS=1"
 # counts.
 MPICH_ENV="-e MPICH_SMP_SINGLE_COPY_MODE=CMA -e MPICH_OFI_STARTUP_CONNECT=1"
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
 echo "IMAGE=$IMAGE  ranks=$SLURM_NTASKS  mounts=$MOUNTS"
 time srun --cpu-bind=cores \
     podman-hpc run --rm $GROUP_FLAGS --mpi \
         $MOUNTS --workdir "$WORKDIR" \
         $GPAW_ENV $MPICH_ENV \
-        "$IMAGE" python "$SCRIPT" "$@"
+        $HDF5_ENV "$IMAGE" python "$SCRIPT" "$@"
 
 # --- Correctness fallback (no Cray MPICH injection) -----------------------
 # If `--mpi` misbehaves, drop it: the container's own MPICH 4.3.2 still runs
