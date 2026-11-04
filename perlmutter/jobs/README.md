@@ -315,7 +315,7 @@ ID, date, image digest and result in the PR) and update this table.
 | `gpaw_cpu_multinode.sbatch` | not yet run |
 | `abtem_uv_gpu_shared.sbatch` | not yet run |
 | `abtem_uv_gpu_node.sbatch` | not yet run |
-| `ptyrad_1gpu_shared.sbatch`, `ptyrad_2gpu_shared.sbatch`, `ptyrad_4gpu_node.sbatch` | not yet run as jobs; the `ptyrad run` and 2-GPU `accelerate launch` commands were run by hand in an interactive container on 2 A100s (2026-10-26, ptyrad 1.0.0); the `FIRST_SEED` mode was tested only off-cluster, with a stub `ptyrad` |
+| `ptyrad_1gpu_shared.sbatch`, `ptyrad_2gpu_shared.sbatch`, `ptyrad_4gpu_node.sbatch` | run as batch jobs on 2026-11-04 (ptyrad 1.0.0, a demo cut to 20 iterations, `--time=00:15:00`, the 4-GPU ones in `-q debug`): 1 GPU <jobid>; 2 GPU `accelerate` <jobid>, `FIRST_SEED=1` <jobid>; 4 GPU `accelerate` <jobid>, `FIRST_SEED=1` <jobid>. Each wrote its reconstruction, `FIRST_SEED` one folder per seed (`_seed1`, `_seed1000001`, ...) |
 | `examples/abtem/abtem_gpu_example.py` | not yet run on Perlmutter (only `--device cpu`, on a workstation, 2026-10-06) |
 | `interactive_gpu.sh` | not yet run since its `srun` fix of 2026-08-27 |
 | `interactive_gpu_shared.sh` | not yet run |
