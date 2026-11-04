@@ -14,8 +14,9 @@
 #
 # The first form splits one reconstruction over the 2 GPUs. The second runs
 # 2 independent reconstructions instead, one per GPU, each with its own
-# random seed; SEEDS=<n> gives seeds n, n+1000000, ... instead, to repeat a
-# job. Do not also pass --seed with SEEDS.
+# random seed; SEEDS=<n> gives seeds n, n+1000000, ... instead. One run of
+# either kind repeats with --seed <its seed> (in its folder and log names).
+# Do not also pass --seed with SEEDS.
 #
 # The params file is a ptyrad .yaml (`ptyrad get-templates` writes starters);
 # relative paths in it resolve against the directory you submit from. Options
@@ -169,7 +170,9 @@ draw_seed() { echo $(( $(od -An -N4 -tu4 /dev/urandom) % 2147483648 )); }
 seed_given() {   # --seed among the options, or a numeric random_seed in the params
     local a
     for a in "$@"; do case $a in --seed|--seed=*) return 0 ;; esac; done
-    grep -Eq '^[[:space:]]*random_seed:[[:space:]]*[0-9]' "$PARAMS"
+    # YAML, flow YAML, JSON, TOML and .py params alike; commented-out lines skipped
+    grep -Ev '^[[:space:]]*#' "$PARAMS" |
+        grep -Eq "random_seed[\"']?[[:space:]]*[:=][[:space:]]*[\"']?[0-9]"
 }
 SEED_ARGS=()
 seed_given "$@" || SEED_ARGS=(--seed "$(draw_seed)")
@@ -179,8 +182,8 @@ seed_given "$@" || SEED_ARGS=(--seed "$(draw_seed)")
 # n, n+1000000, ... Either overrides the params file's random_seed. ptyrad
 # re-seeds every iteration with seed + iteration, so seeds closer together
 # than the iteration count would replay each other's batch orders, shifted
-# by a few iterations: hence the spacing. For random seeds the odds of that
-# are N(N-1)*NITER/2^31, 6e-6 for 4 runs of 1000 iterations.
+# by a few iterations: hence the spacing. For N random seeds and NITER
+# iterations the odds of that are N(N-1)*NITER/2^31, 9e-7 for 2 runs of 1000.
 #
 # ptyrad names its output folder from the params and the date, not the seed,
 # so each run reads a copy of the params whose recon_params.postfix ends in
@@ -222,7 +225,7 @@ if [ -n "${SEEDS:-}" ]; then
     case $SEEDS in
         random)    for _ in $(seq 2); do seeds+=("$(draw_seed)"); done ;;
         *[!0-9]*) echo "SEEDS must be 'random' or a non-negative integer, not '$SEEDS'" >&2; exit 2 ;;
-        *)         seeds=($(seq "$SEEDS" 1000000 $((SEEDS + 1000000)))) ;;
+        *)         SEEDS=$((10#$SEEDS)); seeds=($(seq "$SEEDS" 1000000 $((SEEDS + 1000000)))) ;;
     esac
     PAYLOAD=(bash -c "$RUN_SEEDS" run_seeds "${SLURM_JOB_NAME}_${SLURM_JOB_ID}" "$PARAMS" "${seeds[*]}" "$@")
 else

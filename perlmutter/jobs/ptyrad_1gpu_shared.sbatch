@@ -149,17 +149,19 @@ THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
 
 # Seeds. Given neither --seed nor init_params.random_seed, ptyrad runs
-# unseeded (under accelerate, always with seed 42), and an unseeded run cannot
-# be repeated. The job then draws a seed from /dev/urandom and passes it as
-# --seed; ptyrad logs it ("Random seed: <k> provided by CLI argument") and
-# saves it with the reconstruction, and --seed <k> repeats the run's random
-# choices (initial guesses, batch orders). Seeds stay below 2^31: ptyrad seeds
-# numpy with seed + iteration, and numpy rejects seeds of 2^32 and above.
+# unseeded, and an unseeded run cannot be repeated. The job then draws a seed
+# from /dev/urandom and passes it as --seed; ptyrad logs it ("Random seed: <k>
+# provided by CLI argument") and saves it with the reconstruction, and --seed
+# <k> repeats the run's random choices (initial guesses, batch orders). Seeds
+# stay below 2^31: ptyrad seeds numpy with seed + iteration, and numpy rejects
+# seeds of 2^32 and above.
 draw_seed() { echo $(( $(od -An -N4 -tu4 /dev/urandom) % 2147483648 )); }
 seed_given() {   # --seed among the options, or a numeric random_seed in the params
     local a
     for a in "$@"; do case $a in --seed|--seed=*) return 0 ;; esac; done
-    grep -Eq '^[[:space:]]*random_seed:[[:space:]]*[0-9]' "$PARAMS"
+    # YAML, flow YAML, JSON, TOML and .py params alike; commented-out lines skipped
+    grep -Ev '^[[:space:]]*#' "$PARAMS" |
+        grep -Eq "random_seed[\"']?[[:space:]]*[:=][[:space:]]*[\"']?[0-9]"
 }
 SEED_ARGS=()
 seed_given "$@" || SEED_ARGS=(--seed "$(draw_seed)")
