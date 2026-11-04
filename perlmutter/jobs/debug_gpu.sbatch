@@ -119,10 +119,16 @@ for p in "${SCRATCH:-}" "${CFS:-}" "${HOME:-}" "$PWD"; do
 done
 WORKDIR=$(pwd -P)
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
 if [ $# -gt 0 ]; then
     SCRIPT=$1; shift
     time srun --ntasks=1 --cpus-per-task=32 podman-hpc run --rm $GROUP_FLAGS --gpu \
-        $MOUNTS --workdir "$WORKDIR" \
+        $MOUNTS --workdir "$WORKDIR" $HDF5_ENV \
         "$IMAGE" python "$SCRIPT" "$@"
     exit 0
 fi

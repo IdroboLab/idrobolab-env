@@ -157,6 +157,12 @@ RANK_ENV="-e SLURM_LOCALID -e SLURM_PROCID -e SLURM_NTASKS"
 # how podman-hpc's --gpu module interacts with per-task binding is worth
 # confirming on your first run.
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
 echo "IMAGE=$IMAGE  nodes=$SLURM_JOB_NUM_NODES  ranks=$SLURM_NTASKS"
 srun --cpu-bind=cores podman-hpc run --rm $GROUP_FLAGS --gpu $MOUNTS "$IMAGE" \
     bash -c 'echo "rank $SLURM_PROCID localid $SLURM_LOCALID sees $(nvidia-smi -L | wc -l) GPUs"' \
@@ -166,7 +172,7 @@ time srun --cpu-bind=cores \
     podman-hpc run --rm $GROUP_FLAGS --mpi --gpu --nccl-cu12 --network=no_vni \
         $MOUNTS --workdir "$WORKDIR" \
         $GPAW_ENV $MPICH_ENV $RANK_ENV \
-        "$IMAGE" python "$SCRIPT" "$@"
+        $HDF5_ENV "$IMAGE" python "$SCRIPT" "$@"
 
 # --- GPU-aware MPI --------------------------------------------------------
 # MPICH_GPU_SUPPORT_ENABLED=1 lets Cray MPICH send device pointers directly.

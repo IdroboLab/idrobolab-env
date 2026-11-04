@@ -118,6 +118,12 @@ else
     SRUN_FLAGS="--pty"
 fi
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
+
 # salloc with an explicit command runs THAT COMMAND ON THE LOGIN NODE -- only
 # srun steps land on the allocated node. Without the inner srun the container
 # runs on a shared login node, with no GPU, while the allocation sits idle.
@@ -127,7 +133,7 @@ fi
 exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=interactive \
     --nodes="$NODES" --gpus-per-node="$GPUS" --time="$TIME" --licenses=scratch,cfs \
     srun $SRUN_FLAGS podman-hpc run --rm $GROUP_FLAGS $TTY_FLAGS --gpu \
-        $MOUNTS --workdir "$WORKDIR" -e HOME="$HOME" \
+        $MOUNTS --workdir "$WORKDIR" -e HOME="$HOME" $HDF5_ENV \
         "$IMAGE" "${CMD[@]}"
 
 # CPU-only equivalent (no GPU allocation, charged against the CPU account):

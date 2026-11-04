@@ -49,5 +49,11 @@ shift
 export OMP_NUM_THREADS=$((SLURM_CPUS_PER_TASK / 2)) OPENBLAS_NUM_THREADS=$((SLURM_CPUS_PER_TASK / 2))
 export PYTHONUNBUFFERED=1
 
+# HDF5 (h5py included) takes a flock on every file it opens, which CFS and
+# $HOME do not support from a compute node: the first HDF5 open there fails
+# with "OSError: [Errno 524] ... unable to lock file". With the lock off,
+# nothing guards one file against two writers.
+export HDF5_USE_FILE_LOCKING=FALSE
+
 echo "python=$VENV/bin/python  gpus=${SLURM_GPUS:-?}  script=$SCRIPT"
 time srun -c "$SLURM_CPUS_PER_TASK" --cpu-bind=cores "$VENV/bin/python" "$SCRIPT" "$@"
