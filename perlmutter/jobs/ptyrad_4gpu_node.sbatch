@@ -2,7 +2,7 @@
 # ptyrad (ptychographic reconstruction) on a full quad-A100 GPU node
 # (exclusive): one reconstruction split over all 4 GPUs by HuggingFace
 # accelerate (data parallel, one process per GPU), or four independent
-# reconstructions with different random seeds (FIRST_SEED, below). Splitting
+# reconstructions with different random seeds (SEEDS, below). Splitting
 # pays only when one GPU is the bottleneck.
 #
 # Node: 1x AMD EPYC 7763 (Milan), 64 physical cores (128 logical), 256 GB DDR4,
@@ -11,15 +11,17 @@
 # costs per hour.
 #
 # Usage:  sbatch ptyrad_4gpu_node.sbatch params.yaml [ptyrad run options...]
-#         FIRST_SEED=1 sbatch ptyrad_4gpu_node.sbatch params.yaml [ptyrad run options...]
+#         SEEDS=random sbatch ptyrad_4gpu_node.sbatch params.yaml [ptyrad run options...]
 #
 # The first form splits one reconstruction over the 4 GPUs. The second runs
-# 4 independent reconstructions instead, one per GPU, with random seeds
-# FIRST_SEED, FIRST_SEED+1000000, ...; do not also pass --seed then.
+# 4 independent reconstructions instead, one per GPU, each with its own
+# random seed; SEEDS=<n> gives seeds n, n+1000000, ... instead, to repeat a
+# job. Do not also pass --seed with SEEDS.
 #
 # The params file is a ptyrad .yaml (`ptyrad get-templates` writes starters);
 # relative paths in it resolve against the directory you submit from. Options
-# after it go to `ptyrad run`, e.g. --seed 1 or --verbosity DEBUG.
+# after it go to `ptyrad run`, e.g. --seed 1 or --verbosity DEBUG. With no
+# seed given, the job draws a random one (Seeds, below).
 #
 #SBATCH --job-name=ptyrad_4gpu
 #SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
@@ -151,21 +153,44 @@ THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 # write separate folders.
 HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
 
-# FIRST_SEED=<n> switches to independent runs: one `ptyrad run` per GPU, with
-# seeds n, n+1000000, ... ptyrad re-seeds every iteration with seed+iteration,
-# so seeds closer together than the iteration count would replay each other's
-# batch orders, shifted by a few iterations. ptyrad names its output folder from the params and the
-# date, not the seed, so each run reads a copy of the params whose
-# recon_params.postfix ends in seed<k>, keeping the folders apart. Paths in the
+# Seeds. Given neither --seed nor init_params.random_seed, ptyrad runs
+# unseeded (under accelerate, always with seed 42), and an unseeded run cannot
+# be repeated. The job then draws a seed from /dev/urandom and passes it as
+# --seed; ptyrad logs it ("Random seed: <k> provided by CLI argument") and
+# saves it with the reconstruction, and --seed <k> repeats the run's random
+# choices (initial guesses, batch orders). Seeds stay below 2^31: ptyrad seeds
+# numpy with seed + iteration, and numpy rejects seeds of 2^32 and above.
+draw_seed() { echo $(( $(od -An -N4 -tu4 /dev/urandom) % 2147483648 )); }
+seed_given() {   # --seed among the options, or a numeric random_seed in the params
+    local a
+    for a in "$@"; do case $a in --seed|--seed=*) return 0 ;; esac; done
+    grep -Eq '^[[:space:]]*random_seed:[[:space:]]*[0-9]' "$PARAMS"
+}
+SEED_ARGS=()
+seed_given "$@" || SEED_ARGS=(--seed "$(draw_seed)")
+
+# SEEDS switches to independent runs: one `ptyrad run` per GPU, each with its
+# own seed. SEEDS=random draws each run's seed as above; SEEDS=<n> gives
+# n, n+1000000, ... Either overrides the params file's random_seed. ptyrad
+# re-seeds every iteration with seed + iteration, so seeds closer together
+# than the iteration count would replay each other's batch orders, shifted
+# by a few iterations: hence the spacing. For random seeds the odds of that
+# are N(N-1)*NITER/2^31, 6e-6 for 4 runs of 1000 iterations.
+#
+# ptyrad names its output folder from the params and the date, not the seed,
+# so each run reads a copy of the params whose recon_params.postfix ends in
+# seed<k>, keeping the folders apart. Paths in the
 # params resolve against the working directory, so the copy lives in the
 # container's /tmp. --jobid prefixes each run's log file name, ptyrad's way of
 # keeping parallel workers' logs apart. Each run's console output goes to
 # <job name>_<job id>_seed<k>.out.
 RUN_SEEDS=$(cat <<'EOF'
-n=$1 seed=$2 tag=$3 params=$4
-shift 4
+tag=$1 params=$2
+read -ra seeds <<< "$3"
+shift 3
 pids=()
-for ((gpu = 0; gpu < n; gpu++, seed += 1000000)); do
+for gpu in "${!seeds[@]}"; do
+    seed=${seeds[gpu]}
     copy=/tmp/params_seed$seed.yaml
     python -c '
 import sys, yaml
@@ -184,11 +209,20 @@ for pid in "${pids[@]}"; do wait "$pid" || status=1; done
 exit $status
 EOF
 )
-if [ -n "${FIRST_SEED:-}" ]; then
-    PAYLOAD=(bash -c "$RUN_SEEDS" run_seeds 4 "$FIRST_SEED" "${SLURM_JOB_NAME}_${SLURM_JOB_ID}" "$PARAMS" "$@")
+if [ -n "${SEEDS:-}" ]; then
+    for a in "$@"; do
+        case $a in --seed|--seed=*) echo "SEEDS sets each run's seed; drop $a" >&2; exit 2 ;; esac
+    done
+    seeds=()
+    case $SEEDS in
+        random)    for _ in $(seq 4); do seeds+=("$(draw_seed)"); done ;;
+        *[!0-9]*) echo "SEEDS must be 'random' or a non-negative integer, not '$SEEDS'" >&2; exit 2 ;;
+        *)         seeds=($(seq "$SEEDS" 1000000 $((SEEDS + 3000000)))) ;;
+    esac
+    PAYLOAD=(bash -c "$RUN_SEEDS" run_seeds "${SLURM_JOB_NAME}_${SLURM_JOB_ID}" "$PARAMS" "${seeds[*]}" "$@")
 else
     PAYLOAD=(accelerate launch --multi_gpu --num_processes=4 --mixed_precision=no
-             -m ptyrad run "$PARAMS" --gpuid acc "$@")
+             -m ptyrad run "$PARAMS" --gpuid acc "${SEED_ARGS[@]}" "$@")
 fi
 
 echo "IMAGE=$IMAGE  gpus=4  mounts=$MOUNTS"
