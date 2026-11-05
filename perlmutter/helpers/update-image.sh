@@ -62,7 +62,7 @@ esac
 # umask, which is 022 at NERSC, so a collaborator gets ACCES on files they are
 # supposed to share. Set a group-friendly umask for the whole run and setgid
 # the directory so new entries inherit the project group.
-umask "${HPCENVS_UMASK:-0002}"
+umask "${IDROBOLAB_ENV_UMASK:-${HPCENVS_UMASK:-0002}}"
 mkdir -p "$STORE"
 [ -w "$STORE" ] || { echo "ERROR: $STORE is not writable by $WHOAMI" >&2; exit 1; }
 chmod g+rxs "$STORE" 2>/dev/null || true

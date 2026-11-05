@@ -7,7 +7,7 @@
 #
 # Safe to source unconditionally: it is silent, idempotent, does nothing off
 # Perlmutter, and never sets `set -e` or calls `exit` (either would kill the
-# login shell). Set HPCENVS_ENV_VERBOSE=1 before sourcing to see what it did.
+# login shell). Set IDROBOLAB_ENV_VERBOSE=1 before sourcing to see what it did.
 #
 # Do NOT `chmod +x` this file — it is meant to be sourced, not run.
 
@@ -93,23 +93,23 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     #
     # Multi-store use is still not supported here: NERSC does not document the
     # separator, so set the variable yourself after sourcing if you need two.
-    _hpcenvs_cur=${PODMANHPC_ADDITIONAL_STORES:-}
-    _hpcenvs_adopt=0
-    if [ -z "$_hpcenvs_cur" ]; then
-        _hpcenvs_adopt=1
-    elif [ "$_hpcenvs_cur" = "${HPCENVS_DERIVED_STORE_RO:-}" ]; then
-        _hpcenvs_adopt=1
+    _idrobolab_env_cur=${PODMANHPC_ADDITIONAL_STORES:-}
+    _idrobolab_env_adopt=0
+    if [ -z "$_idrobolab_env_cur" ]; then
+        _idrobolab_env_adopt=1
+    elif [ "$_idrobolab_env_cur" = "${IDROBOLAB_ENV_DERIVED_STORE_RO:-}" ]; then
+        _idrobolab_env_adopt=1
     else
-        case "$_hpcenvs_cur" in
+        case "$_idrobolab_env_cur" in
             /dvs_ro/cfs/cdirs/*/podman-hpc|/dvs_ro/cfs/cdirs/*/podman-hpc/images)
-                _hpcenvs_adopt=1 ;;
+                _idrobolab_env_adopt=1 ;;
         esac
     fi
-    if [ "$_hpcenvs_adopt" = 1 ]; then
+    if [ "$_idrobolab_env_adopt" = 1 ]; then
         export PODMANHPC_ADDITIONAL_STORES="$PODMAN_STORE_RO"
     fi
-    export HPCENVS_DERIVED_STORE_RO="$PODMAN_STORE_RO"
-    unset _hpcenvs_cur _hpcenvs_adopt
+    export IDROBOLAB_ENV_DERIVED_STORE_RO="$PODMAN_STORE_RO"
+    unset _idrobolab_env_cur _idrobolab_env_adopt
 
     # Convenience refs so job scripts and one-liners can stay short.
     export IDROBOLAB_IMAGE="${IDROBOLAB_IMAGE:-ghcr.io/idrobolab/idrobolab:latest}"
@@ -137,23 +137,23 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # Shared project bin dir (the uv binary, small wrappers). Prepended so
     # project tools win over system ones; guarded so re-sourcing never grows
     # PATH, and skipped entirely until the directory exists.
-    _hpcenvs_bin="/global/common/software/${NERSC_PROJECT}/bin"
-    if [ -d "$_hpcenvs_bin" ]; then
+    _idrobolab_env_bin="/global/common/software/${NERSC_PROJECT}/bin"
+    if [ -d "$_idrobolab_env_bin" ]; then
         case ":$PATH:" in
-            *":${_hpcenvs_bin}:"*) ;;
-            *) PATH="${_hpcenvs_bin}:$PATH"; export PATH ;;
+            *":${_idrobolab_env_bin}:"*) ;;
+            *) PATH="${_idrobolab_env_bin}:$PATH"; export PATH ;;
         esac
     fi
-    unset _hpcenvs_bin
+    unset _idrobolab_env_bin
 
     # Interactive conveniences. Only defined in an interactive shell: aliases
     # are not expanded in non-interactive bash anyway, and this file is also
     # sourced for the remote end of scp/rsync/`ssh host cmd`. Set
-    # HPCENVS_ALIASES=0 before sourcing to skip them (e.g. if `q` is already
+    # IDROBOLAB_ENV_ALIASES=0 before sourcing to skip them (e.g. if `q` is already
     # yours). Deliberately written against $SCRATCH and `squeue --me` rather
     # than a hard-coded username, so they are correct for everyone in the
     # project — these started life as one group member's personal aliases.
-    if [ "${HPCENVS_ALIASES:-1}" != "0" ] && [ -n "${PS1:-}" ]; then
+    if [ "${IDROBOLAB_ENV_ALIASES:-${HPCENVS_ALIASES:-1}}" != "0" ] && [ -n "${PS1:-}" ]; then
 
         # Personal scratch. Guarded: unset $SCRATCH would make `cds` a `cd` to
         # $HOME, which is a silent and confusing wrong answer on a purge-aware
@@ -163,7 +163,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
         fi
 
         # Project space on CFS: the shared `projects` directory, which is
-        # where group work lives. Export HPCENVS_PROJECT_DIR before sourcing
+        # where group work lives. Export IDROBOLAB_ENV_PROJECT_DIR before sourcing
         # to land somewhere else instead -- your own subdirectory, say
         # (.../projects/<name>) -- and that value is left alone here.
         #
@@ -173,9 +173,9 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
         # container unless mounted (jobs/*.sbatch mount both, see
         # jobs/README.md). Landing on the canonical path keeps $PWD -- and
         # anything derived from it -- usable in a container command line.
-        : "${HPCENVS_PROJECT_DIR:=/global/cfs/cdirs/${NERSC_PROJECT}/projects}"
-        export HPCENVS_PROJECT_DIR
-        alias cdp='cd "$HPCENVS_PROJECT_DIR"'
+        : "${IDROBOLAB_ENV_PROJECT_DIR:=${HPCENVS_PROJECT_DIR:-/global/cfs/cdirs/${NERSC_PROJECT}/projects}}"
+        export IDROBOLAB_ENV_PROJECT_DIR
+        alias cdp='cd "$IDROBOLAB_ENV_PROJECT_DIR"'
 
         # Queue: everything of mine, then filtered by state. `--me` is the
         # portable form of `-u $USER` and needs no per-user edit.
@@ -188,7 +188,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # also sourced for the remote end of scp/rsync/`ssh host cmd`; anything
     # written to stdout there corrupts the protocol stream and the transfer
     # fails with a confusing "protocol error".
-    if [ "${HPCENVS_ENV_VERBOSE:-0}" = "1" ] && [ -n "${PS1:-}" ]; then
+    if [ "${IDROBOLAB_ENV_VERBOSE:-${HPCENVS_ENV_VERBOSE:-0}}" = "1" ] && [ -n "${PS1:-}" ]; then
         echo "idrobolab-env/perlmutter: project=$NERSC_PROJECT" >&2
         echo "  PODMAN_STORE                $PODMAN_STORE" >&2
         echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES" >&2

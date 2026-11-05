@@ -73,8 +73,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/mast
 - The new `~/.bashrc` begins with a `case $- in` block that stops non-interactive
   shells (scripts, `scp`, `rsync`, `ssh perlmutter <command>`, coding agents) from
   reading the rest, including the group block that section 4 appends at the end. If you
-  need the group environment there, move that block (from `# >>> hpcenvs` to
-  `# <<< hpcenvs`) above the `case` line. Batch jobs are unaffected: they inherit the
+  need the group environment there, move that block (from `# >>> idrobolab-env`
+  to `# <<< idrobolab-env`, or `hpcenvs` in a block written before the rename) above the `case` line. Batch jobs are unaffected: they inherit the
   environment of the shell you submit from.
 - If the prompt becomes slow inside large git repositories, switch to a theme that
   doesn't show git status.
