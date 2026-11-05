@@ -39,7 +39,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 - `setup-user.sh` writes a marked block into the user's startup file. The markers
   `# >>> idrobolab-env (<project>) >>>` / `# <<< idrobolab-env (<project>) <<<` and the
   `IDROBOLAB_ENV_*` variables replace the `hpcenvs` marker and `HPCENVS_*` variables from
-  before the rename. `setup-user.sh` still finds and removes the old marker and the
+  before the rename. `setup-user.sh` renames the old marker on a rerun (and still removes it with `--undo`); the
   scripts still read the old variables, so existing setups keep working.
 
 ## Delta (delta/)

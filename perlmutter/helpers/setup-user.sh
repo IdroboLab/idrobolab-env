@@ -102,6 +102,17 @@ done
 if [ -n "$FOUND_IN" ]; then
     if grep -qF "$ENVSH" "$FOUND_IN"; then
         ok "$FOUND_IN already sources env.sh"
+        if grep -qF "$OLDMARK" "$FOUND_IN"; then
+            if [ "$CHECK" = 1 ]; then
+                warn "$FOUND_IN marks the block hpcenvs (run without --check to rename it)"
+            else
+                cp -p "$FOUND_IN" "$FOUND_IN.idrobolab-env-backup"
+                sed -i --follow-symlinks \
+                    -e "s/^# >>> hpcenvs (${PROJECT}) >>>\$/${MARK}/" \
+                    -e "s/^# <<< hpcenvs (${PROJECT}) <<<\$/${ENDMARK}/" "$FOUND_IN"
+                act "renamed the hpcenvs markers in $FOUND_IN (backup: $FOUND_IN.idrobolab-env-backup)"
+            fi
+        fi
         [ "$FOUND_IN" = "$HOME/.bashrc.ext" ] && \
             warn "  that is a deprecated .ext file -- see the note below"
     else
