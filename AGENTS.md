@@ -37,9 +37,10 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   Perlmutter: respect pre-set values (`: "${VAR:=default}"`), guard every derivation on
   the variables it depends on, never `exit` or `set -e`.
 - `setup-user.sh` writes a marked block into the user's startup file. The markers
-  `# >>> hpcenvs (<project>) >>>` / `# <<< hpcenvs (<project>) <<<` and the `HPCENVS_*` variable
-  names are kept from before the split so existing setups keep working: never rename
-  them.
+  `# >>> idrobolab-env (<project>) >>>` / `# <<< idrobolab-env (<project>) <<<` and the
+  `IDROBOLAB_ENV_*` variables replace the `hpcenvs` marker and `HPCENVS_*` variables from
+  before the rename. `setup-user.sh` renames the old marker on a rerun (and still removes it with `--undo`); the
+  scripts still read the old variables, so existing setups keep working.
 
 ## Delta (delta/)
 

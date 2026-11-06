@@ -41,7 +41,7 @@ HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 PERLMUTTER=$(dirname "$HELPERS")
 DOCS="$(dirname "$PERLMUTTER")/docs/perlmutter"
 PROJECT="${NERSC_PROJECT:-<project>}"
-SHARED_JUPYTER="${HPCENVS_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
+SHARED_JUPYTER="${IDROBOLAB_ENV_SHARED_JUPYTER:-${HPCENVS_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}}"
 
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }
 warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
@@ -55,17 +55,20 @@ if [ "$UNDO" = 1 ]; then
     removed=0
     for rc in "$HOME/.bashrc.ext" "$HOME/.bashrc"; do
         [ -f "$rc" ] || continue
-        grep -qF "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
-        cp -p "$rc" "$rc.hpcenvs-backup"
-        sed -i --follow-symlinks "/^# >>> hpcenvs (${PROJECT}) >>>$/,/^# <<< hpcenvs (${PROJECT}) <<<$/d" "$rc"
+        grep -qF -e "# >>> idrobolab-env (${PROJECT}) >>>" -e "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
+        cp -p "$rc" "$rc.idrobolab-env-backup"
+        # Blocks written before the repo was renamed carry the name hpcenvs.
+        sed -i --follow-symlinks \
+            -e "/^# >>> idrobolab-env (${PROJECT}) >>>$/,/^# <<< idrobolab-env (${PROJECT}) <<<$/d" \
+            -e "/^# >>> hpcenvs (${PROJECT}) >>>$/,/^# <<< hpcenvs (${PROJECT}) <<<$/d" "$rc"
         # ...including the blank line we wrote before it, so the file comes back
         # byte-identical when ours was the only addition.
         sed -i --follow-symlinks -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$rc"
-        echo ">> removed the hpcenvs block from $rc (backup: $rc.hpcenvs-backup)"
+        echo ">> removed the idrobolab-env block from $rc (backup: $rc.idrobolab-env-backup)"
         removed=1
     done
     if [ "$removed" = 0 ]; then
-        echo ">> no hpcenvs block found in ~/.bashrc.ext or ~/.bashrc"
+        echo ">> no idrobolab-env block found in ~/.bashrc.ext or ~/.bashrc"
     else
         echo "   Open a new shell; the current one still has env.sh applied."
     fi
@@ -82,25 +85,38 @@ echo
 # https://docs.nersc.gov/environment/#customizing-your-shell-environment
 echo "1. shell startup"
 RC="$HOME/.bashrc"
-MARK="# >>> hpcenvs (${PROJECT}) >>>"
-ENDMARK="# <<< hpcenvs (${PROJECT}) <<<"
+MARK="# >>> idrobolab-env (${PROJECT}) >>>"
+ENDMARK="# <<< idrobolab-env (${PROJECT}) <<<"
+OLDMARK="# >>> hpcenvs (${PROJECT}) >>>"   # written before the repo was renamed
 ENVSH="${PERLMUTTER}/env.sh"
 
 # An account created before February 2020 may still have a .ext file, and an
-# earlier version of this script wrote the block there. Find it wherever it is,
-# so a re-run neither duplicates the block nor reports it missing.
+# earlier version of this script wrote the block there, and earlier versions
+# marked it hpcenvs. Find it wherever it is and under either name, so a re-run
+# neither duplicates the block nor reports it missing.
 FOUND_IN=""
 for rc in "$RC" "$HOME/.bashrc.ext"; do
-    [ -f "$rc" ] && grep -qF "$MARK" "$rc" && { FOUND_IN=$rc; break; }
+    [ -f "$rc" ] && grep -qF -e "$MARK" -e "$OLDMARK" "$rc" && { FOUND_IN=$rc; break; }
 done
 
 if [ -n "$FOUND_IN" ]; then
     if grep -qF "$ENVSH" "$FOUND_IN"; then
         ok "$FOUND_IN already sources env.sh"
+        if grep -qF "$OLDMARK" "$FOUND_IN"; then
+            if [ "$CHECK" = 1 ]; then
+                warn "$FOUND_IN marks the block hpcenvs (run without --check to rename it)"
+            else
+                cp -p "$FOUND_IN" "$FOUND_IN.idrobolab-env-backup"
+                sed -i --follow-symlinks \
+                    -e "s/^# >>> hpcenvs (${PROJECT}) >>>\$/${MARK}/" \
+                    -e "s/^# <<< hpcenvs (${PROJECT}) <<<\$/${ENDMARK}/" "$FOUND_IN"
+                act "renamed the hpcenvs markers in $FOUND_IN (backup: $FOUND_IN.idrobolab-env-backup)"
+            fi
+        fi
         [ "$FOUND_IN" = "$HOME/.bashrc.ext" ] && \
             warn "  that is a deprecated .ext file -- see the note below"
     else
-        warn "$FOUND_IN has an hpcenvs block, but pointing somewhere else --"
+        warn "$FOUND_IN has an idrobolab-env block, but pointing somewhere else --"
         warn "  edit it by hand, or run --undo and re-run"
     fi
 elif [ "$CHECK" = 1 ]; then
