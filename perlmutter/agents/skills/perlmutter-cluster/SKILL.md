@@ -1,6 +1,6 @@
 ---
 name: perlmutter-cluster
-description: Conventions and gotchas for running jobs and GUI/native tools on NERSC Perlmutter — NERSC's command guard for AI agents, podman-hpc container quirks, bind-mount asymmetry, CUDA/CuPy toolchain conflicts, Slurm mail/queue conventions (exclusive vs shared QOS, requesting a partial GPU node), interactive-first testing, Python on a login node, Pacific-time timestamps, HDF5 or uv file-locking errors (errno 524) on CFS or $HOME. Use when writing or debugging a Perlmutter sbatch/salloc script, running tests or benchmarks inside a Perlmutter container (the pytest, rootdir and package-shadowing traps are in idrobolab-container), diagnosing a CUDA/CuPy version mismatch there, setting up a native (non-container) tool in a shared Perlmutter environment, or when NERSC's filesystem-guard hook blocks a shell command an AI agent runs on a login node.
+description: Conventions and gotchas for running jobs and GUI/native tools on NERSC Perlmutter — NERSC's command guard for AI agents, podman-hpc container quirks, bind-mount asymmetry, CUDA/CuPy toolchain conflicts, Slurm mail/queue conventions (exclusive vs shared QOS, requesting a partial GPU node), interactive-first testing, Python on a login node, Pacific-time timestamps, HDF5 or uv file-locking errors (errno 524) on CFS or $HOME, where package data files (model checkpoints, potentials, GPAW data sets) are kept. Use when writing or debugging a Perlmutter sbatch/salloc script, running tests or benchmarks inside a Perlmutter container (the pytest, rootdir and package-shadowing traps are in idrobolab-container), diagnosing a CUDA/CuPy version mismatch there, setting up a native (non-container) tool in a shared Perlmutter environment, or when NERSC's filesystem-guard hook blocks a shell command an AI agent runs on a login node.
 ---
 
 # NERSC Perlmutter conventions
@@ -142,6 +142,15 @@ commands it checks, the roots it blocks and the measured decisions are in
   a plain pattern is allowed, attach the pattern to its option (`grep -rn --regexp='foo$' src/`)
   or search the same directory with the Grep tool or `rg`.
 - Find software with `command -v`, `type -a` or `module spider`, not by scanning software trees.
+
+## Software data files
+
+Package-specific data files — ML-potential checkpoints (ORB, FAIRChem), LAMMPS potentials,
+GPAW data sets, and the like — live in `/global/cfs/cdirs/<project>/software-data`, the group's
+shared directory for them. Put such files there, not in `$HOME`, `$PSCRATCH` (purged) or a
+project folder, and look there before downloading a copy. Point a package at it through its
+own variable (`ORB_CACHE_DIR`, `FAIRCHEM_CACHE_DIR`, `GPAW_SETUP_PATH`, ...). A container
+sees it only through a bind mount, with `--group-add keep-groups` (the `<project>` group owns it).
 
 ## Python outside the container
 
