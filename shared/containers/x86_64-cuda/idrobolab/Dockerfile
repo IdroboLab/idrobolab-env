@@ -84,7 +84,7 @@ RUN curl -fsSL https://theory.cm.utexas.edu/henkelman/code/bader/download/bader_
 
 # --- MPICH (ch4:ofi; MPICH ABI libmpi.so.12) --------------------------------
 RUN set -eux; cd /tmp; \
-    wget -q https://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz; \
+    wget -q https://github.com/pmodels/mpich/releases/download/v${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz; \
     tar xzf mpich-${MPICH_VERSION}.tar.gz; cd mpich-${MPICH_VERSION}; \
     ./configure --prefix=${INSTALL_DIR}/mpich-${MPICH_VERSION} \
         --with-device=ch4:ofi --with-libfabric=embedded \
