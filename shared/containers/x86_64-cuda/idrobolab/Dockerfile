@@ -372,15 +372,15 @@ ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/opt/software/lammps/bin:/opt/sof
 # LAMMPS is built with PKG_PYTHON=on. It is a separate package on noble: the
 # python3.12 interpreter does not link libpython, so the interpreter runs fine
 # without it and only the ldd closure catches the gap.
-# gcc, libc6-dev and python3.12-dev (the Python.h headers) are the one exception to
+# gcc, g++, libc6-dev and python3.12-dev (the Python.h headers) are the one exception to
 # "runtime only": orb-models' torch.compile / Triton / nvalchemi-toolkit-ops paths compile
-# C extensions at run time and need a C compiler on PATH plus the Python headers.
+# C and C++ extensions at run time and need gcc and g++ on PATH plus the Python headers.
 RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         python3.12 python3.12-venv ca-certificates git \
-        gcc libc6-dev python3.12-dev \
+        gcc g++ libc6-dev python3.12-dev \
         libpython3.12t64 \
         libgfortran5 libquadmath0 libgomp1 \
         libopenblas0-pthread \
@@ -412,7 +412,7 @@ from importlib.metadata import version; \
 assert hasattr(_gpaw,'new_blacs_context'),'GPAW built without ScaLAPACK'; \
 assert hasattr(_gpaw,'FFTWPlan'),'GPAW built without FFTW'; \
 print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version__,'| pymatgen',version('pymatgen'))" \
- && command -v cc && test -f "$(python -c 'import sysconfig;print(sysconfig.get_paths()["include"])')/Python.h" \
+ && command -v cc && command -v c++ && test -f "$(python -c 'import sysconfig;print(sysconfig.get_paths()["include"])')/Python.h" \
  && python -c "import fairchem.core, orb_models, ptyrad; print('ML/ptycho stack ok')" \
  && python -c "from dask_cuda import LocalCUDACluster; import dask, distributed; \
 print('dask-cuda ok | dask',dask.__version__,'| distributed',distributed.__version__)" \
