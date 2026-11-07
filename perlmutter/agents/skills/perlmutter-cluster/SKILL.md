@@ -146,11 +146,22 @@ commands it checks, the roots it blocks and the measured decisions are in
 ## Software data files
 
 Package-specific data files — ML-potential checkpoints (ORB, FAIRChem), LAMMPS potentials,
-GPAW data sets, and the like — live in `/global/cfs/cdirs/<project>/software-data`, the group's
-shared directory for them. Put such files there, not in `$HOME`, `$PSCRATCH` (purged) or a
-project folder, and look there before downloading a copy. Point a package at it through its
-own variable (`ORB_CACHE_DIR`, `FAIRCHEM_CACHE_DIR`, `GPAW_SETUP_PATH`, ...). A container
-sees it only through a bind mount, with `--group-add keep-groups` (the `<project>` group owns it).
+GPAW data sets, and the like — live in `/global/cfs/cdirs/<project>/software_data` (underscore),
+the group's shared directory for them. Put such files there, not in `$HOME`, `$PSCRATCH`
+(purged) or a project folder, and look there before downloading a copy. Compute nodes have no
+outbound network, so a model that downloads on first use must already be there. Point a package
+at it through its own variable (`ORB_CACHE_DIR`, `FAIRCHEM_CACHE_DIR`, `GPAW_SETUP_PATH`, ...).
+A container sees it only through a bind mount, with `--group-add keep-groups` (the `<project>`
+group owns it).
+
+- `orb/`: the ORB v3 `*.ckpt` files in one flat directory (`ORB_CACHE_DIR` points here):
+  `orb-v3-{conservative,direct}-{20,inf}-omat-20250404.ckpt`. `20` caps the graph at 20
+  neighbours per atom, `inf` keeps every neighbour inside the cutoff.
+- `fairchem/`: a Hugging Face hub cache of the UMA models (`CACHEDIR.TAG`, `.locks/`,
+  `models--facebook--UMA/{blobs,refs,snapshots}`). The checkpoints are
+  `models--facebook--UMA/snapshots/<revision>/checkpoints/*.pt`: `uma-m-1p1`, `uma-s-1p2p1` and
+  `uma-s-1p2p1-ft-r2scan` when this was written. Load one by its file path, or point the hub
+  cache at `fairchem/`.
 
 ## Python outside the container
 
