@@ -4,8 +4,8 @@
 # at build time; torch/torchvision/cupy are installed separately from the CUDA
 # index FIRST (see the Dockerfile) so nothing here drags in a different torch.
 #
-# HARD CONSTRAINT: fairchem-core 2.21 pins torch~=2.8, which caps the whole
-# stack at torch 2.8.x — do NOT bump torch to 2.13 while fairchem is present.
+# HARD CONSTRAINT: fairchem-core 2.22 pins torch~=2.13.0, which fixes the whole
+# stack at torch 2.13.x (the Dockerfile installs torch 2.13.0 first).
 # (fairchem v2 dropped torch-geometric/scatter/sparse, so no data.pyg.org
 #  companion-wheel step is needed.)
 #
@@ -15,7 +15,7 @@ ase>=3.26.0              # satisfies fairchem, orb-models, and pymatgen at once
 gpaw-data==1.0.1         # PAW datasets for GPAW
 
 # ML interatomic potentials
-fairchem-core==2.21.0    # the torch ceiling (torch~=2.8)
+fairchem-core==2.22.0    # pins torch~=2.13.0; 2.23+ needs nvalchemi-toolkit-ops>=0.4.1, which orb-models 0.7.0 excludes
 orb-models==0.7.0        # torch<3,>=2.8; pulls nvalchemi-toolkit-ops[torch]
 
 # ptychography / microscopy

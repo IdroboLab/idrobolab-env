@@ -11,14 +11,14 @@ the **identical compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdw
 GPAW) and swaps the Python stack. Builds and distributes the same way (one image for
 Delta via Apptainer and Perlmutter via podman-hpc).
 
-## The one hard constraint: torch 2.8
+## The one hard constraint: torch 2.13
 
-`fairchem-core` (2.21) pins **`torch~=2.8`**, so this image uses **torch 2.8.0**,
-not 2.13 like another image. At torch 2.8.x, `orb-models` (≥2.8,<3) and `ptyrad`
-(≥2.4) are all satisfied, and `ase` is pinned `≥3.26` to satisfy fairchem +
-orb-models + pymatgen simultaneously. fairchem v2 dropped `torch-geometric`, so
-there is **no** `data.pyg.org` companion-wheel step. If you ever need torch
-2.13, you must drop fairchem.
+`fairchem-core` (2.22) pins **`torch~=2.13.0`**, so this image uses **torch 2.13.0**
+(with torchvision 0.28.0), as another image does. At torch 2.13.x, `orb-models`
+(≥2.8,<3) and `ptyrad` (≥2.4) are all satisfied, and `ase` is pinned `≥3.26` to
+satisfy fairchem + orb-models + pymatgen simultaneously. fairchem v2 dropped
+`torch-geometric`, so there is **no** `data.pyg.org` companion-wheel step. A
+different torch minor means a different fairchem release.
 
 ## Contents
 
@@ -45,7 +45,7 @@ abTEM's exclusion set so the resolve lands correctly the first time. The full
 analysis, including the Plan B downgrade, is in
 [`delta/verification/multigpu_abtem/README.md`](../../../../delta/verification/multigpu_abtem/README.md).
 The Dockerfile block lists which package supplies each skipped dependency; the
-build fails loudly if the install moves `torch` off the fairchem 2.8 ceiling.
+build fails loudly if the install moves `torch` off the 2.13 version fairchem pins.
 
 **Editable** installs from `/opt/src` (bind a cluster checkout over
 `/opt/src/<name>` to run any branch, as in another image): **gpaw** (vanilla

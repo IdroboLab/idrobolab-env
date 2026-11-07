@@ -8,7 +8,7 @@ stack, so for most GPU work there is nothing to install.
 |---|---|
 | Base | CUDA 12.8, Python 3.12, x86_64 |
 | Simulation | abTEM, GPAW (+ gpaw-weaver), ptyrad (ptychography) |
-| ML potentials, phonons | fairchem, orb-models (torch 2.8), phonopy, hiphive, pymatgen |
+| ML potentials, phonons | fairchem, orb-models (torch 2.13), phonopy, hiphive, pymatgen |
 | GPU and parallel | CuPy, dask, dask-cuda (multi-GPU abTEM) |
 | Analysis | nionswift, jupyterlab |
 
