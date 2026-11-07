@@ -6,8 +6,8 @@
 #
 # Sibling of another image's recipe (maintained separately, not in this repo): it
 # reuses the identical compiled foundation (MPICH/FFTW/ScaLAPACK/libxc/libvdwxc +
-# GPAW) and swaps the Python stack. KEY DIFFERENCE: fairchem-core pins torch~=2.8,
-# so this image uses torch 2.8.0 (NOT 2.13). fairchem v2 needs no torch-geometric wheels.
+# GPAW) and swaps the Python stack. fairchem-core pins torch~=2.13.0, so this image
+# uses torch 2.13.0. fairchem v2 needs no torch-geometric wheels.
 #
 # Build (host with docker/podman, after ./prepare_build_context.sh):
 #   podman build -t idrobolab:latest .        # or ./publish.sh to push to ghcr
@@ -198,9 +198,9 @@ RUN set -eux; cd /tmp; \
     cmake --install /tmp/magma-build; \
     cd /; rm -rf /tmp/magma-build /tmp/magma-${MAGMA_VERSION}*
 
-# --- GPU Python stack: torch 2.8.0 (fairchem ceiling) + cupy ----------------
+# --- GPU Python stack: torch 2.13.0 (fairchem pin) + cupy -------------------
 RUN set -eux; \
-    uv pip install torch==2.8.0 torchvision==0.23.0 \
+    uv pip install torch==2.13.0 torchvision==0.28.0 \
         --index-url https://download.pytorch.org/whl/cu129; \
     uv pip install cupy-cuda12x==13.5.1
 
@@ -242,7 +242,7 @@ RUN uv pip install -r /opt/build/requirements-idrobolab.txt
 # re-check this list: the import test below catches a missing module, but a
 # too-old one may only surface when a cluster is constructed on a GPU node.
 #
-# The torch guard is load-bearing: fairchem-core 2.21 pins torch~=2.8 and caps
+# The torch guard is load-bearing: fairchem-core 2.22 pins torch~=2.13.0 and fixes
 # this entire image (see requirements-idrobolab.txt). A dependency cascade that
 # moved torch would be a silent, expensive regression, so fail the build loudly
 # instead.
@@ -254,7 +254,7 @@ RUN set -eux; \
     torch_after="$(python -c 'import torch; print(torch.__version__)')"; \
     if [ "$torch_before" != "$torch_after" ]; then \
         echo "ERROR: dask-cuda install moved torch $torch_before -> $torch_after;" >&2; \
-        echo "       fairchem-core 2.21 pins torch~=2.8 -- refusing to build." >&2; \
+        echo "       fairchem-core 2.22 pins torch~=2.13.0 -- refusing to build." >&2; \
         exit 1; \
     fi
 

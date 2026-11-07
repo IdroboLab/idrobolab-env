@@ -16,7 +16,7 @@ registry name; log under `perlmutter/verification/multigpu_abtem/`, analysis in
 ## Fit to Perlmutter
 
 - **CPU/GPU**: AMD Milan + A100 (sm_80) — covered by the `-march=x86-64-v3`
-  CPU code and the fat cu129/cuda12 wheels (torch 2.8.0, cupy).
+  CPU code and the fat cu129/cuda12 wheels (torch 2.13.0, cupy).
 - **MPI**: stock MPICH 4.3.2 built from source with shared libraries —
   exactly NERSC's documented recommendation, so `podman-hpc run --mpi` can
   swap in the ABI-compatible (`libmpi.so.12`), Slingshot-optimized Cray
