@@ -160,8 +160,8 @@ group owns it).
 - `fairchem/`: a Hugging Face hub cache of the UMA models (`CACHEDIR.TAG`, `.locks/`,
   `models--facebook--UMA/{blobs,refs,snapshots}`). The checkpoints are
   `models--facebook--UMA/snapshots/<revision>/checkpoints/*.pt`: `uma-m-1p1`, `uma-s-1p2p1` and
-  `uma-s-1p2p1-ft-r2scan` when this was written. Load one by its file path, or point the hub
-  cache at `fairchem/`.
+  `uma-s-1p2p1-ft-r2scan` when this was written. fairchem-core 2.22.0 (in the image) loads one by its file path:
+  `pretrained_mlip.load_predict_unit(<path>, device="cuda")`, then `FAIRChemCalculator(unit, task_name="omat")`.
 
 ## Python outside the container
 
