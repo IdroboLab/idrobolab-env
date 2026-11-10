@@ -105,6 +105,14 @@ same pull command works on both clusters).
   2026-09-26 and matches what 2-GPU `sbatch -q shared` jobs use. Never leave the CPU
   count to Slurm's default in a shared job. *(Per NERSC's* Queue policies *and* Running
   jobs *pages, checked 2026-09-24.)*
+- **`shared_interactive` allows 2 submitted jobs per user** (`MaxSubmitPU` = 2, read with
+  `sacctmgr -n -P show qos shared_interactive format=name,maxsubmitpu,maxjobspu,maxwall` on
+  2026-11-09; `shared` allows 5000). A third `salloc` fails at once with `salloc: error:
+  QOSMaxSubmitJobPerUserLimit` ("Job violates accounting/QOS policy (job submit limit, ...)"),
+  and every interactive job of the user counts, whichever session or terminal holds it.
+  Before an `salloc`, list them: `squeue -u $USER -o '%i %q %j %T %M %l'`. A run that needs
+  no watching goes to `sbatch -q shared` instead of waiting for a slot. Never cancel a job
+  that this session did not start to make room.
 - **`salloc` without a command opens the shell on the compute node** (confirmed 2026-10-06);
   `salloc <command>` runs the command on the login node, so a script started
   that way reaches the allocation only through `srun`. `exit` releases the allocation.
