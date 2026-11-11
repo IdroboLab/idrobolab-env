@@ -46,6 +46,7 @@ WARNINGS=0
 ok()   { printf '  ok    %s\n' "$*"; }
 warn() { printf '  warn  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
 act()  { printf '  did   %s\n' "$*"; }
+more() { printf '        %s\n' "$*"; }   # second line of a warning: not counted again
 
 if [ "$CHECK" = 1 ] && [ "$UNDO" = 1 ]; then
     echo "--check and --undo exclude each other" >&2
@@ -125,7 +126,7 @@ DELTA_PROJECT=$PROJ
 . "$ENVSH"
 if [ -z "${SCRATCH_BASE:-}" ]; then
     warn "env.sh sets nothing for $PROJ: /scratch/$PROJ is not a directory here (wrong"
-    warn "  project name, or this is not Delta); nothing changed"
+    more "project name, or this is not Delta); nothing changed"
     echo
     echo "$WARNINGS warning(s) above."
     exit 1
@@ -140,7 +141,7 @@ if [ -f "$RC" ] && grep -qxF "$MARK" "$RC"; then
         ok "$RC already exports DELTA_PROJECT and sources env.sh"
     else
         warn "$RC has an idrobolab-env block for another project or checkout:"
-        warn "  edit it by hand, or run --undo and re-run"
+        more "edit it by hand, or run --undo and re-run"
     fi
 elif [ "$CHECK" = 1 ]; then
     warn "$RC has no idrobolab-env block (run without --check to add it)"
@@ -164,7 +165,7 @@ if [ -f "$RC" ]; then
           | grep -nE '^[[:space:]]*(export[[:space:]]+)?(SCRATCH_BASE|PROJECTS_BASE|APPTAINER_CACHEDIR|UV_CACHE_DIR|UV_LINK_MODE)=' || true)
     if [ -n "$own" ]; then
         warn "$RC sets these itself, and env.sh keeps a value that is already set;"
-        warn "  remove the lines to let env.sh decide:"
+        more "remove the lines to let env.sh decide:"
         printf '%s\n' "$own" | sed 's/^/          /'
     fi
 fi
@@ -193,14 +194,14 @@ if command -v uv >/dev/null 2>&1; then
     ok "uv is on PATH: $(command -v uv)"
 else
     warn "uv is not on PATH (an admin installs it into $PROJECTS_BASE/software/bin:"
-    warn "  docs/delta/README.md)"
+    more "docs/delta/README.md)"
 fi
 
 if [ "$UV_CACHE_DIR" = "$SCRATCH_BASE/uv-cache" ]; then
     ok "uv uses the project's shared cache: $UV_CACHE_DIR"
 else
     warn "no shared uv cache at $SCRATCH_BASE/uv-cache that you can write to; uv uses"
-    warn "  $UV_CACHE_DIR (an admin creates the shared one: docs/delta/README.md)"
+    more "$UV_CACHE_DIR (an admin creates the shared one: docs/delta/README.md)"
 fi
 
 SIF="$PROJECTS_BASE/software/containers/idrobolab.sif"
