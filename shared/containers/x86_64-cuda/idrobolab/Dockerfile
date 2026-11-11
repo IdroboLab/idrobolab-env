@@ -361,8 +361,13 @@ LABEL purpose="idrobolab — DFT/multislice/ptychography/ML-potentials/EM-analys
 ENV INSTALL_DIR=/opt/software \
     VIRTUAL_ENV=/opt/venv \
     MPLCONFIGDIR=/tmp/matplotlib
+# The CUDA wheels in the venv (cuBLAS, cuSOLVER, ... 12.9, pulled in by torch) come first on
+# LD_LIBRARY_PATH. Otherwise GPAW's compiled extension loads the base image's cuBLAS 12.8
+# first, and CuPy 14's cuSOLVER from the wheel (built for cuBLAS 12.9) then fails with
+# `undefined symbol: cublasSetEnvironmentMode` on the first cp.linalg.cholesky. Entries for
+# directories a wheel does not have are ignored.
 ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/opt/software/lammps/bin:/opt/software/qe/bin:/usr/local/bin:${PATH} \
-    LD_LIBRARY_PATH=/opt/software/mpich/lib:/opt/software/libxc/lib:/opt/software/libvdwxc/lib:/opt/software/fftw/lib:/opt/software/scalapack/lib:/opt/software/elpa/lib:/opt/software/magma/lib:/opt/software/lammps/lib \
+    LD_LIBRARY_PATH=/opt/venv/lib/python3.12/site-packages/nvidia/cublas/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cuda_cupti/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cuda_nvcc/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cufft/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cufile/lib:/opt/venv/lib/python3.12/site-packages/nvidia/curand/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cusolver/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cusparse/lib:/opt/venv/lib/python3.12/site-packages/nvidia/cusparselt/lib:/opt/venv/lib/python3.12/site-packages/nvidia/nccl/lib:/opt/venv/lib/python3.12/site-packages/nvidia/nvfatbin/lib:/opt/venv/lib/python3.12/site-packages/nvidia/nvjitlink/lib:/opt/venv/lib/python3.12/site-packages/nvidia/nvshmem/lib:/opt/venv/lib/python3.12/site-packages/nvidia/nvtx/lib:/opt/software/mpich/lib:/opt/software/libxc/lib:/opt/software/libvdwxc/lib:/opt/software/fftw/lib:/opt/software/scalapack/lib:/opt/software/elpa/lib:/opt/software/magma/lib:/opt/software/lammps/lib \
     PYTHONPATH=/opt/software/lammps/python
 
 # Runtime shared libs. Includes a Qt/X11/GL runtime
