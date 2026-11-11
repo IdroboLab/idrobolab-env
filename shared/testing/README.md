@@ -13,7 +13,7 @@ a GPU does not run without one; the shell lands on the compute node), then the r
 salloc -C gpu -q shared_interactive -A <account> -t 00:30:00 -n 1 -c 32 --gpus-per-task=1 -L scratch,cfs
 export WT=<path to the checkout>
 srun podman-hpc run --rm --group-add keep-groups --gpu -v $SCRATCH:$SCRATCH -v $CFS:$CFS -v $HOME:$HOME \
-    -e PYTHONPATH=${WT:?} --workdir $WT idrobolab:latest \
+    -e PYTHONPATH=${WT:?} --workdir $WT ghcr.io/idrobolab/idrobolab:latest \
     python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short
 ```
 

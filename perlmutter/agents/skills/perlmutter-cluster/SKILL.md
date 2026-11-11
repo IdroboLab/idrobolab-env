@@ -16,7 +16,8 @@ published image (Delta's equivalent is `apptainer build docker://...`; don't ass
 same pull command works on both clusters).
 
 - **Images are pulled by hand by the maintainer** (`group.md`, *Software*): commands reference
-  the local tag only (`idrobolab:latest`, not `ghcr.io/<owner>/idrobolab:latest`) and never
+  the image by its full name (`$IDROBOLAB_IMAGE`, which is `ghcr.io/idrobolab/idrobolab:latest`;
+  a bare `idrobolab:latest` can resolve to a different, older local image) and never
   include a `podman-hpc pull` step. If a run needs a newer image, say so and stop.
 - **`/global/common/software/<project>/` is the project's base for installing software
   itself — Python packages, venvs, editable checkouts meant to be *run*, not scratch

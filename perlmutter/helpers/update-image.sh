@@ -5,7 +5,7 @@
 # Run on a Perlmutter LOGIN node — compute nodes have no route to ghcr.io.
 #
 # Usage:
-#   ./update-image.sh                      # idrobolab:latest
+#   ./update-image.sh                      # ghcr.io/idrobolab/idrobolab:latest
 #   TAG=v2 ./update-image.sh idrobolab     # a specific tag
 #   IMAGE=ghcr.io/someone/thing ./update-image.sh   # any other image: repository, no tag (TAG sets it)
 #   REFRESH=1 ./update-image.sh            # drop the squashed copy first
