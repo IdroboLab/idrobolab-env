@@ -68,7 +68,9 @@ if [ "$UNDO" = 1 ]; then
     removed=0 refused=0
     for rc in "$HOME/.bashrc.ext" "$HOME/.bashrc"; do
         [ -f "$rc" ] || continue
-        grep -qF -e "# >>> idrobolab-env (${PROJECT}) >>>" -e "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
+        # Whole lines only, as the removal below matches them: a marker with
+        # trailing whitespace or inside a longer line is not ours to remove.
+        grep -qxF -e "# >>> idrobolab-env (${PROJECT}) >>>" -e "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
         if ! block_is_whole "# >>> idrobolab-env (${PROJECT}) >>>" "# <<< idrobolab-env (${PROJECT}) <<<" "$rc" \
            || ! block_is_whole "# >>> hpcenvs (${PROJECT}) >>>" "# <<< hpcenvs (${PROJECT}) <<<" "$rc"; then
             echo "$rc: the idrobolab-env (or hpcenvs) markers are not one start line followed by one" >&2
