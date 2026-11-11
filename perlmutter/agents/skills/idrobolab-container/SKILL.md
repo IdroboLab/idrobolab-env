@@ -18,10 +18,12 @@ How the image is built and published is its `README.md` in idrobolab-env
 - Python 3.12 venv at `/opt/venv` (first on `PATH`), CUDA 12.8 runtime, MPICH.
 - **Editable installs from `/opt/src`:** `gpaw`, `gpaw-weaver`, `abTEM`, as staged at build
   time. Everything else is pinned in `requirements-idrobolab.txt`.
-- `cupy-cuda12x` **13.5.1**, torch 2.13.0 (the version fairchem pins), dask-cuda 26.6.0 installed
+- `cupy-cuda12x` **14.1.1**, torch 2.13.0 (the version fairchem pins), dask-cuda 26.6.0 installed
   `--no-deps`, fairchem, orb-models, ptyrad, phonopy, hiphive, pymatgen, nionswift (headless),
   LAMMPS (Kokkos-CUDA, `/opt/software/lammps`), Quantum ESPRESSO GPU (`/opt/software/qe`),
-  `bader`, `git`.
+  `bader`. **No `git` on `PATH`** (a script's `subprocess.run(["git", ...])` raised
+  `FileNotFoundError` on Perlmutter, 2026-11-11): a script run in the image must not require it, and
+  the commit of a bound checkout is checked on the host, not inside.
 - **No test tooling: no `pytest`, `hypothesis`, or any package's test dependency group.** A
   test command that just calls `python -m pytest` fails with `No module named pytest`.
 
@@ -53,7 +55,7 @@ How the image is built and published is its `README.md` in idrobolab-env
   on its own, since Python inserts the *script's* directory, not the CWD.
 - A custom directory is visible inside only where it is bound; `$HOME`, `$SCRATCH`,
   `$PSCRATCH` and `$CFS` need their own `-v X:X` on Perlmutter.
-- Under rootless podman, git inside the container needs
+- If a git binary is present (it was absent on 2026-11-11), under rootless podman it needs
   `-e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'`.
 
 ## Running a test suite
@@ -83,9 +85,9 @@ The repo's sbatch templates (`perlmutter/jobs/`) pass no `PYTHONPATH`, so a batc
 them tests the image's own copy, unless the template's `MOUNTS` line binds a checkout over
 `/opt/src/<name>`; the import path `run_pytest.py` prints shows which copy ran.
 
-## Versus a uv environment with newer CuPy
+## Versus an environment with another CuPy
 
-A uv-managed environment that installs the latest `cupy-cuda12x` (14.x) is not this image
-(13.5.1). A result from one does not stand for the other:
+The image carries CuPy 14.1.1. An environment with CuPy 13.5.1 (or an older `amd-cupy` ROCm
+build) is not this image, and a result from one does not stand for the other:
 CuPy 14 compiles `RawModule` kernels through CCCL and needs C++17, 13.5.1 does not. Say which
 environment and CuPy version a GPU result came from.
