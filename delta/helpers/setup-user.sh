@@ -12,8 +12,8 @@
 # What it does:
 #   1. finds your Delta project, the <project> of your <project>-delta-cpu and
 #      <project>-delta-gpu accounts (--project, else $DELTA_PROJECT, else your
-#      delta_<project> group, if you are in exactly one), and stops unless
-#      env.sh finds its scratch directory
+#      delta_<project> group, if exactly one of your delta_* groups has a
+#      scratch directory), and stops unless env.sh finds its scratch directory
 #   2. adds a block to ~/.bashrc that exports DELTA_PROJECT and sources env.sh
 #      from the clone the script runs from
 #   3. creates your apptainer cache directory on your personal scratch
@@ -90,8 +90,15 @@ if [ -z "$PROJ" ] && [ -n "${DELTA_PROJECT:-}" ]; then
     PROJ=$DELTA_PROJECT
 fi
 if [ -z "$PROJ" ]; then
-    # Members of a Delta project are in the Unix group delta_<project>.
-    found=$(id -Gn | tr ' ' '\n' | sed -n 's/^delta_//p')
+    # Members of a Delta project are in the Unix group delta_<project>. Delta
+    # has other delta_* groups too (delta_active_users), so a group counts only
+    # when env.sh finds a scratch directory for its name.
+    found=$(for g in $(id -Gn | tr ' ' '\n' | sed -n 's/^delta_//p'); do
+                case "$g" in *[!A-Za-z0-9_-]*) continue ;; esac
+                if (unset SCRATCH_BASE; DELTA_PROJECT=$g; . "$ENVSH"; [ -n "${SCRATCH_BASE:-}" ]); then
+                    echo "$g"
+                fi
+            done)
     if [ "$(printf '%s\n' "$found" | grep -c .)" = 1 ]; then
         PROJ=$found
     elif [ -n "$found" ]; then
