@@ -17,7 +17,7 @@
 #      from the clone the script runs from
 #   3. creates your apptainer cache directory on your personal scratch
 #   4. reports what silently breaks later: lines in ~/.bashrc that override
-#      env.sh, apptainer missing, no shared uv cache, no image fetched yet
+#      env.sh, apptainer or uv missing, no shared uv cache, no image fetched yet
 #
 # A block written from another checkout or for another project is reported, not
 # replaced: --undo, then run it again.
@@ -163,6 +163,13 @@ if command -v apptainer >/dev/null 2>&1; then
     ok "apptainer is on PATH"
 else
     warn "apptainer is not on PATH (are you on a login node?)"
+fi
+
+if command -v uv >/dev/null 2>&1; then
+    ok "uv is on PATH: $(command -v uv)"
+else
+    warn "uv is not on PATH (an admin installs it into $PROJECTS_BASE/software/bin:"
+    warn "  docs/delta/README.md)"
 fi
 
 if [ "$UV_CACHE_DIR" = "$SCRATCH_BASE/uv-cache" ]; then

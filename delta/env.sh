@@ -53,6 +53,19 @@ if [ -n "${DELTA_PROJECT:-}" ] && [ -d "/scratch/${DELTA_PROJECT}" ]; then
     fi
     export UV_CACHE_DIR
     unset _idrobolab_env_scratch
+
+    # The project's shared bin directory (the uv binary an admin installs
+    # there, docs/delta/README.md). Prepended so project tools win over system
+    # ones; guarded so re-sourcing never grows PATH, and skipped until the
+    # directory exists.
+    _idrobolab_env_bin="${PROJECTS_BASE}/software/bin"
+    if [ -d "$_idrobolab_env_bin" ]; then
+        case ":$PATH:" in
+            *":${_idrobolab_env_bin}:"*) ;;
+            *) PATH="${_idrobolab_env_bin}:$PATH"; export PATH ;;
+        esac
+    fi
+    unset _idrobolab_env_bin
 fi
 
 # Diagnostics go to stderr, and only in an interactive shell: ~/.bashrc is
