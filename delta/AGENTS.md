@@ -74,3 +74,10 @@ current directory **shadows the real package**. `python -c` puts the CWD on
 - In-container MPI must use `mpiexec -bootstrap fork` (no outer `srun`);
   without it Hydra tries the host `srun`, absent in the container. Multi-node
   uses the `srun --mpi=pmi2 apptainer exec … python` host-launcher instead.
+
+## Agent skill
+
+NCSA policy (partitions, charge factors, file-system constraints) and measured failure
+modes (the MPICH shared-memory collective truncation and its fix) are in the `delta-cluster`
+skill, `perlmutter/agents/skills/delta-cluster/SKILL.md`. Keep each rule in one place: the
+conventions here, policy and gotchas there.
