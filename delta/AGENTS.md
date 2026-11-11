@@ -41,7 +41,8 @@ go there, not into job scripts.
   `shared/containers/x86_64-cuda/idrobolab/`).
 - **Apptainer cache** → `$SCRATCH_BASE/$USER/.apptainer`, per member; **uv cache** →
   `$SCRATCH_BASE/uv-cache`, shared by the project (setgid, default ACL; created once by an
-  admin, see `docs/delta/README.md`), with `$SCRATCH_BASE/$USER/uv-cache` until it exists and is writable for the member.
+  admin, see `docs/delta/README.md`), with `$SCRATCH_BASE/$USER/uv-cache` until it exists and
+  is writable for the member.
   Both are set by `delta/env.sh` (keep off `$HOME`; do not move to projects).
 - **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on
   /projects (e.g. `/projects/<project>/<user>/<campaign>/code/gpaw`),
