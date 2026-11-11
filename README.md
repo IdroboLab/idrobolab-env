@@ -11,7 +11,7 @@ first, then the step-by-step Perlmutter introduction or the Delta page.
 |---|---|
 | [docs/](docs/) | All documentation: the general pages ([GitHub](docs/01-github.md), [cloning](docs/02-cloning.md), [Globus](docs/03-globus.md)), [contributing](docs/CONTRIBUTING.md), the Perlmutter introduction and reference notes in [docs/perlmutter/](docs/perlmutter/), and the Delta page in [docs/delta/](docs/delta/README.md) |
 | [perlmutter/](perlmutter/) | The files for Perlmutter: `env.sh`, helpers, job templates, examples, agent rules |
-| [delta/](delta/) | The files for Delta (NCSA): `get-image.sh`, job templates per partition, the multi-GPU verification launchers, agent rules |
+| [delta/](delta/) | The files for Delta (NCSA): `env.sh`, the setup helper, `get-image.sh`, job templates per partition, the multi-GPU verification launchers, agent rules |
 | [windows/idrobolab-uploads/](windows/idrobolab-uploads/) | The IdroboLab Uploads tool for the Windows measurement PCs: upload folders, files or a Nion Swift project to the group's Google Drive (PowerShell script, installer, README) |
 | [assets/](assets/) | The IdroboLab logo and the icons made from it (ThinLinc folder, upload tool), under CC BY 4.0 with their own copyright holder ([license](assets/LICENSE)) |
 | [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/idrobolab/idrobolab`) |
@@ -20,7 +20,7 @@ first, then the step-by-step Perlmutter introduction or the Delta page.
 ## Your own clone
 
 Everyone works from their own clone in their home directory. On Perlmutter, `setup-user.sh`
-then sets up the shell (Delta has no setup script; see [docs/delta/](docs/delta/README.md)):
+then sets up the shell (on Delta the script is `delta/helpers/setup-user.sh`; see [docs/delta/](docs/delta/README.md)):
 
 ```bash
 git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env

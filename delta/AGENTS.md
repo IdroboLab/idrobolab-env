@@ -8,8 +8,9 @@ Rules for editing the files in `delta/`; the member-facing page is
 
 ## Environment variables — no `$SCRATCH`
 
-Delta defines **`$SCRATCH_BASE` (= `/scratch/<account>`)
-and NOT `$SCRATCH`**; the personal scratch area is `$SCRATCH_BASE/$USER`.
+`delta/env.sh` defines **`$SCRATCH_BASE` (= `/scratch/<project>`) and `$PROJECTS_BASE`
+(= `/projects/<project>`)** from the member's `DELTA_PROJECT`; Delta has **no `$SCRATCH`**.
+The personal scratch area is `$SCRATCH_BASE/$USER`.
 Any script that expands an unguarded `$SCRATCH` under `set -u` aborts.
 Never emit `$SCRATCH` in Delta job scripts.
 
@@ -26,15 +27,27 @@ as the default.
 
 ## Environment file
 
-Delta has no `env.sh` yet; one in the shape of `perlmutter/env.sh` is wanted.
+`delta/env.sh` is sourced from `~/.bashrc`, below the member's `export DELTA_PROJECT=<project>`,
+and follows the rules for `perlmutter/env.sh` in the root `AGENTS.md`: silent, idempotent,
+inert while `DELTA_PROJECT` is unset or names no directory under `/scratch`, pre-set values
+respected, every derivation guarded on the variables it depends on, never `exit` or
+`set -e`. `delta/helpers/setup-user.sh` writes both lines as a block between the markers
+`# >>> idrobolab-env (delta) >>>` and `# <<< idrobolab-env (delta) <<<`, which `--undo`
+removes; keep the markers stable. The project name stays out of the repo: write `<project>`. Cluster-wide variables
+go there, not into job scripts.
 
 ## What lives where
 
 - **Container images** → `$PROJECTS_BASE/software/containers/` (shared, provenance
   via `sha256sum`; `*.sif` is not tracked — only the build recipe, the idrobolab recipe under
   `shared/containers/x86_64-cuda/idrobolab/`).
-- **Apptainer caches** → `$SCRATCH_BASE/$USER/.apptainer` (keep off `$HOME`;
-  do not move to projects).
+- **Apptainer cache** → `$SCRATCH_BASE/$USER/.apptainer`, per member; **uv cache** →
+  `$SCRATCH_BASE/uv-cache`, shared by the project (setgid, default ACL; created once by an
+  admin, see `docs/delta/README.md`), with `$SCRATCH_BASE/$USER/uv-cache` until it exists and
+  is writable for the member.
+  Both are set by `delta/env.sh` (keep off `$HOME`; do not move to projects).
+- **Shared tools** (the `uv` binary) → `$PROJECTS_BASE/software/bin`, installed by an admin
+  (`docs/delta/README.md`) and put on `PATH` by `delta/env.sh`.
 - **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on
   /projects (e.g. `/projects/<project>/<user>/<campaign>/code/gpaw`),
   bound over the image's editable `/opt/src/<name>` — test code belongs to
