@@ -7,6 +7,7 @@
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh           # do it
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --check   # report only, change nothing
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo    # remove the block it added
+#         (changes nothing, exit 1, unless the block's two marker lines are intact)
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --vscode-workspace
 #                                                               # also write the VS Code workspace
 #
@@ -48,14 +49,35 @@ warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); 
 act()  { printf '  \033[36mdid\033[0m   %s\n' "$*"; }
 WARNINGS=0
 
+# True when FILE holds no START line, or one START line with one END line below
+# it. With anything else the range delete below would cut to the end of the file.
+block_is_whole() {   # START END FILE
+    local starts ends
+    starts=$(grep -nxF "$1" "$3" | cut -d: -f1 || true)
+    ends=$(grep -nxF "$2" "$3" | cut -d: -f1 || true)
+    [ -z "$starts$ends" ] && return 0
+    case "$starts:$ends" in
+        *[!0-9:]*|:*|*:) return 1 ;;
+    esac
+    [ "$starts" -lt "$ends" ]
+}
 # --- undo: remove our block, leave everything else alone ---------------------
 # Only the marked block, never the whole file: people put their own things in
 # these files, and a startup file is not ours to reset.
 if [ "$UNDO" = 1 ]; then
-    removed=0
+    removed=0 refused=0
     for rc in "$HOME/.bashrc.ext" "$HOME/.bashrc"; do
         [ -f "$rc" ] || continue
-        grep -qF -e "# >>> idrobolab-env (${PROJECT}) >>>" -e "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
+        # Whole lines only, as the removal below matches them: a marker with
+        # trailing whitespace or inside a longer line is not ours to remove.
+        grep -qxF -e "# >>> idrobolab-env (${PROJECT}) >>>" -e "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
+        if ! block_is_whole "# >>> idrobolab-env (${PROJECT}) >>>" "# <<< idrobolab-env (${PROJECT}) <<<" "$rc" \
+           || ! block_is_whole "# >>> hpcenvs (${PROJECT}) >>>" "# <<< hpcenvs (${PROJECT}) <<<" "$rc"; then
+            echo "$rc: the idrobolab-env (or hpcenvs) markers are not one start line followed by one" >&2
+            echo "  end line; nothing changed there. Remove the block by hand." >&2
+            refused=1
+            continue
+        fi
         cp -p "$rc" "$rc.idrobolab-env-backup"
         # Blocks written before the repo was renamed carry the name hpcenvs.
         sed -i --follow-symlinks \
@@ -67,12 +89,12 @@ if [ "$UNDO" = 1 ]; then
         echo ">> removed the idrobolab-env block from $rc (backup: $rc.idrobolab-env-backup)"
         removed=1
     done
-    if [ "$removed" = 0 ]; then
-        echo ">> no idrobolab-env block found in ~/.bashrc.ext or ~/.bashrc"
-    else
+    if [ "$removed" = 1 ]; then
         echo "   Open a new shell; the current one still has env.sh applied."
+    elif [ "$refused" = 0 ]; then
+        echo ">> no idrobolab-env block found in ~/.bashrc.ext or ~/.bashrc"
     fi
-    exit 0
+    exit "$refused"
 fi
 
 echo "idrobolab-env user setup — project $PROJECT"
