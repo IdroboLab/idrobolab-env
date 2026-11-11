@@ -38,8 +38,7 @@ is the `idrobolab-container` skill.
   nor `/work/hdd` is purged; they differ in quota and intended use.** `/projects/<project>`
   defaults to 500 GB and is for shared project data (common datasets, software, results).
   `/work/hdd/<project>` defaults to 1000 GB and is what NCSA now calls the scratch
-  volume; `/work/nvme` exists alongside it for jobs doing lots of small-file
-  I/O. `/tmp` is per node and wiped after each job. That page gives no quota or purge rule
+  volume; `/work/nvme` is available on request. `/tmp` is per node and wiped after each job. That page gives no quota or purge rule
   for `/scratch`. The group keeps job output and caches under `$SCRATCH_BASE/$USER`
   (`delta/AGENTS.md`, *What lives where*).
 
@@ -55,10 +54,10 @@ launch pattern goes with which job shape, and which of them has been run, is in
 - **One node: `mpiexec -bootstrap fork` inside the container, with no outer `srun`.**
   Without `-bootstrap fork`, Hydra detects the Slurm allocation and tries to exec a host
   `srun`, which does not exist inside the container: `execvp error on file srun`.
-- **Several nodes: `srun` on the host launches `apptainer exec ... python`**; an in-container
-  `mpiexec` does not extend past one node.
-- Give a GPU or multi-node MPI launch its own smoke test (an 8-rank hello-world) before a
-  production run; the single-node CPU recipe does not transfer unchanged.
+- **Several nodes: the multi-node template launches `apptainer exec ... python` with `srun`
+  on the host.**
+- Give a GPU or multi-node MPI launch its own smoke test (a small hello-world, as in the
+  first-run checklist of `delta/jobs/README.md`) before a production run; the single-node CPU recipe does not transfer unchanged.
 - **Interactive MPI testing needs `salloc`, not `srun --pty bash`.** A shell started by
   `srun --pty` is itself a job step, and `srun` (or `mpirun`) can't be run from inside it
   (NCSA docs). `salloc` leaves the shell on the login node holding the allocation, and
@@ -69,8 +68,8 @@ launch pattern goes with which job shape, and which of them has been run, is in
   example) also needs `module load aws-ofi-nccl` (the Slingshot-11 plugin) and
   `NCCL_SOCKET_IFNAME=hsn`. Neither has been tested from inside the group image.
 
-**MPICH ch4 POSIX shared-memory collective truncation at scale.** Symptom around 32–64
-ranks on one node:
+**MPICH ch4 POSIX shared-memory collective truncation at scale.** Observed with an earlier
+image of the same MPICH build; symptom around 32–64 ranks on one node:
 ```
 MPI_Barrier -> MPIDI_Barrier_intra_composition_alpha -> MPIDI_POSIX_mpi_bcast ->
 MPIR_Bcast_intra_binomial -> MPIDIG_copy_from_unexp_req:
@@ -87,7 +86,7 @@ truncates — so this crash does not necessarily mean the physics was wrong, onl
 results were never durably written.
 Fix, no rebuild needed: `export APPTAINERENV_MPIR_CVAR_DEVICE_COLLECTIVES=none` —
 disables the ch4 device/POSIX composition collectives (generic MPIR fallback), keeps
-point-to-point shared memory. Verified to run clean. If that alone isn't enough, the next
+point-to-point shared memory. That run then completed. If that alone isn't enough, the next
 escalation is `MPIR_CVAR_{BARRIER,BCAST,ALLREDUCE,REDUCE}_COMPOSITION=NM` (network-module
 only), and the last resort is rebuilding MPICH with `--with-ch4-shmmods=none`.
 `MPICH_SMP_SINGLE_COPY_MODE` is a *Cray* MPICH variable — it does nothing against the
