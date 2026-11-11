@@ -4,7 +4,7 @@ Computational-materials + electron-microscopy-analysis environment: **GPAW**
 (DFT), **abTEM** (multislice), **ptyrad** (ptychography), **nionswift** (EM data
 analysis), ML interatomic potentials (**fairchem**, **orb-models**), phonons
 (**phonopy**, **hiphive**), **pymatgen**, **dask**, **jupyterlab** — on CUDA
-12.8 / Python 3.12 / x86_64.
+12.9 / Python 3.12 / x86_64.
 
 Sibling of another image's recipe (maintained separately, not in this repo): it reuses
 the **identical compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdwxc +
@@ -24,7 +24,7 @@ different torch minor means a different fairchem release.
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | The recipe (base: NGC `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04`) |
+| `Dockerfile` | The recipe (base: NGC `nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04`) |
 | `requirements-idrobolab.txt` | Curated Python stack — **hand-maintained** (not scraped from a dev venv) |
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`) |

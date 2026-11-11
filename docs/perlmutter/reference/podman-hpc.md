@@ -27,7 +27,7 @@ registry name; log under `perlmutter/verification/multigpu_abtem/`, analysis in
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | OCI image recipe (base: NGC `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04`) |
+| `Dockerfile` | OCI image recipe (base: NGC `nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04`) |
 | `requirements-idrobolab.txt` | Curated Python stack — hand-maintained |
 | `siteconfig.py` | GPAW build configuration (MPI, ScaLAPACK, FFTW, libxc, libvdwxc) |
 | `prepare_build_context.sh` | Stages the three source trees into `./src/` |

@@ -98,8 +98,8 @@ Print `abtem.__file__` in your script (it must start with the checkout's path in
 ## Route 2: your own uv environment
 
 Create it once, **on a login node** (compute nodes should not download anything). It
-uses Python 3.13, the interpreter in the group's uv folder. CuPy here is version 14,
-newer than the container's 13.5.1; its `[ctk]` extra installs the CUDA 12.8 libraries
+uses Python 3.13, the interpreter in the group's uv folder. CuPy here is version 14, the same
+line as the container's (14.1.1); its `[ctk]` extra installs the CUDA 12.9 libraries
 as wheels, which CuPy finds on its own. The requirements are in the example script's
 header, and installing from the script pulls in all of them:
 
