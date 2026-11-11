@@ -2,7 +2,7 @@
 # idrobolab — computational-materials + microscopy-analysis container.
 # GPAW (DFT) + abTEM (multislice) + ptyrad (ptychography) + nionswift (EM data)
 # + ML potentials (fairchem, orb-models) + phonons (phonopy, hiphive) +
-# pymatgen + dask + jupyterlab, on CUDA 12.8 / Python 3.12 / x86_64.
+# pymatgen + dask + jupyterlab, on CUDA 12.9 / Python 3.12 / x86_64.
 #
 # Sibling of another image's recipe (maintained separately, not in this repo): it
 # reuses the identical compiled foundation (MPICH/FFTW/ScaLAPACK/libxc/libvdwxc +
@@ -38,7 +38,10 @@ RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" bash /tmp/install-
 # Compiles the whole stack; nothing here ships — the slim -runtime final stage
 # below COPY --from=s only the built artifacts, dropping the nvcc/headers/static
 # CUDA libs + the apt build toolchain.
-FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS builder
+# The CUDA version of this base (both stages) equals the CUDA of the pip-installed libraries
+# (torch cu129 wheels, CuPy): a process loads one cuBLAS, so a mismatch fails at the first
+# cuSOLVER call.
+FROM nvcr.io/nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
@@ -352,7 +355,7 @@ RUN set -eux; \
 # GPAW's _gpaw.so, MAGMA and LAMMPS link the CUDA runtime libs in this base;
 # torch/cupy bundle their own nvidia-* in the venv; libcuda.so.1 comes from --nv.
 # ============================================================================
-FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
+FROM nvcr.io/nvidia/cuda:12.9.1-cudnn-runtime-ubuntu24.04
 
 LABEL org.opencontainers.image.authors="IdroboLab (https://github.com/IdroboLab)"
 LABEL org.opencontainers.image.source="https://github.com/IdroboLab/idrobolab-env"
