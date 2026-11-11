@@ -12,7 +12,7 @@ Delta (environment variables, where files live, the editable-install import trap
 
 | Path | Purpose |
 |---|---|
-| [delta/env.sh](../../delta/env.sh) | Shell setup, sourced from `~/.bashrc`: Apptainer and uv caches on personal scratch |
+| [delta/env.sh](../../delta/env.sh) | Shell setup, sourced from `~/.bashrc`: Apptainer cache on personal scratch, uv cache shared by the project |
 | [delta/get-image.sh](../../delta/get-image.sh) | Materialize the Delta `.sif` from the published registry image (from a login node it queues itself on `cpu-interactive`; needs `ACCOUNT=<project>-delta-cpu`) |
 | [delta/jobs/](../../delta/jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper); its README has the partition matrix and the MPI launch guide |
 | [delta/verification/](../../delta/verification/) | On-node checks: [multi-GPU abTEM](../../delta/verification/multigpu_abtem/README.md) (launchers; the Python payloads are shared with Perlmutter in [`shared/verification/multigpu_abtem/`](../../shared/verification/multigpu_abtem/)) |
@@ -22,7 +22,7 @@ Delta (environment variables, where files live, the editable-install import trap
 
 1. Run `accounts` on a Delta login node to find your charge accounts: `<project>-delta-cpu` for the CPU partitions, `<project>-delta-gpu` for the GPU partitions, charged separately.
 2. Clone this repository to `~/idrobolab-env` on Delta, as described in [general page 2](../02-cloning.md).
-3. Add this line to `~/.bashrc` on Delta, then log in again. It sources [`delta/env.sh`](../../delta/env.sh), which keeps the Apptainer and uv caches on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota:
+3. Add this line to `~/.bashrc` on Delta, then log in again. It sources [`delta/env.sh`](../../delta/env.sh), which keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota and points uv at the project's [shared cache](#the-shared-uv-cache):
    ```bash
    [ -r "$HOME/idrobolab-env/delta/env.sh" ] && . "$HOME/idrobolab-env/delta/env.sh"
    ```
@@ -34,6 +34,21 @@ Delta (environment variables, where files live, the editable-install import trap
    The `.sif` lands in `$PROJECTS_BASE/software/containers/`, where the job templates look for it, not in scratch. Record `sha256sum` of the image with your results. The script pulls the group image `ghcr.io/idrobolab/idrobolab` by default; if it stops with `unauthorized`, ask an admin (see [The images](#the-images)).
 5. Copy the job template for your partition from [`delta/jobs/`](../../delta/jobs/), replace `<project>` in its `--account` line, and submit it with your script as the argument: `sbatch gpu_a100_1gpu.sbatch my_script.py`. Always set `--time`: the default is 30 minutes.
 6. Run the smoke tests of the [first-run checklist](../../delta/jobs/README.md#first-run-checklist) once before the first real job.
+
+## The shared uv cache
+
+`delta/env.sh` sets `UV_CACHE_DIR` to `$SCRATCH_BASE/uv-cache`, one cache for the whole project, so a package one member has downloaded is not downloaded again by the next. An admin creates the directory once:
+
+```bash
+mkdir "$SCRATCH_BASE/uv-cache"
+chgrp "$(stat -c %G "$SCRATCH_BASE")" "$SCRATCH_BASE/uv-cache"
+chmod 2770 "$SCRATCH_BASE/uv-cache"
+setfacl -d -m u::rwx,g::rwx,o::--- "$SCRATCH_BASE/uv-cache"
+```
+
+The setgid bit keeps everything inside in the project's group, and the default ACL makes every file and directory uv creates there group-writable whatever the member's `umask` is; without it uv follows the `umask`, and files written under a private one lock the other members out. Until the directory exists, `env.sh` keeps each member's cache at `$SCRATCH_BASE/$USER/uv-cache`.
+
+With the shared cache `env.sh` also sets `UV_LINK_MODE=copy`, so an environment holds its own copies of the packages and not links to the cache's files. Every member of the project can write to the cache, so install only what you would run from a colleague's directory.
 
 ## The images
 
