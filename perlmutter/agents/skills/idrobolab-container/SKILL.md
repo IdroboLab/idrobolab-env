@@ -1,6 +1,6 @@
 ---
 name: idrobolab-container
-description: Running work inside the IdroboLab group image (idrobolab, recipe in idrobolab-env shared/containers/x86_64-cuda/idrobolab) on Perlmutter (podman-hpc) and Delta (Apptainer) — what it contains (GPAW, abTEM, gpaw-weaver editable from /opt/src; CuPy 14.1.1, CUDA 12.8, torch 2.13, dask-cuda, LAMMPS, QE), running a branch of abTEM or GPAW by PYTHONPATH or a bind over /opt/src, checking which copy was imported, running a package's test suite (the image has no pytest; shared/testing/run_pytest.py installs it with the test dependencies; pytest rootdir and package-name shadowing traps), git inside the container, and how it differs from an environment with another CuPy. Use when writing or handing over any command that runs in the idrobolab image, especially tests of an abTEM or GPAW branch on a cluster GPU.
+description: Running work inside the IdroboLab group image (idrobolab, recipe in idrobolab-env shared/containers/x86_64-cuda/idrobolab) on Perlmutter (podman-hpc) and Delta (Apptainer) — what it contains (GPAW, abTEM, gpaw-weaver editable from /opt/src; CuPy 14.1.1, CUDA 12.9, torch 2.13, dask-cuda, LAMMPS, QE), running a branch of abTEM or GPAW by PYTHONPATH or a bind over /opt/src, checking which copy was imported, running a package's test suite (the image has no pytest; shared/testing/run_pytest.py installs it with the test dependencies; pytest rootdir and package-name shadowing traps), git inside the container, and how it differs from an environment with another CuPy. Use when writing or handing over any command that runs in the idrobolab image, especially tests of an abTEM or GPAW branch on a cluster GPU.
 ---
 
 # The idrobolab container
@@ -15,7 +15,7 @@ How the image is built and published is its `README.md` in idrobolab-env
 
 ## What is inside
 
-- Python 3.12 venv at `/opt/venv` (first on `PATH`), CUDA 12.8 runtime, MPICH.
+- Python 3.12 venv at `/opt/venv` (first on `PATH`), CUDA 12.9 runtime, MPICH.
 - **Editable installs from `/opt/src`:** `gpaw`, `gpaw-weaver`, `abTEM`, as staged at build
   time. Everything else is pinned in `requirements-idrobolab.txt`.
 - `cupy-cuda12x` **14.1.1**, torch 2.13.0 (the version fairchem pins), dask-cuda 26.6.0 installed

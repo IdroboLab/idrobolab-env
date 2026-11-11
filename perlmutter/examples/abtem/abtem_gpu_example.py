@@ -3,8 +3,8 @@
 # dependencies = [
 #     "abtem", "ase", "numpy",
 #     # CuPy 14 finds the CUDA libraries in wheels ([ctk] installs them); the toolkit is kept on
-#     # CUDA 12.8, the line the idrobolab container uses.
-#     "cupy-cuda12x[ctk]>=14,<15", "cuda-toolkit==12.8.*",
+#     # CUDA 12.9, the line the idrobolab container uses.
+#     "cupy-cuda12x[ctk]>=14,<15", "cuda-toolkit==12.9.*",
 # ]
 # ///
 """Small abTEM STEM simulation on one GPU: an annular-detector (HAADF-type) scan of Si [001].
