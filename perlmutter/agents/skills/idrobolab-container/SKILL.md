@@ -21,9 +21,7 @@ How the image is built and published is its `README.md` in idrobolab-env
 - `cupy-cuda12x` **14.1.1**, torch 2.13.0 (the version fairchem pins), dask-cuda 26.6.0 installed
   `--no-deps`, fairchem, orb-models, ptyrad, phonopy, hiphive, pymatgen, nionswift (headless),
   LAMMPS (Kokkos-CUDA, `/opt/software/lammps`), Quantum ESPRESSO GPU (`/opt/software/qe`),
-  `bader`. **No `git` on `PATH`** (a script's `subprocess.run(["git", ...])` raised
-  `FileNotFoundError` on Perlmutter, 2026-11-11): a script run in the image must not require it, and
-  the commit of a bound checkout is checked on the host, not inside.
+  `bader`, `git`.
 - **No test tooling: no `pytest`, `hypothesis`, or any package's test dependency group.** A
   test command that just calls `python -m pytest` fails with `No module named pytest`.
 
@@ -55,7 +53,7 @@ How the image is built and published is its `README.md` in idrobolab-env
   on its own, since Python inserts the *script's* directory, not the CWD.
 - A custom directory is visible inside only where it is bound; `$HOME`, `$SCRATCH`,
   `$PSCRATCH` and `$CFS` need their own `-v X:X` on Perlmutter.
-- If a git binary is present (it was absent on 2026-11-11), under rootless podman it needs
+- Under rootless podman, git inside the container needs
   `-e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'`.
 
 ## Running a test suite
