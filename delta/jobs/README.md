@@ -11,6 +11,10 @@ submit time with `SIF=... sbatch ...`), and bind `/projects`, `/scratch`,
 (`<project>-delta-cpu` for CPU partitions, `<project>-delta-gpu` for GPU
 partitions; they are charged separately).
 
+Every template declares `--constraint="scratch&projects"`: Slurm then places the job on a
+node that sees both file systems (the image is read from `/projects`, output goes to
+`/scratch`). Add `&work` for a job that also reads or writes `/work/hdd`.
+
 On Delta the idrobolab image has so far run only a 2-node MPI hello-world (the
 fallback in item 3 of *How MPI is launched*). The launch patterns marked
 verified below were verified with an earlier image, so work through the
