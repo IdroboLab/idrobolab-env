@@ -10,7 +10,7 @@
 # uses torch 2.13.0. fairchem v2 needs no torch-geometric wheels.
 #
 # Build (host with docker/podman, after ./prepare_build_context.sh):
-#   podman build -t idrobolab:latest .        # or ./publish.sh to push to ghcr
+#   podman build -t ghcr.io/idrobolab/idrobolab:latest .        # or ./publish.sh to push to ghcr
 #   -> apptainer build idrobolab.sif docker-daemon://idrobolab:latest   (Delta)
 #   -> podman-hpc pull …                                                (Perlmutter)
 #

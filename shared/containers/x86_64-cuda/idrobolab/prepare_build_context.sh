@@ -42,4 +42,4 @@ for repo in gpaw-weaver abTEM; do
 done
 
 echo "Build context staged under ./src ($(du -sh src | cut -f1))"
-echo "Next: podman build -t idrobolab:latest .   (or ./publish.sh)"
+echo "Next: podman build -t ghcr.io/idrobolab/idrobolab:latest .   (or ./publish.sh)"

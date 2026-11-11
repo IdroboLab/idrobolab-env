@@ -5,10 +5,10 @@ description: Running work inside the IdroboLab group image (idrobolab, recipe in
 
 # The idrobolab container
 
-Images are pulled by hand by the maintainer: commands reference the local tag only
-(`idrobolab:latest` under podman-hpc, the `.sif` path on Delta) and never include a pull or
-build step. The `perlmutter-cluster` skill has the Perlmutter launch conventions (Slurm,
-podman-hpc, the command guard); Delta's are in `docs/delta/README.md` and `delta/AGENTS.md`
+Images are pulled by hand by the maintainer: commands reference the image by its full name
+(`$IDROBOLAB_IMAGE`, which is `ghcr.io/idrobolab/idrobolab:latest`, under podman-hpc; the `.sif`
+path on Delta) and never include a pull or build step. The `perlmutter-cluster` skill has the
+Perlmutter launch conventions (Slurm, podman-hpc, the command guard); Delta's are in `docs/delta/README.md` and `delta/AGENTS.md`
 in the idrobolab-env clone.
 How the image is built and published is its `README.md` in idrobolab-env
 (`shared/containers/x86_64-cuda/idrobolab/`); this skill is about using it.
@@ -76,7 +76,7 @@ vanishes, podman takes the image name for the working directory and pulls `pytho
 
 ```bash
 salloc -C gpu -q shared_interactive -A <account> -t 00:30:00 -n 1 -c 32 --gpus-per-task=1 -L scratch,cfs
-srun podman-hpc run --rm --group-add keep-groups --gpu -v $CFS:$CFS -v $SCRATCH:$SCRATCH -v $HOME:$HOME -e PYTHONPATH=${WT:?} --workdir $WT idrobolab:latest python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short 2>&1 | tail -30
+srun podman-hpc run --rm --group-add keep-groups --gpu -v $CFS:$CFS -v $SCRATCH:$SCRATCH -v $HOME:$HOME -e PYTHONPATH=${WT:?} --workdir $WT ghcr.io/idrobolab/idrobolab:latest python ~/idrobolab-env/shared/testing/run_pytest.py $WT/test/ -k gpu -m "not multigpu" -q -rfE --tb=short 2>&1 | tail -30
 ```
 
 The repo's sbatch templates (`perlmutter/jobs/`) pass no `PYTHONPATH`, so a batch run through
