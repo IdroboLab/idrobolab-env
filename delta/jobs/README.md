@@ -15,7 +15,8 @@ Every template declares `--constraint="scratch&projects"`: Slurm then places the
 node that sees both file systems (the image is read from `/projects`, output goes to
 `/scratch`). Add `&work` for a job that also reads or writes `/work/hdd`.
 
-The idrobolab image has not been run on Delta yet. The launch patterns marked
+On Delta the idrobolab image has so far run only a 2-node MPI hello-world (the
+fallback in item 3 of *How MPI is launched*). The launch patterns marked
 verified below were verified with an earlier image, so work through the
 [first-run checklist](#first-run-checklist) before relying on them.
 
@@ -43,8 +44,9 @@ partition, `-preempt` 0.5× (10 min preemption protection). Max wall time is
 ## How MPI is launched (important)
 
 Since Delta's Dec-2025 RH9 upgrade, **Cray MPICH launched by plain `srun`
-is the only supported MPI** — there is no `mpirun` on the host and
-`--mpi=pmi2` is no longer documented. Consequences for this container:
+is the only supported MPI** — there is no `mpirun` on the host. `--mpi=pmi2` is
+no longer documented, but `srun --mpi=list` still offers it (`none`, `pmix`,
+`pmi2`, `cray_shasta`). Consequences for this container:
 
 1. **Single node (≤128 ranks)** — `gpaw_cpu_singlenode.sbatch` runs
    `mpiexec -bootstrap fork` *inside* the container (Hydra + container
@@ -71,7 +73,8 @@ is the only supported MPI** — there is no `mpirun` on the host and
    (`python -c "from gpaw.mpi import world; print(world.rank, world.size)"`).
 3. **Fallback** — if injection misbehaves, the container's own MPICH still
    works via `srun --mpi=pmi2` with no host binds (correct results, TCP
-   transport — fine for modest rank counts). The multinode script has this
+   transport — fine for modest rank counts). The idrobolab image passed a
+   4-rank hello-world over 2 `cpu` nodes this way. The multinode script has this
    as a commented block at the bottom. If `--mpi=pmi2` itself is rejected,
    `srun --mpi=list` shows the available plugins (try `pmix`/`cray_shasta`).
 
