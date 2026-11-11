@@ -18,11 +18,13 @@ is the `idrobolab-container` skill.
   derives them from `DELTA_PROJECT` (`delta/AGENTS.md`), and a job sees them only because it
   inherits the submitting shell's environment. A script that expands an unset `$SCRATCH`
   under `set -u` aborts. NCSA's sample job scripts (`running_jobs.html`) say "`$WORK` and
-  `$SCRATCH` are now set" after `module reset`; check with
-  `module reset; echo "${SCRATCH-unset}"` before relying on it.
+  `$SCRATCH` are now set" after `module reset`, but on a login node both are still unset
+  after it (2026-11-11).
 - **Run `module reset` before anything that relies on `set -u`.** It loads the Cray
-  defaults (`cray-mpich` and friends); without it a job can fail on an unset
-  network-targeting module.
+  defaults (`PrgEnv-gnu`, `cray-mpich`, `craype-network-ofi`, `cudatoolkit`); without it a
+  job can fail on an unset network-targeting module. While it runs, Lmod can warn that
+  "'cray-mpich' requires a network targeting module"; the warning is harmless when
+  `module list` afterwards shows `craype-network-ofi`.
 - **Every filesystem a job touches needs its own Slurm constraint/feature label — they
   don't nest or imply each other.** From NCSA's "File System Dependency Specification for
   Jobs" table (`running_jobs.html`): `/projects` (same underlying FS as `/taiga`) →
