@@ -13,6 +13,7 @@ Delta (environment variables, where files live, the editable-install import trap
 | Path | Purpose |
 |---|---|
 | [delta/env.sh](../../delta/env.sh) | Shell setup, sourced from `~/.bashrc`: `SCRATCH_BASE` and `PROJECTS_BASE`, Apptainer cache on personal scratch, uv cache shared by the project |
+| [delta/helpers/setup-user.sh](../../delta/helpers/setup-user.sh) | Per-user setup: writes the `~/.bashrc` lines for `env.sh`, creates the Apptainer cache directory, reports what is missing (`--check`, `--undo`) |
 | [delta/get-image.sh](../../delta/get-image.sh) | Materialize the Delta `.sif` from the published registry image (from a login node it queues itself on `cpu-interactive`; needs `ACCOUNT=<project>-delta-cpu`) |
 | [delta/jobs/](../../delta/jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper); its README has the partition matrix and the MPI launch guide |
 | [delta/verification/](../../delta/verification/) | On-node checks: [multi-GPU abTEM](../../delta/verification/multigpu_abtem/README.md) (launchers; the Python payloads are shared with Perlmutter in [`shared/verification/multigpu_abtem/`](../../shared/verification/multigpu_abtem/)) |
@@ -22,10 +23,14 @@ Delta (environment variables, where files live, the editable-install import trap
 
 1. Run `accounts` on a Delta login node to find your charge accounts: `<project>-delta-cpu` for the CPU partitions, `<project>-delta-gpu` for the GPU partitions, charged separately.
 2. Clone this repository to `~/idrobolab-env` on Delta, as described in [general page 2](../02-cloning.md).
-3. Add these two lines to `~/.bashrc` on Delta, with the `<project>` of your accounts from step 1, then log in again:
+3. Set up your shell, once, on a login node:
+   ```bash
+   ~/idrobolab-env/delta/helpers/setup-user.sh
+   ```
+   It finds your project (the `<project>` of your accounts from step 1; `--project <project>` names it when it cannot), adds two lines to `~/.bashrc`, creates your Apptainer cache directory, and reports what is still missing. `--check` only reports, `--undo` removes the lines again. Log in again afterwards. The two lines are:
    ```bash
    export DELTA_PROJECT=<project>
-   [ -r "$HOME/idrobolab-env/delta/env.sh" ] && . "$HOME/idrobolab-env/delta/env.sh"
+   if [ -r "$HOME/idrobolab-env/delta/env.sh" ]; then . "$HOME/idrobolab-env/delta/env.sh"; fi
    ```
    The second line sources [`delta/env.sh`](../../delta/env.sh). It sets `SCRATCH_BASE` (`/scratch/<project>`) and `PROJECTS_BASE` (`/projects/<project>`), which the job templates and `get-image.sh` read and Delta does not define, keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota, and points uv at the project's [shared cache](#the-shared-uv-cache) once an admin has created it. `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if the `SCRATCH_BASE` line reads `<unset>`, `DELTA_PROJECT` is not exported above the line that sources the file, is mistyped, or `/scratch/<project>` does not exist on that node. A `SCRATCH_BASE` or `PROJECTS_BASE` you set yourself takes precedence.
 4. Build the image once, on a login node (it queues the conversion on a compute node itself, because the conversion is too heavy for a login node):

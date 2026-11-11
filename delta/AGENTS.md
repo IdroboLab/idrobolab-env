@@ -31,7 +31,9 @@ as the default.
 and follows the rules for `perlmutter/env.sh` in the root `AGENTS.md`: silent, idempotent,
 inert while `DELTA_PROJECT` is unset or names no directory under `/scratch`, pre-set values
 respected, every derivation guarded on the variables it depends on, never `exit` or
-`set -e`. The project name stays out of the repo: write `<project>`. Cluster-wide variables
+`set -e`. `delta/helpers/setup-user.sh` writes both lines as a block between the markers
+`# >>> idrobolab-env (delta) >>>` and `# <<< idrobolab-env (delta) <<<`, which `--undo`
+removes; keep the markers stable. The project name stays out of the repo: write `<project>`. Cluster-wide variables
 go there, not into job scripts.
 
 ## What lives where

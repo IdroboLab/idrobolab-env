@@ -6,6 +6,8 @@
 #     export DELTA_PROJECT=<project>
 #     [ -r "$HOME/idrobolab-env/delta/env.sh" ] && . "$HOME/idrobolab-env/delta/env.sh"
 #
+# delta/helpers/setup-user.sh writes both lines for you.
+#
 # Safe to source unconditionally: it is silent, idempotent, does nothing while
 # DELTA_PROJECT is unset or names no directory under /scratch, and never sets
 # `set -e` or calls `exit` (either would kill the login shell). Set
