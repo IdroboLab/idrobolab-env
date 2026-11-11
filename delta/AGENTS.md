@@ -46,6 +46,8 @@ go there, not into job scripts.
   admin, see `docs/delta/README.md`), with `$SCRATCH_BASE/$USER/uv-cache` until it exists and
   is writable for the member.
   Both are set by `delta/env.sh` (keep off `$HOME`; do not move to projects).
+- **Shared tools** (the `uv` binary) → `$PROJECTS_BASE/software/bin`, installed by an admin
+  (`docs/delta/README.md`) and put on `PATH` by `delta/env.sh`.
 - **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on
   /projects (e.g. `/projects/<project>/<user>/<campaign>/code/gpaw`),
   bound over the image's editable `/opt/src/<name>` — test code belongs to

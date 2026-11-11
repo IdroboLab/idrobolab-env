@@ -32,7 +32,7 @@ Delta (environment variables, where files live, the editable-install import trap
    export DELTA_PROJECT=<project>
    if [ -r "$HOME/idrobolab-env/delta/env.sh" ]; then . "$HOME/idrobolab-env/delta/env.sh"; fi
    ```
-   The second line sources [`delta/env.sh`](../../delta/env.sh). It sets `SCRATCH_BASE` (`/scratch/<project>`) and `PROJECTS_BASE` (`/projects/<project>`), which the job templates and `get-image.sh` read and Delta does not define, keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota, and points uv at the project's [shared cache](#the-shared-uv-cache) once an admin has created it. `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if the `SCRATCH_BASE` line reads `<unset>`, `DELTA_PROJECT` is not exported above the line that sources the file, is mistyped, or `/scratch/<project>` does not exist on that node. A `SCRATCH_BASE` or `PROJECTS_BASE` you set yourself takes precedence.
+   The second line sources [`delta/env.sh`](../../delta/env.sh). It sets `SCRATCH_BASE` (`/scratch/<project>`) and `PROJECTS_BASE` (`/projects/<project>`), which the job templates and `get-image.sh` read and Delta does not define, keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota, and points uv at the project's [shared cache](#the-shared-cache) once an admin has created it, and puts the group's [uv](#uv) on your `PATH`. `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if the `SCRATCH_BASE` line reads `<unset>`, `DELTA_PROJECT` is not exported above the line that sources the file, is mistyped, or `/scratch/<project>` does not exist on that node. A `SCRATCH_BASE` or `PROJECTS_BASE` you set yourself takes precedence.
 4. Build the image once, on a login node (it queues the conversion on a compute node itself, because the conversion is too heavy for a login node):
    ```bash
    mkdir -p $PROJECTS_BASE/software/containers && ACCOUNT=<project>-delta-cpu SIF=$PROJECTS_BASE/software/containers/idrobolab.sif ~/idrobolab-env/delta/get-image.sh
@@ -41,7 +41,25 @@ Delta (environment variables, where files live, the editable-install import trap
 5. Copy the job template for your partition from [`delta/jobs/`](../../delta/jobs/), replace `<project>` in its `--account` line, and submit it with your script as the argument: `sbatch gpu_a100_1gpu.sbatch my_script.py`. Always set `--time`: the default is 30 minutes.
 6. Run the smoke tests of the [first-run checklist](../../delta/jobs/README.md#first-run-checklist) once before the first real job.
 
-## The shared uv cache
+## uv
+
+[uv](https://docs.astral.sh/uv/) is not installed on Delta. The group keeps one copy in the project's shared bin directory, `$PROJECTS_BASE/software/bin`, which `delta/env.sh` puts on your `PATH` once it exists. An admin installs it once, on a login node, and repeats the same commands to update it:
+
+```bash
+BIN="$PROJECTS_BASE/software/bin"
+GRP="$(stat -c %g "$PROJECTS_BASE")"
+mkdir -p "$BIN"
+chgrp "$GRP" "$BIN"
+chmod 2750 "$BIN"
+curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$BIN" UV_NO_MODIFY_PATH=1 sh
+chgrp "$GRP" "$BIN"/uv "$BIN"/uvx
+chmod 750 "$BIN"/uv "$BIN"/uvx
+"$BIN"/uv --version
+```
+
+`UV_NO_MODIFY_PATH=1` keeps the installer from editing the admin's own shell files; `env.sh` already handles `PATH` for everyone. The `chgrp` and `chmod` after the install matter: the installer writes the binaries with the admin's own group and `umask`, which can leave them unusable for the other members. For the same reason, don't run `uv self update`: it replaces the shared binary the same way. Log in again (or source `env.sh`) and check with `uv --version`.
+
+### The shared cache
 
 `delta/env.sh` sets `UV_CACHE_DIR` to `$SCRATCH_BASE/uv-cache`, one cache for the whole project, so a package one member has downloaded is not downloaded again by the next. An admin creates the directory once:
 
