@@ -9,7 +9,8 @@ Rules for editing the files in `delta/`; the member-facing page is
 ## Environment variables — no `$SCRATCH`
 
 `delta/env.sh` defines **`$SCRATCH_BASE` (= `/scratch/<project>`) and `$PROJECTS_BASE`
-(= `/projects/<project>`)** from the member's `DELTA_PROJECT`; Delta has **no `$SCRATCH`**.
+(= `/projects/<project>`)** from the member's `DELTA_PROJECT`. Delta sets `$SCRATCH` and
+`$WORK` only inside a job, never in a login shell, so scripts here do not use them.
 The personal scratch area is `$SCRATCH_BASE/$USER`.
 Any script that expands an unguarded `$SCRATCH` under `set -u` aborts.
 Never emit `$SCRATCH` in Delta job scripts.
