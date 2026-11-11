@@ -15,7 +15,8 @@
 # use PARTITION=cpu TIME=02:00:00 if a cold-cache download needs longer), TIME,
 # CPUS, MEM; MKSQUASHFS_PROCS (defaults to the job's CPU count; needs apptainer
 # >= 1.1 for --mksquashfs-args); NO_SRUN=1 builds right here, login node or not.
-# APPTAINER_CACHEDIR defaults to $SCRATCH_BASE/$USER/.apptainer (keep off $HOME);
+# APPTAINER_CACHEDIR defaults to $SCRATCH_BASE/$USER/.apptainer (keep off $HOME;
+# the same value delta/env.sh sets);
 # inside a Slurm job APPTAINER_TMPDIR defaults to a per-job dir on node-local /tmp.
 set -euo pipefail
 IMAGE=${IMAGE:-ghcr.io/idrobolab/idrobolab}

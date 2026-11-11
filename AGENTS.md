@@ -1,7 +1,7 @@
 # idrobolab-env: instructions for coding agents
 
 The IdroboLab group's environments: NERSC Perlmutter (project <project>) in `perlmutter/`
-(env.sh, helpers, job templates) and NCSA Delta in `delta/` (get-image.sh, job templates,
+(env.sh, helpers, job templates) and NCSA Delta in `delta/` (env.sh, get-image.sh, job templates,
 verification launchers), the `idrobolab` container recipe under
 `shared/containers/x86_64-cuda/idrobolab/`, and the documentation in `docs/`. Split out of
 the `hpcenvs` repo, which is frozen and holds nothing this repo needs. Rules specific to

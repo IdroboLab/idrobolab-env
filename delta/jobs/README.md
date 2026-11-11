@@ -81,9 +81,9 @@ GPU scripts run a single Python process (no MPI); switch the payload to
 # on Delta, once:
 accounts                                   # find <project>-delta-{cpu,gpu}
 mkdir -p $PROJECTS_BASE/software/containers
+# caches stay off $HOME (quota): delta/env.sh sets APPTAINER_CACHEDIR=$SCRATCH_BASE/$USER/.apptainer
 # get the image: see delta/get-image.sh (docs/delta/README.md, "Getting started")
 sha256sum $PROJECTS_BASE/software/containers/idrobolab.sif   # record for provenance
-export APPTAINER_CACHEDIR=$SCRATCH_BASE/$USER/.apptainer   # keep caches off $HOME (quota)
 
 # smoke tests (interactive or short jobs):
 apptainer exec $SIF python -P -c "import gpaw, abtem; print(gpaw.__version__)"

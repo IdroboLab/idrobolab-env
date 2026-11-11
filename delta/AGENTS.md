@@ -26,14 +26,18 @@ as the default.
 
 ## Environment file
 
-Delta has no `env.sh` yet; one in the shape of `perlmutter/env.sh` is wanted.
+`delta/env.sh` is sourced from `~/.bashrc` and follows the rules for `perlmutter/env.sh` in the
+root `AGENTS.md`: silent, idempotent, inert where `$SCRATCH_BASE` is unset, pre-set values
+respected, every derivation guarded on the variables it depends on, never `exit` or
+`set -e`. Cluster-wide variables go there, not into job scripts.
 
 ## What lives where
 
 - **Container images** → `$PROJECTS_BASE/software/containers/` (shared, provenance
   via `sha256sum`; `*.sif` is not tracked — only the build recipe, the idrobolab recipe under
   `shared/containers/x86_64-cuda/idrobolab/`).
-- **Apptainer caches** → `$SCRATCH_BASE/$USER/.apptainer` (keep off `$HOME`;
+- **Apptainer and uv caches** → `$SCRATCH_BASE/$USER/.apptainer` and
+  `$SCRATCH_BASE/$USER/uv-cache`, set by `delta/env.sh` (keep off `$HOME`;
   do not move to projects).
 - **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on
   /projects (e.g. `/projects/<project>/<user>/<campaign>/code/gpaw`),
