@@ -16,7 +16,7 @@
 #SBATCH --exclusive
 #SBATCH --mem=1760G                    # 8x A100 node, ~2 TB (~86% as with 220G/256G)
 #SBATCH --time=02:00:00
-#SBATCH --constraint="scratch"
+#SBATCH --constraint="scratch&projects"
 #SBATCH --output=%x_%j.out
 
 module reset   # loads defaults, $SCRATCH_BASE comes from delta/env.sh (no $SCRATCH on Delta!); before set -u (Lmod quirk)

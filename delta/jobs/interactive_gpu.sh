@@ -21,5 +21,5 @@ export APPTAINERENV_GPAW_MPI_BACKEND=cgpaw
 exec srun --account="$ACCOUNT" --partition="$PARTITION" \
     --nodes=1 --ntasks-per-node=1 --cpus-per-task=16 --mem=32g \
     --gpus-per-node=1 --gpu-bind=closest --time=01:00:00 \
-    --constraint="scratch" \
+    --constraint="scratch&projects" \
     --pty apptainer exec --nv --bind "$BINDS" "$SIF" /bin/bash
