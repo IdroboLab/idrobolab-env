@@ -8,8 +8,9 @@ Rules for editing the files in `delta/`; the member-facing page is
 
 ## Environment variables — no `$SCRATCH`
 
-Delta defines **`$SCRATCH_BASE` (= `/scratch/<account>`)
-and NOT `$SCRATCH`**; the personal scratch area is `$SCRATCH_BASE/$USER`.
+`delta/env.sh` defines **`$SCRATCH_BASE` (= `/scratch/<project>`) and `$PROJECTS_BASE`
+(= `/projects/<project>`)** from the member's `DELTA_PROJECT`; Delta has **no `$SCRATCH`**.
+The personal scratch area is `$SCRATCH_BASE/$USER`.
 Any script that expands an unguarded `$SCRATCH` under `set -u` aborts.
 Never emit `$SCRATCH` in Delta job scripts.
 
@@ -26,10 +27,12 @@ as the default.
 
 ## Environment file
 
-`delta/env.sh` is sourced from `~/.bashrc` and follows the rules for `perlmutter/env.sh` in the
-root `AGENTS.md`: silent, idempotent, inert where `$SCRATCH_BASE` is unset, pre-set values
+`delta/env.sh` is sourced from `~/.bashrc`, below the member's `export DELTA_PROJECT=<project>`,
+and follows the rules for `perlmutter/env.sh` in the root `AGENTS.md`: silent, idempotent,
+inert while `DELTA_PROJECT` is unset or names no directory under `/scratch`, pre-set values
 respected, every derivation guarded on the variables it depends on, never `exit` or
-`set -e`. Cluster-wide variables go there, not into job scripts.
+`set -e`. The project name stays out of the repo: write `<project>`. Cluster-wide variables
+go there, not into job scripts.
 
 ## What lives where
 
@@ -38,7 +41,7 @@ respected, every derivation guarded on the variables it depends on, never `exit`
   `shared/containers/x86_64-cuda/idrobolab/`).
 - **Apptainer cache** → `$SCRATCH_BASE/$USER/.apptainer`, per member; **uv cache** →
   `$SCRATCH_BASE/uv-cache`, shared by the project (setgid, default ACL; created once by an
-  admin, see `docs/delta/README.md`), with `$SCRATCH_BASE/$USER/uv-cache` until it exists.
+  admin, see `docs/delta/README.md`), with `$SCRATCH_BASE/$USER/uv-cache` until it exists and is writable for the member.
   Both are set by `delta/env.sh` (keep off `$HOME`; do not move to projects).
 - **Source checkouts are project-scoped**: `<project-dir>/code/<name>` on
   /projects (e.g. `/projects/<project>/<user>/<campaign>/code/gpaw`),

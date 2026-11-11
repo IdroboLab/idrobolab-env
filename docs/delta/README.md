@@ -12,7 +12,7 @@ Delta (environment variables, where files live, the editable-install import trap
 
 | Path | Purpose |
 |---|---|
-| [delta/env.sh](../../delta/env.sh) | Shell setup, sourced from `~/.bashrc`: Apptainer cache on personal scratch, uv cache shared by the project |
+| [delta/env.sh](../../delta/env.sh) | Shell setup, sourced from `~/.bashrc`: `SCRATCH_BASE` and `PROJECTS_BASE`, Apptainer cache on personal scratch, uv cache shared by the project |
 | [delta/get-image.sh](../../delta/get-image.sh) | Materialize the Delta `.sif` from the published registry image (from a login node it queues itself on `cpu-interactive`; needs `ACCOUNT=<project>-delta-cpu`) |
 | [delta/jobs/](../../delta/jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper); its README has the partition matrix and the MPI launch guide |
 | [delta/verification/](../../delta/verification/) | On-node checks: [multi-GPU abTEM](../../delta/verification/multigpu_abtem/README.md) (launchers; the Python payloads are shared with Perlmutter in [`shared/verification/multigpu_abtem/`](../../shared/verification/multigpu_abtem/)) |
@@ -22,11 +22,12 @@ Delta (environment variables, where files live, the editable-install import trap
 
 1. Run `accounts` on a Delta login node to find your charge accounts: `<project>-delta-cpu` for the CPU partitions, `<project>-delta-gpu` for the GPU partitions, charged separately.
 2. Clone this repository to `~/idrobolab-env` on Delta, as described in [general page 2](../02-cloning.md).
-3. Add this line to `~/.bashrc` on Delta, then log in again. It sources [`delta/env.sh`](../../delta/env.sh), which keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota and points uv at the project's [shared cache](#the-shared-uv-cache):
+3. Add these two lines to `~/.bashrc` on Delta, with the `<project>` of your accounts from step 1, then log in again:
    ```bash
+   export DELTA_PROJECT=<project>
    [ -r "$HOME/idrobolab-env/delta/env.sh" ] && . "$HOME/idrobolab-env/delta/env.sh"
    ```
-   `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if it reports `SCRATCH_BASE` as unset, the caches stay at their defaults in your home directory.
+   The second line sources [`delta/env.sh`](../../delta/env.sh). It sets `SCRATCH_BASE` (`/scratch/<project>`) and `PROJECTS_BASE` (`/projects/<project>`), which the job templates and `get-image.sh` read and Delta does not define, keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota, and points uv at the project's [shared cache](#the-shared-uv-cache) once an admin has created it. `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if it prints only `<unset>`, `DELTA_PROJECT` is missing or mistyped.
 4. Build the image once, on a login node (it queues the conversion on a compute node itself, because the conversion is too heavy for a login node):
    ```bash
    mkdir -p $PROJECTS_BASE/software/containers && ACCOUNT=<project>-delta-cpu SIF=$PROJECTS_BASE/software/containers/idrobolab.sif ~/idrobolab-env/delta/get-image.sh
@@ -41,14 +42,14 @@ Delta (environment variables, where files live, the editable-install import trap
 
 ```bash
 mkdir "$SCRATCH_BASE/uv-cache"
-chgrp "$(stat -c %G "$SCRATCH_BASE")" "$SCRATCH_BASE/uv-cache"
+chgrp "$(stat -c %g "$SCRATCH_BASE")" "$SCRATCH_BASE/uv-cache"
 chmod 2770 "$SCRATCH_BASE/uv-cache"
 setfacl -d -m u::rwx,g::rwx,o::--- "$SCRATCH_BASE/uv-cache"
 ```
 
-The setgid bit keeps everything inside in the project's group, and the default ACL makes every file and directory uv creates there group-writable whatever the member's `umask` is; without it uv follows the `umask`, and files written under a private one lock the other members out. Until the directory exists, `env.sh` keeps each member's cache at `$SCRATCH_BASE/$USER/uv-cache`.
+The setgid bit keeps everything inside in the project's group, and the default ACL makes what uv creates there writable by the group whatever the member's `umask` is; without it uv follows the `umask`, and files written under a private one lock the other members out. Until the directory exists and is writable for you, `env.sh` keeps your cache at `$SCRATCH_BASE/$USER/uv-cache`.
 
-With the shared cache `env.sh` also sets `UV_LINK_MODE=copy`, so an environment holds its own copies of the packages and not links to the cache's files. Every member of the project can write to the cache, so install only what you would run from a colleague's directory.
+With the shared cache `env.sh` also sets `UV_LINK_MODE=copy`, so an environment holds its own copies of the packages and never hard links to the cache's files, which older uv versions make by default. Every member of the project can write to the cache, so install only what you would run from a colleague's directory.
 
 ## The images
 
