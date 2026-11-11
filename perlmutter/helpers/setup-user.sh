@@ -151,6 +151,11 @@ for rc in "$RC" "$HOME/.bashrc.ext"; do
     grep -qxF -e "$MARK" -e "$OLDMARK" "$rc" && { FOUND_IN=$rc; break; }
     grep -qF -e "$MARK" -e "$OLDMARK" "$rc" && [ -z "$DAMAGED_IN" ] && DAMAGED_IN=$rc
 done
+# A start line without its one end line below is damaged too: --undo refuses it.
+if [ -n "$FOUND_IN" ] && { ! block_is_whole "$MARK" "$ENDMARK" "$FOUND_IN" \
+        || ! block_is_whole "$OLDMARK" "# <<< hpcenvs (${PROJECT}) <<<" "$FOUND_IN"; }; then
+    DAMAGED_IN=$FOUND_IN FOUND_IN=""
+fi
 
 if [ -n "$FOUND_IN" ]; then
     if grep -qF "$ENVSH" "$FOUND_IN"; then
@@ -173,9 +178,10 @@ if [ -n "$FOUND_IN" ]; then
         warn "  edit it by hand, or run --undo and re-run"
     fi
 elif [ -n "$DAMAGED_IN" ]; then
-    warn "$DAMAGED_IN has a line that contains the idrobolab-env marker but is not exactly it"
-    warn "  (trailing spaces, a Windows line ending, extra text): nothing added, and --undo"
-    warn "  will not remove that block -- repair the marker lines or delete the block by hand"
+    warn "$DAMAGED_IN has an idrobolab-env block whose marker lines are not exactly one start"
+    warn "  line and one end line below it (trailing spaces, a Windows line ending, extra text,"
+    warn "  a missing line): nothing added, and --undo will not remove that block -- repair the"
+    warn "  marker lines or delete the block by hand"
 elif [ "$CHECK" = 1 ]; then
     warn "$RC does not source env.sh (run without --check to add it)"
 else
