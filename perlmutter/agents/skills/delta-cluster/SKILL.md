@@ -18,8 +18,10 @@ is the `idrobolab-container` skill.
   derives them from `DELTA_PROJECT` (`delta/AGENTS.md`), and a job sees them only because it
   inherits the submitting shell's environment. A script that expands an unset `$SCRATCH`
   under `set -u` aborts. NCSA's sample job scripts (`running_jobs.html`) say "`$WORK` and
-  `$SCRATCH` are now set" after `module reset`, but on a login node both are still unset
-  after it (2026-11-11).
+  `$SCRATCH` are now set" after `module reset`. Measured 2026-11-11: on a login node both
+  are still unset after it; inside a job step Slurm sets `SCRATCH=/scratch/<project>/$USER`
+  and `WORK=/projects/<project>/$USER` (`/projects`, not `/work/hdd`). A script that also
+  runs on a login node therefore cannot use them.
 - **Run `module reset` before anything that relies on `set -u`.** It loads the Cray
   defaults (`PrgEnv-gnu`, `cray-mpich`, `craype-network-ofi`, `cudatoolkit`); without it a
   job can fail on an unset network-targeting module. While it runs, Lmod can warn that
@@ -57,7 +59,9 @@ launch pattern goes with which job shape, and which of them has been run, is in
   Without `-bootstrap fork`, Hydra detects the Slurm allocation and tries to exec a host
   `srun`, which does not exist inside the container: `execvp error on file srun`.
 - **Several nodes: the multi-node template launches `apptainer exec ... python` with `srun`
-  on the host.**
+  on the host.** `srun --mpi=list` offers `none`, `pmix`, `pmi2` and `cray_shasta`, and
+  `srun --mpi=pmi2 apptainer exec ...` with the image's own MPICH and no host binds ran 4
+  ranks over 2 `cpu` nodes (2026-11-11).
 - Give a GPU or multi-node MPI launch its own smoke test (a small hello-world, as in the
   first-run checklist of `delta/jobs/README.md`) before a production run; the single-node CPU recipe does not transfer unchanged.
 - **Interactive MPI testing needs `salloc`, not `srun --pty bash`.** A shell started by
