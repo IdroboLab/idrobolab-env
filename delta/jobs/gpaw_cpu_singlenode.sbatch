@@ -17,7 +17,7 @@
 #SBATCH --constraint="scratch"          # filesystem dependency (NCSA-requested)
 #SBATCH --output=%x_%j.out
 
-module reset   # loads defaults (incl. cray-mpich), sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod)
+module reset   # loads defaults (incl. cray-mpich), $SCRATCH_BASE comes from delta/env.sh (no $SCRATCH on Delta!); before set -u (Lmod)
 set -euo pipefail
 
 SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/idrobolab.sif}

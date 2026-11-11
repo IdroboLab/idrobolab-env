@@ -35,7 +35,7 @@
 #SBATCH --constraint="scratch"
 #SBATCH --output=%x_%j.out
 
-module reset                            # loads cray-mpich (default); sets $WORK/$SCRATCH_BASE (no $SCRATCH on Delta!); before set -u (Lmod)
+module reset                            # loads cray-mpich (default); $SCRATCH_BASE comes from delta/env.sh (no $SCRATCH on Delta!); before set -u (Lmod)
 module load cray-mpich                  # ensure CRAY_MPICH_DIR/MPICH_DIR are set
 set -euo pipefail
 
