@@ -390,12 +390,22 @@ On every machine where you use git (your laptop, and Perlmutter) run these once:
 
 ```bash
 git config --global user.name "Your Name"
-git config --global user.email "<the email on your GitHub account>"
+git config --global user.email "<your address>"
 git config --global pull.rebase true        # keep history linear when pulling
 git config --global init.defaultBranch main
 ```
 
-`user.name` and `user.email` are written into every commit you make.
+`user.name` and `user.email` are written into every commit you make; for the address, read the next section first.
+
+### Keeping your address out of public commits
+
+Everyone who can see a repository can read the address in its commits. GitHub gives each account a noreply address for this, `<id>+<username>@users.noreply.github.com`, shown under Settings > Emails once "Keep my email addresses private" is ticked; commits made with it still count as yours. On Perlmutter and Delta the setup script sets it for you:
+
+```bash
+~/idrobolab-env/perlmutter/helpers/setup-user.sh --github-email <id>+<username>@users.noreply.github.com
+```
+
+(`delta/helpers/setup-user.sh` on Delta.) It writes the address to `~/.gitconfig-github` and three `includeIf` entries to your global git config, so that repositories with a `github.com` remote commit with it and every other repository (GitLab, Overleaf) keeps your global `user.email`. This needs git 2.36 or newer, and it matches the remote addresses `https://github.com/...`, `git@github.com:...` and `ssh://git@github.com/...`; a remote written another way (`https://<user>@github.com/...`) keeps the global address. A `user.email` you set in the global config afterwards can override the rule. Run without the option, the script asks git which address a commit in a GitHub repository would carry, reports it, and warns when it is not a noreply address or not the one you set; `--undo` removes the three entries. On a laptop, set the same three entries by hand or use the noreply address as your global `user.email`.
 
 ### Git for Windows and the ssh agent
 

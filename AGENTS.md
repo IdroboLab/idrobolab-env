@@ -42,6 +42,13 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   before the rename. `setup-user.sh` renames the old marker on a rerun (and still removes it with `--undo`); the
   scripts still read the old variables, so existing setups keep working.
 
+## shared/helpers/
+
+- `github-identity.sh` is sourced by both `setup-user.sh` scripts (`--github-email`, the report
+  line, `--undo`). It uses the caller's `ok`, `warn` and `act`, prints one line per message, and
+  holds no address: members pass their own. ruszlab-env carries a copy of the file: change both,
+  and keep them identical.
+
 ## Delta (delta/)
 
 - The job templates default `SIF` to `$PROJECTS_BASE/software/containers/idrobolab.sif`

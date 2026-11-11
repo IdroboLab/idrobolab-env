@@ -7,7 +7,9 @@
 #     ~/idrobolab-env/delta/helpers/setup-user.sh                   # do it
 #     ~/idrobolab-env/delta/helpers/setup-user.sh --project NAME    # name the Delta project
 #     ~/idrobolab-env/delta/helpers/setup-user.sh --check           # report only, change nothing
-#     ~/idrobolab-env/delta/helpers/setup-user.sh --undo            # remove the block it added
+#     ~/idrobolab-env/delta/helpers/setup-user.sh --undo            # remove the block and the GitHub e-mail rule
+#     ~/idrobolab-env/delta/helpers/setup-user.sh --github-email ADDRESS
+#         # commit in GitHub repositories as ADDRESS (your GitHub noreply address)
 #
 # What it does:
 #   1. finds your Delta project, the <project> of your <project>-delta-cpu and
@@ -19,15 +21,19 @@
 #   3. creates your apptainer cache directory on your personal scratch
 #   4. reports what silently breaks later: lines in ~/.bashrc that override
 #      env.sh, apptainer or uv missing, no shared uv cache, no image fetched yet
+#   5. with --github-email, sets the address your commits in GitHub repositories
+#      carry; the checks always report that address
 #
 # A block written from another checkout or for another project is reported, not
 # replaced: --undo, then run it again.
 set -euo pipefail
 
-CHECK=0 UNDO=0 PROJ=""
+GHMAIL="" CHECK=0 UNDO=0 PROJ=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --check)   CHECK=1; shift ;;
+        --github-email) { [ $# -ge 2 ] && [ -n "$2" ]; } || { echo "--github-email needs an address" >&2; exit 1; }
+                   GHMAIL=$2; shift 2 ;;
         --undo)    UNDO=1;  shift ;;
         --project) [ $# -ge 2 ] || { echo "--project needs a name" >&2; exit 1; }
                    PROJ=$2; shift 2 ;;
@@ -37,6 +43,12 @@ while [ $# -gt 0 ]; do
 done
 
 HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=../../shared/helpers/github-identity.sh
+. "$(dirname "$(dirname "$HELPERS")")/shared/helpers/github-identity.sh"
+if [ -n "$GHMAIL" ] && ! github_identity_valid "$GHMAIL"; then
+    echo "not an e-mail address: $GHMAIL" >&2
+    exit 1
+fi
 ENVSH="$(dirname "$HELPERS")/env.sh"
 RC="$HOME/.bashrc"
 MARK="# >>> idrobolab-env (delta) >>>"
@@ -55,6 +67,7 @@ fi
 
 # --- undo: remove our block, leave everything else alone ---------------------
 if [ "$UNDO" = 1 ]; then
+    github_identity_undo
     if [ -f "$RC" ] && grep -qxF "$MARK" "$RC"; then
         # One start marker with one end marker below it; with anything else
         # the range below would cut to the end of the file.
@@ -84,6 +97,14 @@ fi
 echo "idrobolab-env user setup: Delta"
 [ "$CHECK" = 1 ] && echo "(--check: reporting only, nothing will be changed)"
 echo
+
+# The address commits in GitHub repositories carry. Set here, before anything
+# below can stop the script: it does not depend on the cluster or the project.
+if [ -n "$GHMAIL" ] && [ "$CHECK" = 0 ]; then
+    github_identity_set "$GHMAIL"
+    act "GitHub repositories now commit as $GHMAIL (~/.gitconfig-github)"
+    echo
+fi
 
 # --- 1. project --------------------------------------------------------------
 echo "1. Delta project"
@@ -126,7 +147,7 @@ DELTA_PROJECT=$PROJ
 . "$ENVSH"
 if [ -z "${SCRATCH_BASE:-}" ]; then
     warn "env.sh sets nothing for $PROJ: /scratch/$PROJ is not a directory here (wrong"
-    more "project name, or this is not Delta); nothing changed"
+    more "project name, or this is not Delta); ~/.bashrc unchanged"
     echo
     echo "$WARNINGS warning(s) above."
     exit 1
@@ -203,6 +224,12 @@ else
     warn "no shared uv cache at $SCRATCH_BASE/uv-cache that you can write to; uv uses"
     more "$UV_CACHE_DIR (an admin creates the shared one: docs/delta/README.md)"
 fi
+
+# The address commits in GitHub repositories carry.
+if [ -n "$GHMAIL" ] && [ "$CHECK" = 1 ]; then
+    warn "--github-email is not applied with --check"
+fi
+github_identity_report
 
 SIF="$PROJECTS_BASE/software/containers/idrobolab.sif"
 if [ -f "$SIF" ]; then

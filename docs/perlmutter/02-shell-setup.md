@@ -111,7 +111,10 @@ confirm with `--check`, which only reports and changes nothing:
 ```
 
 Re-run the script any time; it is safe to repeat. `--undo` removes the block again
-(it leaves the workspace file, which is yours).
+(it leaves the workspace file, which is yours). `--github-email ADDRESS` makes your commits in
+GitHub repositories carry your GitHub noreply address
+([general page 1](../01-github.md#keeping-your-address-out-of-public-commits)); the report warns
+when they carry another one.
 
 **If you used the old shared checkout** (`/global/cfs/cdirs/<project>/env`), the script
 reports that your `~/.bashrc` block points "somewhere else". Switch it to your clone:

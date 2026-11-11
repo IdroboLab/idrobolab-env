@@ -27,7 +27,7 @@ Delta (environment variables, where files live, the editable-install import trap
    ```bash
    ~/idrobolab-env/delta/helpers/setup-user.sh
    ```
-   It finds your project (the `<project>` of your accounts from step 1; `--project <project>` names it when it cannot, for example when you are in several projects), adds a marked block to `~/.bashrc`, creates your Apptainer cache directory, and reports what is still missing. `--check` only reports, `--undo` removes the block again. Log in again afterwards. The block holds these two lines, the second with the path of your clone:
+   It finds your project (the `<project>` of your accounts from step 1; `--project <project>` names it when it cannot, for example when you are in several projects), adds a marked block to `~/.bashrc`, creates your Apptainer cache directory, and reports what is still missing. `--check` only reports, `--undo` removes the block again, and `--github-email ADDRESS` makes your commits in GitHub repositories carry your GitHub noreply address ([general page 1](../01-github.md#keeping-your-address-out-of-public-commits)); the report warns when they carry another one. Log in again afterwards. The block holds these two lines, the second with the path of your clone:
    ```bash
    export DELTA_PROJECT=<project>
    if [ -r "<clone>/delta/env.sh" ]; then . "<clone>/delta/env.sh"; fi
