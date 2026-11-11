@@ -141,16 +141,21 @@ ENVSH="${PERLMUTTER}/env.sh"
 # An account created before February 2020 may still have a .ext file, and an
 # earlier version of this script wrote the block there, and earlier versions
 # marked it hpcenvs. Find it wherever it is and under either name, so a re-run
-# neither duplicates the block nor reports it missing.
-FOUND_IN=""
+# neither duplicates the block nor reports it missing. A marker counts only as a
+# whole line, as --undo matches it; a line that merely contains one (trailing
+# whitespace, a carriage return, text around it) is reported, since --undo
+# leaves it alone and appending a second block next to it would hide it.
+FOUND_IN="" DAMAGED_IN=""
 for rc in "$RC" "$HOME/.bashrc.ext"; do
-    [ -f "$rc" ] && grep -qF -e "$MARK" -e "$OLDMARK" "$rc" && { FOUND_IN=$rc; break; }
+    [ -f "$rc" ] || continue
+    grep -qxF -e "$MARK" -e "$OLDMARK" "$rc" && { FOUND_IN=$rc; break; }
+    grep -qF -e "$MARK" -e "$OLDMARK" "$rc" && [ -z "$DAMAGED_IN" ] && DAMAGED_IN=$rc
 done
 
 if [ -n "$FOUND_IN" ]; then
     if grep -qF "$ENVSH" "$FOUND_IN"; then
         ok "$FOUND_IN already sources env.sh"
-        if grep -qF "$OLDMARK" "$FOUND_IN"; then
+        if grep -qxF "$OLDMARK" "$FOUND_IN"; then
             if [ "$CHECK" = 1 ]; then
                 warn "$FOUND_IN marks the block hpcenvs (run without --check to rename it)"
             else
@@ -167,6 +172,10 @@ if [ -n "$FOUND_IN" ]; then
         warn "$FOUND_IN has an idrobolab-env block, but pointing somewhere else --"
         warn "  edit it by hand, or run --undo and re-run"
     fi
+elif [ -n "$DAMAGED_IN" ]; then
+    warn "$DAMAGED_IN has a line that contains the idrobolab-env marker but is not exactly it"
+    warn "  (trailing spaces, a Windows line ending, extra text): nothing added, and --undo"
+    warn "  will not remove that block -- repair the marker lines or delete the block by hand"
 elif [ "$CHECK" = 1 ]; then
     warn "$RC does not source env.sh (run without --check to add it)"
 else
