@@ -202,7 +202,7 @@ RUN set -eux; cd /tmp; \
 RUN set -eux; \
     uv pip install torch==2.13.0 torchvision==0.28.0 \
         --index-url https://download.pytorch.org/whl/cu129; \
-    uv pip install cupy-cuda12x==13.5.1
+    uv pip install cupy-cuda12x==14.1.1
 
 # --- curated Python stack (COPY late so a pin bump cache-busts here) ---------
 COPY requirements-idrobolab.txt /opt/build/requirements-idrobolab.txt

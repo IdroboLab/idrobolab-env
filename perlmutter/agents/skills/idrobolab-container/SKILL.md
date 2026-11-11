@@ -1,6 +1,6 @@
 ---
 name: idrobolab-container
-description: Running work inside the IdroboLab group image (idrobolab, recipe in idrobolab-env shared/containers/x86_64-cuda/idrobolab) on Perlmutter (podman-hpc) and Delta (Apptainer) — what it contains (GPAW, abTEM, gpaw-weaver editable from /opt/src; CuPy 13.5.1, CUDA 12.8, torch 2.13, dask-cuda, LAMMPS, QE), running a branch of abTEM or GPAW by PYTHONPATH or a bind over /opt/src, checking which copy was imported, running a package's test suite (the image has no pytest; shared/testing/run_pytest.py installs it with the test dependencies; pytest rootdir and package-name shadowing traps), git inside the container, and how it differs from a uv environment with newer CuPy. Use when writing or handing over any command that runs in the idrobolab image, especially tests of an abTEM or GPAW branch on a cluster GPU.
+description: Running work inside the IdroboLab group image (idrobolab, recipe in idrobolab-env shared/containers/x86_64-cuda/idrobolab) on Perlmutter (podman-hpc) and Delta (Apptainer) — what it contains (GPAW, abTEM, gpaw-weaver editable from /opt/src; CuPy 14.1.1, CUDA 12.8, torch 2.13, dask-cuda, LAMMPS, QE), running a branch of abTEM or GPAW by PYTHONPATH or a bind over /opt/src, checking which copy was imported, running a package's test suite (the image has no pytest; shared/testing/run_pytest.py installs it with the test dependencies; pytest rootdir and package-name shadowing traps), git inside the container, and how it differs from an environment with another CuPy. Use when writing or handing over any command that runs in the idrobolab image, especially tests of an abTEM or GPAW branch on a cluster GPU.
 ---
 
 # The idrobolab container
@@ -18,7 +18,7 @@ How the image is built and published is its `README.md` in idrobolab-env
 - Python 3.12 venv at `/opt/venv` (first on `PATH`), CUDA 12.8 runtime, MPICH.
 - **Editable installs from `/opt/src`:** `gpaw`, `gpaw-weaver`, `abTEM`, as staged at build
   time. Everything else is pinned in `requirements-idrobolab.txt`.
-- `cupy-cuda12x` **13.5.1**, torch 2.13.0 (the version fairchem pins), dask-cuda 26.6.0 installed
+- `cupy-cuda12x` **14.1.1**, torch 2.13.0 (the version fairchem pins), dask-cuda 26.6.0 installed
   `--no-deps`, fairchem, orb-models, ptyrad, phonopy, hiphive, pymatgen, nionswift (headless),
   LAMMPS (Kokkos-CUDA, `/opt/software/lammps`), Quantum ESPRESSO GPU (`/opt/software/qe`),
   `bader`, `git`.
@@ -83,9 +83,9 @@ The repo's sbatch templates (`perlmutter/jobs/`) pass no `PYTHONPATH`, so a batc
 them tests the image's own copy, unless the template's `MOUNTS` line binds a checkout over
 `/opt/src/<name>`; the import path `run_pytest.py` prints shows which copy ran.
 
-## Versus a uv environment with newer CuPy
+## Versus an environment with another CuPy
 
-A uv-managed environment that installs the latest `cupy-cuda12x` (14.x) is not this image
-(13.5.1). A result from one does not stand for the other:
+The image carries CuPy 14.1.1. An environment with CuPy 13.5.1 (or an older `amd-cupy` ROCm
+build) is not this image, and a result from one does not stand for the other:
 CuPy 14 compiles `RawModule` kernels through CCCL and needs C++17, 13.5.1 does not. Say which
 environment and CuPy version a GPU result came from.
