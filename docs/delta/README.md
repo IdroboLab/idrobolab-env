@@ -18,6 +18,7 @@ Delta (environment variables, where files live, the editable-install import trap
 | [delta/jobs/](../../delta/jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper); its README has the partition matrix and the MPI launch guide |
 | [delta/verification/](../../delta/verification/) | On-node checks: [multi-GPU abTEM](../../delta/verification/multigpu_abtem/README.md) (launchers; the Python payloads are shared with Perlmutter in [`shared/verification/multigpu_abtem/`](../../shared/verification/multigpu_abtem/)) |
 | [delta/AGENTS.md](../../delta/AGENTS.md) | Conventions for Delta, read by coding agents (`delta/CLAUDE.md` imports it) |
+| [perlmutter/agents/skills/delta-cluster/](../../perlmutter/agents/skills/delta-cluster/SKILL.md) | Agent skill with Delta's measured gotchas and NCSA policy (file systems, MPI in containers, partitions and charges, converting an image); installed with the other skills by `perlmutter/helpers/setup-agents.sh` |
 
 ## Getting started
 

@@ -72,7 +72,8 @@ every `git pull` of `~/idrobolab-env`:
   keeps everything else.
 - **Skills:** the script also links the group's agent skills,
   [`perlmutter/agents/skills/`](../../perlmutter/agents/skills/) (`perlmutter-cluster`:
-  Perlmutter gotchas; `idrobolab-container`: using the group image), into the agent's
+  Perlmutter gotchas; `delta-cluster`: NCSA Delta gotchas; `idrobolab-container`: using the
+  group image), into the agent's
   skills folder: `~/.claude/skills/<name>` (or under `$CLAUDE_CONFIG_DIR`) for Claude
   Code, `~/.agents/skills/<name>` for Codex
   ([Codex skills](https://developers.openai.com/codex/skills)). Each is a symlink into
