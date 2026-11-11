@@ -27,10 +27,10 @@ Delta (environment variables, where files live, the editable-install import trap
    ```bash
    ~/idrobolab-env/delta/helpers/setup-user.sh
    ```
-   It finds your project (the `<project>` of your accounts from step 1; `--project <project>` names it when it cannot), adds two lines to `~/.bashrc`, creates your Apptainer cache directory, and reports what is still missing. `--check` only reports, `--undo` removes the lines again. Log in again afterwards. The two lines are:
+   It finds your project (the `<project>` of your accounts from step 1; `--project <project>` names it when it cannot), adds a marked block to `~/.bashrc`, creates your Apptainer cache directory, and reports what is still missing. `--check` only reports, `--undo` removes the block again. Log in again afterwards. The block holds these two lines, the second with the path of your clone:
    ```bash
    export DELTA_PROJECT=<project>
-   if [ -r "$HOME/idrobolab-env/delta/env.sh" ]; then . "$HOME/idrobolab-env/delta/env.sh"; fi
+   if [ -r "<clone>/delta/env.sh" ]; then . "<clone>/delta/env.sh"; fi
    ```
    The second line sources [`delta/env.sh`](../../delta/env.sh). It sets `SCRATCH_BASE` (`/scratch/<project>`) and `PROJECTS_BASE` (`/projects/<project>`), which the job templates and `get-image.sh` read and Delta does not define, keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota, and points uv at the project's [shared cache](#the-shared-cache) once an admin has created it, and puts the group's [uv](#uv) on your `PATH`. `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if the `SCRATCH_BASE` line reads `<unset>`, `DELTA_PROJECT` is not exported above the line that sources the file, is mistyped, or `/scratch/<project>` does not exist on that node. A `SCRATCH_BASE` or `PROJECTS_BASE` you set yourself takes precedence.
 4. Build the image once, on a login node (it queues the conversion on a compute node itself, because the conversion is too heavy for a login node):
@@ -55,9 +55,10 @@ curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$BIN" UV_NO_MOD
 chgrp "$GRP" "$BIN"/uv "$BIN"/uvx
 chmod 750 "$BIN"/uv "$BIN"/uvx
 "$BIN"/uv --version
+ls -ld "$PROJECTS_BASE/software" "$PROJECTS_BASE/software/containers" "$BIN" "$BIN"/uv "$BIN"/uvx
 ```
 
-`UV_NO_MODIFY_PATH=1` keeps the installer from editing the admin's own shell files; `env.sh` already handles `PATH` for everyone. The `chgrp` and `chmod` after the install matter: the installer writes the binaries with the admin's own group and `umask`, which can leave them unusable for the other members. For the same reason, don't run `uv self update`: it replaces the shared binary the same way. Log in again (or source `env.sh`) and check with `uv --version`.
+`UV_NO_MODIFY_PATH=1` keeps the installer from editing the admin's own shell files; `env.sh` already handles `PATH` for everyone. The `chgrp` and `chmod` after the install matter: the installer writes the binaries with the admin's own group and `umask`, which can leave them unusable for the other members. For the same reason, don't run `uv self update`: it replaces the shared binary the same way. The listing must show the project's group on every line, with `r-x` for it on the two binaries (`r-s` on the setgid bin directory). The images go to `software/containers`, which members must be able to write to, or to create in `software` while it does not exist. Log in again (or source `env.sh`) and check with `uv --version`.
 
 ### The shared cache
 
