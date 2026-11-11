@@ -12,7 +12,8 @@
 # What it does:
 #   1. finds your Delta project, the <project> of your <project>-delta-cpu and
 #      <project>-delta-gpu accounts (--project, else $DELTA_PROJECT, else your
-#      delta_<project> group, if you are in exactly one)
+#      delta_<project> group, if you are in exactly one), and stops unless
+#      env.sh finds its scratch directory
 #   2. adds a block to ~/.bashrc that exports DELTA_PROJECT and sources env.sh
 #      from the clone the script runs from
 #   3. creates your apptainer cache directory on your personal scratch
@@ -46,9 +47,26 @@ ok()   { printf '  ok    %s\n' "$*"; }
 warn() { printf '  warn  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
 act()  { printf '  did   %s\n' "$*"; }
 
+if [ "$CHECK" = 1 ] && [ "$UNDO" = 1 ]; then
+    echo "--check and --undo exclude each other" >&2
+    exit 1
+fi
+
 # --- undo: remove our block, leave everything else alone ---------------------
 if [ "$UNDO" = 1 ]; then
     if [ -f "$RC" ] && grep -qxF "$MARK" "$RC"; then
+        # One start marker with one end marker below it; with anything else
+        # the range below would cut to the end of the file.
+        starts=$(grep -nxF "$MARK" "$RC" | cut -d: -f1 || true)
+        ends=$(grep -nxF "$ENDMARK" "$RC" | cut -d: -f1 || true)
+        case "$starts:$ends" in
+            *[!0-9:]*|:*|*:) starts=0; ends=0 ;;
+        esac
+        if [ "$starts" -ge "$ends" ]; then
+            echo "$RC: the idrobolab-env markers are not one start line followed by one" >&2
+            echo "  end line; nothing changed. Remove the block by hand." >&2
+            exit 1
+        fi
         cp -p "$RC" "$RC.idrobolab-env-backup"
         sed -i --follow-symlinks "/^${MARK}\$/,/^${ENDMARK}\$/d" "$RC"
         # ...and the blank lines at the end of the file, which removes the one
@@ -91,7 +109,21 @@ fi
 case "$PROJ" in
     *[!A-Za-z0-9_-]*) echo "not a project name: $PROJ" >&2; exit 1 ;;
 esac
-ok "$PROJ"
+# env.sh is the judge of the name: it sets nothing unless the project's scratch
+# directory exists. Judged by what it sets for this project alone, not by what
+# the calling shell already carries, and before anything is written.
+unset SCRATCH_BASE PROJECTS_BASE APPTAINER_CACHEDIR UV_CACHE_DIR UV_LINK_MODE
+DELTA_PROJECT=$PROJ
+# shellcheck source=../env.sh
+. "$ENVSH"
+if [ -z "${SCRATCH_BASE:-}" ]; then
+    warn "env.sh sets nothing for $PROJ: /scratch/$PROJ is not a directory here (wrong"
+    warn "  project name, or this is not Delta); nothing changed"
+    echo
+    echo "$WARNINGS warning(s) above."
+    exit 1
+fi
+ok "$PROJ  (SCRATCH_BASE=$SCRATCH_BASE  PROJECTS_BASE=$PROJECTS_BASE)"
 echo
 
 # --- 2. shell startup --------------------------------------------------------
@@ -133,21 +165,6 @@ echo
 
 # --- 3. the things that break later -----------------------------------------
 echo "3. checks"
-# Judge env.sh by what it sets for this project alone, not by what the calling
-# shell already carries.
-unset SCRATCH_BASE PROJECTS_BASE APPTAINER_CACHEDIR UV_CACHE_DIR UV_LINK_MODE
-DELTA_PROJECT=$PROJ
-# shellcheck source=../env.sh
-. "$ENVSH"
-if [ -z "${SCRATCH_BASE:-}" ]; then
-    warn "env.sh set nothing: /scratch/$PROJ is not a directory here (wrong project name,"
-    warn "  or this is not Delta)"
-    echo
-    echo "$WARNINGS warning(s) above."
-    exit 1
-fi
-ok "SCRATCH_BASE=$SCRATCH_BASE  PROJECTS_BASE=$PROJECTS_BASE"
-
 CACHE=$APPTAINER_CACHEDIR
 if [ -d "$CACHE" ]; then
     ok "apptainer cache directory exists: $CACHE"
