@@ -6,8 +6,10 @@
 #
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh           # do it
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --check   # report only, change nothing
-#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo    # remove the block it added
-#         (changes nothing, exit 1, unless the block's two marker lines are intact)
+#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo    # remove the block and the GitHub e-mail rule
+#         (a startup file is left untouched, exit 1, unless its block's two marker lines are intact)
+#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --github-email ADDRESS
+#         # commit in GitHub repositories as ADDRESS (your GitHub noreply address)
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --vscode-workspace
 #                                                               # also write the VS Code workspace
 #
@@ -23,12 +25,16 @@
 #      (home, the project's CFS tree and $SCRATCH in one window) unless the file
 #      exists; otherwise just reports whether it is there. --undo keeps the file
 #   5. if you ran setup-agents.sh, shows its --check result
+#   6. with --github-email, sets the address your commits in GitHub repositories
+#      carry; the checks always report that address
 set -euo pipefail
 
-CHECK=0 UNDO=0 VSCODE=0
+GHMAIL="" CHECK=0 UNDO=0 VSCODE=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --check)   CHECK=1;   shift ;;
+        --github-email) { [ $# -ge 2 ] && [ -n "$2" ]; } || { echo "--github-email needs an address" >&2; exit 1; }
+                   GHMAIL=$2; shift 2 ;;
         --undo)    UNDO=1;    shift ;;
         --vscode-workspace) VSCODE=1; shift ;;
         -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
@@ -39,6 +45,12 @@ done
 # The clone's path as the user reaches it (/global/homes/..., not the physical
 # home path), so the block keeps working if NERSC moves the home directory.
 HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=../../shared/helpers/github-identity.sh
+. "$(dirname "$(dirname "$HELPERS")")/shared/helpers/github-identity.sh"
+if [ -n "$GHMAIL" ] && ! github_identity_valid "$GHMAIL"; then
+    echo "not an e-mail address: $GHMAIL" >&2
+    exit 1
+fi
 PERLMUTTER=$(dirname "$HELPERS")
 DOCS="$(dirname "$PERLMUTTER")/docs/perlmutter"
 PROJECT="${NERSC_PROJECT:-<project>}"
@@ -48,6 +60,11 @@ ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }
 warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
 act()  { printf '  \033[36mdid\033[0m   %s\n' "$*"; }
 WARNINGS=0
+
+if [ "$CHECK" = 1 ] && [ "$UNDO" = 1 ]; then
+    echo "--check and --undo exclude each other" >&2
+    exit 1
+fi
 
 # True when FILE holds no START line, or one START line with one END line below
 # it. With anything else the range delete below would cut to the end of the file.
@@ -65,6 +82,7 @@ block_is_whole() {   # START END FILE
 # Only the marked block, never the whole file: people put their own things in
 # these files, and a startup file is not ours to reset.
 if [ "$UNDO" = 1 ]; then
+    github_identity_undo
     removed=0 refused=0
     for rc in "$HOME/.bashrc.ext" "$HOME/.bashrc"; do
         [ -f "$rc" ] || continue
@@ -100,6 +118,14 @@ fi
 echo "idrobolab-env user setup — project $PROJECT"
 [ "$CHECK" = 1 ] && echo "(--check: reporting only, nothing will be changed)"
 echo
+
+# The address commits in GitHub repositories carry. Set here, before anything
+# below can stop the script: it does not depend on the cluster or the project.
+if [ -n "$GHMAIL" ] && [ "$CHECK" = 0 ]; then
+    github_identity_set "$GHMAIL"
+    act "GitHub repositories now commit as $GHMAIL (~/.gitconfig-github)"
+    echo
+fi
 
 # --- 1. shell startup --------------------------------------------------------
 # ~/.bashrc, per NERSC's current guidance: the .bashrc.ext / .bash_profile.ext
@@ -226,6 +252,12 @@ fi
 # $HOME is small and, on NERSC, quota'd well below what a container workflow
 # will produce. Point people at the right filesystem before they fill it.
 ok "keep data on \$SCRATCH or \$CFS, not \$HOME (run 'myquota' to see why)"
+
+# The address commits in GitHub repositories carry.
+if [ -n "$GHMAIL" ] && [ "$CHECK" = 1 ]; then
+    warn "--github-email is not applied with --check"
+fi
+github_identity_report
 
 echo
 echo "4. VS Code workspace"
