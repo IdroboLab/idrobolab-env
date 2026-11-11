@@ -20,8 +20,8 @@
 if [ -n "${DELTA_PROJECT:-}" ] && [ -d "/scratch/${DELTA_PROJECT}" ]; then
 
     # The project's scratch and projects directories, which the job templates
-    # and get-image.sh read. Delta has no $SCRATCH; personal scratch is
-    # $SCRATCH_BASE/$USER.
+    # and get-image.sh read. Delta sets $SCRATCH only inside
+    # jobs, so personal scratch is $SCRATCH_BASE/$USER everywhere.
     : "${SCRATCH_BASE:=/scratch/${DELTA_PROJECT}}"
     : "${PROJECTS_BASE:=/projects/${DELTA_PROJECT}}"
     export SCRATCH_BASE PROJECTS_BASE

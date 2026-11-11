@@ -1,12 +1,13 @@
 # Delta (NCSA) — conventions
 
 Environment setup for NCSA's Delta HPC system (Apptainer container + Slurm job
-templates for the idrobolab container; that image has not been run on Delta yet).
+templates for the idrobolab container; on Delta that image has so far
+run only a 2-node MPI hello-world).
 Rules for editing the files in `delta/`; the member-facing page is
 `docs/delta/README.md`, the partition matrix and MPI launch guide are in
 `delta/jobs/README.md`. The repo-wide rules are in the root `AGENTS.md`.
 
-## Environment variables — no `$SCRATCH`
+## Environment variables — `$SCRATCH` exists only inside jobs
 
 `delta/env.sh` defines **`$SCRATCH_BASE` (= `/scratch/<project>`) and `$PROJECTS_BASE`
 (= `/projects/<project>`)** from the member's `DELTA_PROJECT`. Delta sets `$SCRATCH` and

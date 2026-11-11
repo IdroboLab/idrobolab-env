@@ -39,7 +39,7 @@
 # #SBATCH --mem=0
 # --------------------------------------------------------------------------
 
-module reset   # loads defaults, $SCRATCH_BASE comes from delta/env.sh (no $SCRATCH on Delta!); before set -u (Lmod quirk)
+module reset   # loads defaults, $SCRATCH_BASE comes from delta/env.sh (Delta sets $SCRATCH only inside jobs); before set -u (Lmod quirk)
 set -euo pipefail
 
 # Under `sbatch`, Slurm runs a spool COPY of this script, so BASH_SOURCE points
