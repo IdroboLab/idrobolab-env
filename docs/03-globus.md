@@ -241,10 +241,15 @@ no Python of your own, so the steps below use uv first and pipx as the alternati
 
 ### Install the CLI with uv
 
-uv's installer is described on its
+**On Perlmutter and Delta, use the group's uv; never install your own.** After the group
+setup it is already on your `PATH` (`uv --version` checks it;
+[Perlmutter page 5](perlmutter/05-python-uv.md), [Delta](delta/README.md#uv)), so skip the
+installer and go straight to `uv tool install globus-cli`.
+
+On your own computer, uv's installer is described on its
 [installation page](https://docs.astral.sh/uv/getting-started/installation/). On every system,
 if `globus` is not found after the steps below, `uv tool update-shell` adds uv's tool folder
-to your `PATH`. [Perlmutter page 5](perlmutter/05-python-uv.md) introduces uv.
+to your `PATH`.
 
 #### Windows
 
@@ -272,7 +277,7 @@ Open a **new** terminal, then:
 uv tool install globus-cli
 ```
 
-#### Linux
+#### Linux (your own computer)
 
 Same as macOS:
 
