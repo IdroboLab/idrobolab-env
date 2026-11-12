@@ -31,6 +31,14 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   file, and docs give paths as `~/idrobolab-env/...`.
 - `git config pull.rebase true` in each clone; keep history linear.
 
+## uv
+
+- On Perlmutter and Delta, members use the group's uv from the project's shared bin
+  directory, which `env.sh` puts on `PATH`. Docs, scripts and agent advice never tell them
+  to install their own (uv's installer, `~/.local/bin/uv`) or to run `uv self update`; only
+  an admin installs or updates the shared binary (`perlmutter/helpers/install-uv.sh`, the
+  Delta steps in `docs/delta/README.md`).
+
 ## perlmutter/env.sh and setup-user.sh
 
 - `env.sh` is sourced from `~/.bashrc` and must stay silent, idempotent and inert off
