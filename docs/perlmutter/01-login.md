@@ -9,9 +9,9 @@ that Windows needs, are described in the
 
 ## 1. NERSC account and MFA
 
-1. **Account.** Request a NERSC account for project **<project>** (see
+1. **Account.** Request a NERSC account for the group's project, the `<project>` of your accounts below (ask the PI for its name; see
    <https://docs.nersc.gov/accounts/>). The PI or a PI proxy approves it in Iris. Until
-   you are in <project>, you cannot reach the group's files or charge jobs.
+   you are in `<project>`, you cannot reach the group's files or charge jobs.
 2. **MFA token.** Log in to <https://iris.nersc.gov>, open the **MFA** tab, enter a
    description and click **+ Add Token**. Scan the QR code with an authenticator app
    (Google Authenticator, Authy, 1Password, …), then click **Test**. Write down the

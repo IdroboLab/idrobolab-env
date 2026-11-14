@@ -88,10 +88,14 @@ Run the group setup script once:
 ~/idrobolab-env/perlmutter/helpers/setup-user.sh
 ```
 
-The script:
+The script asks for your NERSC project, the `<project>` of your `<project>` and
+`<project>_g` accounts (the PI knows it; `--project NAME` names it up front, and so does
+an exported `NERSC_PROJECT`), and:
 
-1. Adds a short, marked block to `~/.bashrc` that sources the group's
-   [`env.sh`](../../perlmutter/env.sh).
+1. Adds a short, marked block to `~/.bashrc` that exports `NERSC_PROJECT=<project>` and
+   sources the group's [`env.sh`](../../perlmutter/env.sh). A block written by an earlier
+   version gets the export added when you re-run the script. Without `NERSC_PROJECT`,
+   `env.sh` prints a one-line hint and sets nothing that depends on the project.
 2. Links the group's shared Jupyter kernels into your account
    ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
@@ -146,7 +150,7 @@ same shell as the command.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `NERSC_PROJECT` | `<project>` | The NERSC project; the root and store paths below derive from it |
+| `NERSC_PROJECT` | none; `setup-user.sh` writes it into your block | The NERSC project; the root and store paths below derive from it |
 | `IDROBOLAB_ENV_PROJECT_ROOT` | `/global/cfs/cdirs/$NERSC_PROJECT` | The project's CFS root, which holds `podman-hpc/` and `projects/`. Must lie under `/global/cfs/` |
 | `IDROBOLAB_ENV_PROJECT_DIR` | `$IDROBOLAB_ENV_PROJECT_ROOT/projects` | Where `cdp` goes; set it to your own subdirectory (`.../projects/<name>`) to land there |
 | `IDROBOLAB_ENV_ALIASES` | `1` | `0` turns off the `cds`, `cdp`, `q`, `sr` and `sp` aliases |

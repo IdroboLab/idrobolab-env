@@ -20,7 +20,10 @@ Jobs are charged in node-hours to the group allocation:
 - **`-A <project>`** for CPU jobs (`-C cpu`)
 - **`-A <project>_g`** for GPU jobs (`-C gpu`)
 
-The hours left are shown in <https://iris.nersc.gov> under project <project>. A whole node
+`<project>` is your NERSC project, which `setup-user.sh` exports as `$NERSC_PROJECT`
+([page 2](02-shell-setup.md)); the examples on this page and the job templates carry the
+placeholder where it goes. The hours left are shown in <https://iris.nersc.gov> under your
+project. A whole node
 costs one node-hour per hour **whether you use it or not**, so an idle interactive
 session burns hours too.
 
@@ -101,8 +104,13 @@ argument:
 
 ```bash
 cd /global/cfs/cdirs/<project>/projects/<name>/<project>  # output files land here
-sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
+sbatch -A "${NERSC_PROJECT}_g" ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 ```
+
+Each template's `#SBATCH --account=` line holds the placeholder `<project>` (CPU) or
+`<project>_g` (GPU), and Slurm rejects a job that still carries it. Give the account on the
+command line as above (`-A "$NERSC_PROJECT"` for a CPU template), or replace the
+placeholder in your copy of the template.
 
 | Template | Resources |
 |---|---|
@@ -154,7 +162,7 @@ the request against the queue rules without submitting it.
 | Why is it pending? | `squeue --me -o "%i %q %T %r"`, or `scontrol show job <jobid>` |
 | Cancel one / all of mine | `scancel <jobid>` / `scancel -u $USER` |
 | Finished jobs of the last week | `sacct -X --starttime=now-7days --format=JobID,JobName%20,QOS,State,Elapsed,ExitCode` |
-| Hours left | <https://iris.nersc.gov> → project <project> |
+| Hours left | <https://iris.nersc.gov> → your project |
 | Disk usage | `showquota` ([page 3](03-storage-and-transfer.md#checking-usage)) |
 | Outages and maintenance | <https://www.nersc.gov/live-status/motd/> |
 

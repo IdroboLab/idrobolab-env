@@ -1,6 +1,6 @@
 # idrobolab-env: instructions for coding agents
 
-The IdroboLab group's environments: NERSC Perlmutter (project <project>) in `perlmutter/`
+The IdroboLab group's environments: NERSC Perlmutter in `perlmutter/`
 (env.sh, helpers, job templates) and NCSA Delta in `delta/` (env.sh, get-image.sh, job templates,
 verification launchers), the `idrobolab` container recipe under
 `shared/containers/x86_64-cuda/idrobolab/`, and the documentation in `docs/`. Split out of
@@ -45,10 +45,15 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   Perlmutter: respect pre-set values (`: "${VAR:=default}"`), guard every derivation on
   the variables it depends on, never `exit` or `set -e`.
 - `setup-user.sh` writes a marked block into the user's startup file. The markers
-  `# >>> idrobolab-env (<project>) >>>` / `# <<< idrobolab-env (<project>) <<<` and the
-  `IDROBOLAB_ENV_*` variables replace the `hpcenvs` marker and `HPCENVS_*` variables from
-  before the rename. `setup-user.sh` renames the old marker on a rerun (and still removes it with `--undo`); the
-  scripts no longer read the old `HPCENVS_*` variables.
+  `# >>> idrobolab-env >>>` / `# <<< idrobolab-env <<<` and the `IDROBOLAB_ENV_*` variables
+  replace the `hpcenvs` marker and `HPCENVS_*` variables from before the rename, and the
+  markers that named the project (`# >>> idrobolab-env (<project>) >>>`). `setup-user.sh`
+  renames an old marker on a rerun (and still removes one with `--undo`); the scripts no
+  longer read the old `HPCENVS_*` variables.
+- The NERSC project has no default anywhere in the repository: `setup-user.sh` writes
+  `export NERSC_PROJECT=<project>` into the block, `env.sh` sets nothing that depends on it
+  while it is unset, and the scripts that need it stop with a message naming the variable.
+  Write `<project>` (`<project>_g` for GPU jobs) in templates, docs and examples, never a real ID.
 
 ## shared/helpers/
 

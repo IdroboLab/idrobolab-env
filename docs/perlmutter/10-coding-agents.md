@@ -97,7 +97,7 @@ approval_policy = "on-request"
 
 - **Small things on the login node, everything else as a job.** Let the agent edit,
   run git and run quick checks. Tests, simulations and anything long go through
-  `salloc`/`sbatch` ([page 4](04-jobs.md)), and every allocation charges <project>. Approve
+  `salloc`/`sbatch` ([page 4](04-jobs.md)), and every allocation charges your project. Approve
   each one yourself, with the account, QOS, GPU count and time limit in view.
 - **Keep the safety prompts on.** Approve commands as they come; don't start Claude
   Code with `--dangerously-skip-permissions`, or Codex with `danger-full-access` or a

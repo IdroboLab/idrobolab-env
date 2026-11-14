@@ -13,8 +13,13 @@ The templates mount `$SCRATCH`, `$CFS`, and `$HOME` when present. The exceptions
 are `abtem_uv_gpu_shared.sbatch` and `abtem_uv_gpu_node.sbatch`, which run abTEM
 from a uv environment on the host (`~/venvs/abtem`) and use no container.
 
-The `--account` lines are set to **<project>** (CPU templates) and **<project>_g** (GPU
-templates); `sbatch -A <other>` overrides per submission.
+The `--account` lines hold the placeholders **`<project>`** (CPU templates) and
+**`<project>_g`** (GPU templates), `<project>` being your NERSC project (`$NERSC_PROJECT`,
+exported by `setup-user.sh`). Slurm rejects a job that still carries a placeholder: pass
+the account when you submit, `sbatch -A "${NERSC_PROJECT}_g" gpu_1gpu_shared.sbatch ...`
+(`-A "$NERSC_PROJECT"` for a CPU template), which overrides the line, or replace the
+placeholder in your copy. The interactive launchers (`interactive_*.sh`) read
+`$NERSC_PROJECT` themselves.
 
 **On the `_g` suffix — resolved, and it does not matter.** Both accounts exist,
 and Slurm **remaps a GPU job to the `_g` pool automatically**. Verified on
@@ -30,9 +35,9 @@ $ sbatch -A <project>   -C gpu -q debug -N1 -t1 --wrap=true     # no suffix
 $ sbatch -A <project>_g -C gpu -q debug -N1 -t1 --wrap=true     # suffix
 $ sacct -j <jobid>,<jobid> -o JobID,Account
 JobID           Account
-<jobid>        <project>_g          <- submitted as <project>
+<jobid>        <project>_g      <- submitted as <project>
 <jobid>.ba+    <project>_g
-<jobid>        <project>_g          <- submitted as <project>_g
+<jobid>        <project>_g      <- submitted as <project>_g
 <jobid>.ba+    <project>_g
 ```
 
@@ -44,6 +49,9 @@ pages look contradictory and are both right: the policy page's "no suffix
 needed" describes the submission (true — the filter fixes it up), and the
 running-jobs page's "the one without the trailing `_g`" describes the accounts
 (also true — the suffixed one exists and is where GPU work lands).
+NERSC's [Perlmutter timeline](https://docs.nersc.gov/systems/perlmutter/timeline/) records
+the change (6 June 2022): "Users can now use just -A <account name> (i.e., the extra _g is
+no longer needed) for jobs requesting GPU resources."
 
 The GPU templates still say `<project>_g` because it names the pool the job will be
 charged to, which is worth stating outright. `-A <project>` works identically.

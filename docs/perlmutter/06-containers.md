@@ -57,7 +57,7 @@ What the flags do:
 | Flag | Why |
 |---|---|
 | `--gpu` | makes the GPUs visible inside |
-| `--group-add keep-groups` | keeps your <project> group membership. Without it you get `Permission denied` on `/global/cfs/cdirs/<project>` |
+| `--group-add keep-groups` | keeps your `<project>` group membership. Without it you get `Permission denied` on `/global/cfs/cdirs/<project>` |
 | `-v A:A` | podman-hpc mounts **nothing** by default; each folder you read or write must be listed. `$CFS` is `/global/cfs/cdirs` |
 | `-e HOME=$HOME` | otherwise `$HOME` points into the container and is lost at exit |
 | `--workdir "$PWD"` | start in the current folder (must be inside a mounted path, spelled `/global/cfs/cdirs/...`) |

@@ -1,7 +1,7 @@
 # Documentation
 
 Documentation for members of the IdroboLab group: a step-by-step introduction for NERSC
-Perlmutter (project **<project>**), written for people with little git, SSH or HPC experience,
+Perlmutter, written for people with little git, SSH or HPC experience,
 and a page for NCSA Delta. Work through the pages in order; each builds on the ones before.
 Everything lives in the group repository
 [IdroboLab/idrobolab-env](https://github.com/IdroboLab/idrobolab-env).

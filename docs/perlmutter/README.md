@@ -1,6 +1,6 @@
 # Perlmutter: getting started
 
-A step-by-step introduction for group members (NERSC project **<project>**), from a new
+A step-by-step introduction for group members, from a new
 account to running jobs, Python, the group container, Jupyter and Nion Swift. Work
 through the pages in order; each builds on the ones before. The pages are part of the
 group repository [IdroboLab/idrobolab-env](https://github.com/IdroboLab/idrobolab-env),
@@ -44,7 +44,8 @@ Six things to remember:
 
 1. Your login key comes from `sshproxy` and lasts **24 hours**.
 2. **Login nodes are shared:** run real work on compute nodes.
-3. CPU jobs are charged to **`<project>`**, GPU jobs to **`<project>_g`**. For 1–2 GPUs, use
+3. CPU jobs are charged to **`<project>`**, GPU jobs to **`<project>_g`** (`<project>` is
+   your group's NERSC project, in `$NERSC_PROJECT`). For 1–2 GPUs, use
    the **shared** QOS; it is up to 4× cheaper than booking a whole node.
 4. **`$SCRATCH` is purged** after 8 weeks without access: keep results on CFS
    (`/global/cfs/cdirs/<project>`).
@@ -75,7 +76,7 @@ it, in the wording NERSC gives for our allocation:
 > U.S. Department of Energy under Contract No. DE-AC02-05CH11231 using NERSC award
 > BES-ERCAP0038959.
 
-BES-ERCAP0038959 is the award for project <project>. Source:
+BES-ERCAP0038959 is the award for the group's project. Source:
 <https://www.nersc.gov/users/become-a-nersc-user/acknowledgement>.
 
 ## Help

@@ -1,4 +1,4 @@
-# IdroboLab group rules (NERSC project <project>)
+# IdroboLab group rules (NERSC Perlmutter)
 
 These rules add to NERSC's guidance above and never relax it. Details are in the
 group's Perlmutter pages, `~/idrobolab-env/docs/perlmutter/` (clone path may differ).
