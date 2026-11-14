@@ -20,6 +20,11 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     : "${NERSC_PROJECT:=<project>}"
     export NERSC_PROJECT
 
+    # Root of the project's CFS directory. Everything group-shared lives below
+    # it (podman-hpc/, projects/). Override by exporting it before sourcing.
+    : "${IDROBOLAB_ENV_PROJECT_ROOT:=/global/cfs/cdirs/${NERSC_PROJECT}}"
+    export IDROBOLAB_ENV_PROJECT_ROOT
+
     # Two paths to the same store, and the distinction matters:
     #   PODMAN_STORE     writable /global/cfs path — pull/build into this
     #   PODMAN_STORE_RO  /dvs_ro read-only mirror — read from this in jobs
@@ -31,7 +36,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # tail out twice: maintained separately they drifted, PODMAN_STORE_RO kept
     # pointing a level too high, and a job sourcing this file could not resolve
     # the image at all.
-    export PODMAN_STORE="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc/images"
+    export PODMAN_STORE="${IDROBOLAB_ENV_PROJECT_ROOT}/podman-hpc/images"
     export PODMAN_STORE_RO="/dvs_ro/cfs/${PODMAN_STORE#/global/cfs/}"
 
     # Keep podman's LOCAL staging store off CFS. It holds a full second copy of
@@ -173,7 +178,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
         # container unless mounted (jobs/*.sbatch mount both, see
         # jobs/README.md). Landing on the canonical path keeps $PWD -- and
         # anything derived from it -- usable in a container command line.
-        : "${IDROBOLAB_ENV_PROJECT_DIR:=${HPCENVS_PROJECT_DIR:-/global/cfs/cdirs/${NERSC_PROJECT}/projects}}"
+        : "${IDROBOLAB_ENV_PROJECT_DIR:=${IDROBOLAB_ENV_PROJECT_ROOT}/projects}"
         export IDROBOLAB_ENV_PROJECT_DIR
         alias cdp='cd "$IDROBOLAB_ENV_PROJECT_DIR"'
 
