@@ -83,7 +83,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # reference (`ghcr.io/user/img:tag`, or one pinned by @sha256:...). A value with
 # no "/" is treated as a short name and expanded against the same registry and
 # owner update-image.sh uses, so `./update-image.sh idrobolab` and
-# `IMAGE=idrobolab sbatch ...` always name the same image. TAG applies only to
+# `IMAGE=idrobolab sbatch -A "$NERSC_PROJECT" ...` always name the same image. TAG applies only to
 # the short-name form; a full reference carries its own.
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in
@@ -287,7 +287,7 @@ echo "resolves the shared payload dir relative to \$SLURM_SUBMIT_DIR:"
 echo
 echo "    cd $HERE && ABTEM_SRC=$ABTEM_SRC sbatch -A \"\$NERSC_PROJECT\" multigpu_verify.sbatch"
 echo
-echo "Add --timing for a 1-vs-4 GPU wall-clock comparison; IMAGE=... sbatch ..."
+echo "Add --timing for a 1-vs-4 GPU wall-clock comparison; IMAGE=... sbatch -A \"\$NERSC_PROJECT\" ..."
 echo "overrides the image. The HAADF scaling benchmarks are"
 echo "benchmark_haadf.sbatch (explicit cluster) and benchmark_haadf_auto.sbatch"
 echo "(automatic dask.multi-gpu path)."
