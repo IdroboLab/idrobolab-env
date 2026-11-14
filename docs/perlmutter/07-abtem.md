@@ -52,7 +52,7 @@ exit
 ```bash
 # on a login node
 cd $SCRATCH
-sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch \
+sbatch -A "$NERSC_PROJECT" ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch \
     ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
 ```
 
@@ -129,7 +129,7 @@ abTEM and CuPy versions and the CUDA runtime and driver versions before it compu
 
 ```bash
 # on a login node; the shell that salloc gives you is on the compute node
-salloc -C gpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32 --gpus-per-task=1 -L scratch
+salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32 --gpus-per-task=1 -L scratch
 srun ~/venvs/abtem/bin/python ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
 exit
 ```
@@ -139,10 +139,10 @@ exit
 ```bash
 # on a login node
 cd $SCRATCH
-sbatch ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_shared.sbatch \
+sbatch -A "$NERSC_PROJECT" ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_shared.sbatch \
     ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py --out $SCRATCH/abtem-example
-sbatch --gpus=2 --cpus-per-task=64 ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_shared.sbatch my_script.py
-sbatch ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_node.sbatch ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py
+sbatch -A "$NERSC_PROJECT" --gpus=2 --cpus-per-task=64 ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_shared.sbatch my_script.py
+sbatch -A "$NERSC_PROJECT" ~/idrobolab-env/perlmutter/jobs/abtem_uv_gpu_node.sbatch ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py
 ```
 
 The first runs the example on 1 GPU. The second is a script of your own on 2 GPUs (the

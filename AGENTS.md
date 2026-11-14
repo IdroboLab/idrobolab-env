@@ -41,6 +41,10 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 
 ## perlmutter/env.sh and setup-user.sh
 
+- Existing members run `perlmutter/helpers/setup-user.sh` once after updating their clone:
+  `env.sh` has no default project, and the script adds `export NERSC_PROJECT=<project>`
+  to their block, taking the project from the old marker. Say so in the text of any
+  change that touches this.
 - `env.sh` is sourced from `~/.bashrc` and must stay silent, idempotent and inert off
   Perlmutter: respect pre-set values (`: "${VAR:=default}"`), guard every derivation on
   the variables it depends on, never `exit` or `set -e`.

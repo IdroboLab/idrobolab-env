@@ -148,16 +148,16 @@ From the graphics-enabled Perlmutter shell inside the ThinLinc desktop:
 ```bash
 # CPU node (2x AMD Milan, 128 cores, 512 GB RAM) - default choice for large
 # in-memory datasets:
-salloc -N 1 -q interactive -t 4:00:00 -C cpu -A mXXXX
+salloc -N 1 -q interactive -t 4:00:00 -C cpu -A "$NERSC_PROJECT"
 
 # GPU node variant (only if your processing actually uses GPUs; Swift itself
 # does not). Note the explicit GPU request:
-salloc -N 1 -q interactive -t 4:00:00 -C gpu --gpus 4 -A mXXXX
+salloc -N 1 -q interactive -t 4:00:00 -C gpu --gpus 4 -A "$NERSC_PROJECT"
 
 # Cheaper for look-heavy sessions: a slice of a node via the shared
 # interactive QOS (size -c / --mem to the dataset; confirm the exact QOS
 # name in the QOS table if the submission is rejected):
-salloc -q shared_interactive -t 4:00:00 -C cpu -n 1 -c 32 --mem=120G -A mXXXX
+salloc -q shared_interactive -t 4:00:00 -C cpu -n 1 -c 32 --mem=120G -A "$NERSC_PROJECT"
 ```
 
 Interactive QOS behavior: node delivery is targeted within 6 min; the request is

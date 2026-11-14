@@ -17,7 +17,7 @@ there. Everything heavier runs on **compute nodes**: either interactively with
 
 Jobs are charged in node-hours to the group allocation:
 
-**`-A <project>`**, for CPU jobs (`-C cpu`) and GPU jobs (`-C gpu`) alike; the `_g` suffix
+**`-A "$NERSC_PROJECT"`**, for CPU jobs (`-C cpu`) and GPU jobs (`-C gpu`) alike; the `_g` suffix
 that older NERSC pages show is no longer needed.
 
 `<project>` is your NERSC project, which `setup-user.sh` exports as `$NERSC_PROJECT`
@@ -75,16 +75,16 @@ A job can declare the file systems it uses as Slurm **licenses**, with `-L` / `-
 
 ```bash
 # 1 GPU (the usual choice)
-salloc -C gpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
+salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
 
 # 2 GPUs: note --gpus=2, not --gpus-per-task=2 (the shared queue rejects that)
-salloc -C gpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 64 --gpus=2
+salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 64 --gpus=2
 
 # a whole GPU node (4 GPUs)
-salloc -C gpu -q interactive -A <project> -t 01:00:00 -N 1 --gpus 4
+salloc -C gpu -q interactive -A "$NERSC_PROJECT" -t 01:00:00 -N 1 --gpus 4
 
 # part of a CPU node: 16 cores, ~60 GB
-salloc -C cpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32
+salloc -C cpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32
 ```
 
 `hostname` should now print a compute node (`nid...`), not `login...`. Run programs
@@ -132,7 +132,7 @@ CPU node:
 
 ```bash
 #!/bin/bash
-#SBATCH -A <project>
+#SBATCH -A <project>             # your NERSC project (or: sbatch -A "$NERSC_PROJECT")
 #SBATCH -C cpu
 #SBATCH -q shared
 #SBATCH -n 1
@@ -148,7 +148,8 @@ export OMP_NUM_THREADS=8
 srun uv run --script analyse.py
 ```
 
-Submit it with `sbatch analysis.sbatch`. `sbatch --test-only analysis.sbatch` checks
+Submit it with `sbatch -A "$NERSC_PROJECT" analysis.sbatch` (or replace `<project>` in the
+file). `sbatch --test-only -A "$NERSC_PROJECT" analysis.sbatch` checks
 the request against the queue rules without submitting it.
 
 ## Watching your jobs

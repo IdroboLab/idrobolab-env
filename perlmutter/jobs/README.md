@@ -34,8 +34,8 @@ $ sacctmgr -nP show assoc user=$USER format=account | sort -u
 <project>
 <project>_g
 
-$ sbatch -A <project>   -C gpu -q debug -N1 -t1 --wrap=true     # no suffix
-$ sbatch -A <project>_g -C gpu -q debug -N1 -t1 --wrap=true     # suffix
+$ sbatch -A "$NERSC_PROJECT"   -C gpu -q debug -N1 -t1 --wrap=true     # no suffix
+$ sbatch -A "$NERSC_PROJECT"_g -C gpu -q debug -N1 -t1 --wrap=true     # suffix
 $ sacct -j <jobid>,<jobid> -o JobID,Account
 JobID           Account
 <jobid>        <project>_g      <- submitted as <project>
@@ -44,7 +44,7 @@ JobID           Account
 <jobid>.ba+    <project>_g
 ```
 
-A real GPU run behaves the same: job <jobid>, submitted `-A <project>`, recorded
+A real GPU run behaves the same: job <jobid>, submitted `-A "$NERSC_PROJECT"`, recorded
 `<project>_g` alongside `gres/gpu:a100=4`. The running-jobs page's "the one without the
 trailing `_g`" (in its CPU-only MPI example) names the CPU account.
 
@@ -162,7 +162,7 @@ podman-hpc images --digests          # record the digest with your results
 # (a locally BUILT image also needs `podman-hpc migrate <tag>` to be visible
 #  on compute nodes; pulled images are migrated automatically)
 
-sbatch debug_gpu.sbatch              # runs the built-in smoke test:
+sbatch -A "$NERSC_PROJECT" debug_gpu.sbatch   # runs the built-in smoke test:
                                      #   GPUs visible, abtem/cupy/torch/gpaw versions,
                                      #   a small abTEM multislice on the GPU,
                                      #   4-rank Cray-MPICH world

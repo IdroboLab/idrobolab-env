@@ -140,7 +140,7 @@ opened with the **Perlmutter** button or menu entry has. To do the same steps by
 in that terminal:
 
 ```bash
-salloc -C cpu -q shared_interactive -A <project> -t 4:00:00 -n 1 -c 32
+salloc -C cpu -q shared_interactive -A "$NERSC_PROJECT" -t 4:00:00 -n 1 -c 32
 hostname               # must print nid..., not login...
 echo $DISPLAY          # must not be empty
 env HDF5_USE_FILE_LOCKING=FALSE /global/common/software/<project>/venvs/nionswift-py313/bin/nionswift

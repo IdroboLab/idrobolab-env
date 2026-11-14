@@ -58,8 +58,8 @@ Six things to remember:
 |---|---|
 | New login key (on your laptop, daily) | `sshproxy -u <username>` |
 | Log in | `ssh perlmutter` |
-| Interactive 1-GPU session | `salloc -C gpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32 --gpus-per-task=1` |
-| Submit / cancel a job | `sbatch job.sbatch` / `scancel <jobid>` |
+| Interactive 1-GPU session | `salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32 --gpus-per-task=1` |
+| Submit / cancel a job | `sbatch -A "$NERSC_PROJECT" job.sbatch` / `scancel <jobid>` |
 | My jobs | `squeue --me` (alias `q`) or `sqs` |
 | Disk usage | `showquota` |
 | Hours left | <https://iris.nersc.gov> |

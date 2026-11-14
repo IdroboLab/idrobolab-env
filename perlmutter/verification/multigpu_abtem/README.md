@@ -227,16 +227,16 @@ export ABTEM_SRC=$SCRATCH/code/abTEM
 git -C "$ABTEM_SRC" switch multi-gpu-support
 ./setup_env.sh                       # no venv; prints versions and where abtem came from
 
-# 2. replace <project> in multigpu_verify.sbatch, then submit FROM THIS DIR
-ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch            # 4 GPUs
-ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch --timing   # also time 1 vs N GPUs
+# 2. submit FROM THIS DIR
+ABTEM_SRC=$ABTEM_SRC sbatch -A "$NERSC_PROJECT" multigpu_verify.sbatch            # 4 GPUs
+ABTEM_SRC=$ABTEM_SRC sbatch -A "$NERSC_PROJECT" multigpu_verify.sbatch --timing   # also time 1 vs N GPUs
 ```
 
 Everything is overridable at submit time:
 
 ```bash
 IMAGE=ghcr.io/idrobolab/idrobolab:v2 ABTEM_SRC=$SCRATCH/code/abTEM-269 \
-  sbatch -A <project> multigpu_verify.sbatch --gpus 2
+  sbatch -A "$NERSC_PROJECT" multigpu_verify.sbatch --gpus 2
 ```
 
 Options worth knowing (`python verify_multigpu.py --help` for all):
@@ -252,7 +252,7 @@ Options worth knowing (`python verify_multigpu.py --help` for all):
 ### Interactive smoke test
 
 ```bash
-salloc -A <project> -C gpu -q interactive -N 1 --gpus-per-node=4 -t 01:00:00 -L scratch,cfs
+salloc -A "$NERSC_PROJECT" -C gpu -q interactive -N 1 --gpus-per-node=4 -t 01:00:00 -L scratch,cfs
 # ...the allocation shell runs ON the compute node, so podman-hpc runs there:
 PAYLOAD=$(cd ../../../shared/verification/multigpu_abtem && pwd)
 podman-hpc run --rm --gpu \
@@ -290,7 +290,7 @@ on 1, 2 and 4 GPUs and reports two things:
 
 ```bash
 # full node, default STO workload; sweeps 1,2,4 GPUs internally:
-ABTEM_SRC=$ABTEM_SRC sbatch -A <project> benchmark_haadf.sbatch
+ABTEM_SRC=$ABTEM_SRC sbatch -A "$NERSC_PROJECT" benchmark_haadf.sbatch
 
 # heavier run (bump --time in the sbatch for large workloads):
 ... benchmark_haadf.sbatch --configs 32 --supercell 8,8,30 --sampling 0.04
@@ -335,7 +335,7 @@ inherit `PYTHONPATH` and `CUDA_VISIBLE_DEVICES` from the parent, so the single
 (`auto_<n>gpu.npy`, `results.json` with an `auto_cluster_started` flag per count):
 
 ```bash
-ABTEM_SRC=$ABTEM_SRC sbatch -A <project> benchmark_haadf_auto.sbatch
+ABTEM_SRC=$ABTEM_SRC sbatch -A "$NERSC_PROJECT" benchmark_haadf_auto.sbatch
 ```
 
 Either benchmark works against the integrated `multi-gpu-on-269` branch — point

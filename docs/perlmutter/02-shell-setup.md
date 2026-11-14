@@ -1,5 +1,11 @@
 # 2. Shell and group setup
 
+> **Existing members:** run `~/idrobolab-env/perlmutter/helpers/setup-user.sh` once after
+> you update your clone (`git pull`). `env.sh` no longer assumes the group's NERSC
+> project, so a shell that has not been through the script loses the shared container
+> store and `cdp`. The script takes the project from your existing block and adds the one
+> `export NERSC_PROJECT=...` line to it; it asks nothing.
+
 One-time setup on a Perlmutter login node: git access to GitHub, your clone of
 `idrobolab-env`, a nicer prompt (optional), then the group environment. It builds on the
 GitHub account and SSH key from the [GitHub page](../01-github.md). **Do the steps in
@@ -88,8 +94,9 @@ Run the group setup script once:
 ~/idrobolab-env/perlmutter/helpers/setup-user.sh
 ```
 
-The script asks for your NERSC project, the `<project>` you pass to `sbatch -A` (the PI knows it; `--project NAME` names it up front, and so does
-an exported `NERSC_PROJECT`), and:
+The script needs your NERSC project, the `<project>` you pass to `sbatch -A` (the PI
+knows it). It takes it from `--project NAME`, else from an exported `NERSC_PROJECT`, else
+from the marker of a block an earlier version wrote, else it asks. Then it:
 
 1. Adds a short, marked block to `~/.bashrc` that exports `NERSC_PROJECT=<project>` and
    sources the group's [`env.sh`](../../perlmutter/env.sh). A block written by an earlier

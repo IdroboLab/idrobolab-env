@@ -33,7 +33,7 @@ group meeting.
 
 ## Compute
 
-- CPU jobs: `-A <project>`. GPU jobs: `-A <project>`.
+- CPU jobs: `-A "$NERSC_PROJECT"`. GPU jobs: `-A "$NERSC_PROJECT"`.
 - **1–2 GPUs → `shared` / `shared_interactive`.** Book whole nodes only for work that
   uses all four GPUs.
 - Give every job a realistic time limit, and test a new job script with a short run
