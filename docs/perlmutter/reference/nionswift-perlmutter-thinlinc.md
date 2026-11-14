@@ -31,8 +31,8 @@ Consequences:
 
 ## 2. Prerequisites
 
-- NERSC account with a Perlmutter allocation (`mXXXX`; GPU allocations are the
-  `mXXXX_g` variant).
+- NERSC account with a Perlmutter allocation (`mXXXX`; CPU and GPU jobs use the
+  same account).
 - ThinLinc client on the laptop: https://www.cendio.com/thinlinc/download (install steps
   for Windows, macOS and Linux: [page 9](../09-thinlinc-nionswift.md#install-the-client))
 - `sshproxy` set up (https://docs.nersc.gov/connect/mfa/#sshproxy). The generated
@@ -151,8 +151,8 @@ From the graphics-enabled Perlmutter shell inside the ThinLinc desktop:
 salloc -N 1 -q interactive -t 4:00:00 -C cpu -A mXXXX
 
 # GPU node variant (only if your processing actually uses GPUs; Swift itself
-# does not). Note the _g account and explicit GPU request:
-salloc -N 1 -q interactive -t 4:00:00 -C gpu --gpus 4 -A mXXXX_g
+# does not). Note the explicit GPU request:
+salloc -N 1 -q interactive -t 4:00:00 -C gpu --gpus 4 -A mXXXX
 
 # Cheaper for look-heavy sessions: a slice of a node via the shared
 # interactive QOS (size -c / --mem to the dataset; confirm the exact QOS

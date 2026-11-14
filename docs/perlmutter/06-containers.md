@@ -37,7 +37,7 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 On 1 GPU (the usual case), first get a node, then start the container on it:
 
 ```bash
-salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1 -L scratch,cfs
+salloc -C gpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32 --gpus-per-task=1 -L scratch,cfs
 
 srun --pty podman-hpc run --rm -it --gpu --group-add keep-groups \
     -v $HOME:$HOME -v $SCRATCH:$SCRATCH -v $CFS:$CFS -e HOME=$HOME \

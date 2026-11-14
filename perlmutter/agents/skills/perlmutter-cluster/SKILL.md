@@ -120,7 +120,7 @@ same pull command works on both clusters).
 - **`srun` on a GPU (`podman-hpc run --gpu`, `--gpus`) needs an allocation**: from a login
   shell it does not run. Give the user the `salloc` line with every such `srun` command; the
   lines are in `docs/perlmutter/04-jobs.md`, with `<account>` the group's GPU account
-  (`<project>_g`, `<project>` being `$NERSC_PROJECT`).
+  (`<project>`, i.e. `$NERSC_PROJECT`: one account for CPU and GPU jobs).
 - **Declare `-L` (`--licenses`) for exactly the file systems the job touches**, and for no
   others; names and cases in `docs/perlmutter/04-jobs.md`, *File system licenses*.
 - **Interactive first.** For any check short enough to want the answer immediately (a

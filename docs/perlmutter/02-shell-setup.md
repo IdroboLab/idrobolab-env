@@ -88,8 +88,7 @@ Run the group setup script once:
 ~/idrobolab-env/perlmutter/helpers/setup-user.sh
 ```
 
-The script asks for your NERSC project, the `<project>` of your `<project>` and
-`<project>_g` accounts (the PI knows it; `--project NAME` names it up front, and so does
+The script asks for your NERSC project, the `<project>` you pass to `sbatch -A` (the PI knows it; `--project NAME` names it up front, and so does
 an exported `NERSC_PROJECT`), and:
 
 1. Adds a short, marked block to `~/.bashrc` that exports `NERSC_PROJECT=<project>` and

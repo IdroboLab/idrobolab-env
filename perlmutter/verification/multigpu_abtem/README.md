@@ -192,9 +192,8 @@ Perlmutter GPU nodes are **1× AMD EPYC 7763 (64 physical / 128 logical cores),
 
 ## Account, QOS, and what a run costs
 
-- **Account**: GPU allocations carry a `_g` suffix — `#SBATCH -A <project>_g`.
-  CPU accounts have no suffix, and using the wrong one mischarges the other
-  allocation. **Replace `<project>_g` in every `.sbatch` here before first use**
+- **Account**: one account for CPU and GPU jobs, `#SBATCH -A <project>`.
+  **Replace `<project>` in every `.sbatch` here before first use**
   (`iris`, or `sacctmgr show assoc user=$USER format=account`, lists yours).
 - **Constraint**: `#SBATCH -C gpu` (add `&hbm80g` only if you need 80 GB cards).
 - **File system licenses**: see [page 4](../../../docs/perlmutter/04-jobs.md#file-system-licenses);
@@ -228,7 +227,7 @@ export ABTEM_SRC=$SCRATCH/code/abTEM
 git -C "$ABTEM_SRC" switch multi-gpu-support
 ./setup_env.sh                       # no venv; prints versions and where abtem came from
 
-# 2. replace <project>_g in multigpu_verify.sbatch, then submit FROM THIS DIR
+# 2. replace <project> in multigpu_verify.sbatch, then submit FROM THIS DIR
 ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch            # 4 GPUs
 ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch --timing   # also time 1 vs N GPUs
 ```
@@ -237,7 +236,7 @@ Everything is overridable at submit time:
 
 ```bash
 IMAGE=ghcr.io/idrobolab/idrobolab:v2 ABTEM_SRC=$SCRATCH/code/abTEM-269 \
-  sbatch -A <project>_g multigpu_verify.sbatch --gpus 2
+  sbatch -A <project> multigpu_verify.sbatch --gpus 2
 ```
 
 Options worth knowing (`python verify_multigpu.py --help` for all):
@@ -253,7 +252,7 @@ Options worth knowing (`python verify_multigpu.py --help` for all):
 ### Interactive smoke test
 
 ```bash
-salloc -A <project>_g -C gpu -q interactive -N 1 --gpus-per-node=4 -t 01:00:00 -L scratch,cfs
+salloc -A <project> -C gpu -q interactive -N 1 --gpus-per-node=4 -t 01:00:00 -L scratch,cfs
 # ...the allocation shell runs ON the compute node, so podman-hpc runs there:
 PAYLOAD=$(cd ../../../shared/verification/multigpu_abtem && pwd)
 podman-hpc run --rm --gpu \
@@ -291,7 +290,7 @@ on 1, 2 and 4 GPUs and reports two things:
 
 ```bash
 # full node, default STO workload; sweeps 1,2,4 GPUs internally:
-ABTEM_SRC=$ABTEM_SRC sbatch -A <project>_g benchmark_haadf.sbatch
+ABTEM_SRC=$ABTEM_SRC sbatch -A <project> benchmark_haadf.sbatch
 
 # heavier run (bump --time in the sbatch for large workloads):
 ... benchmark_haadf.sbatch --configs 32 --supercell 8,8,30 --sampling 0.04
@@ -336,7 +335,7 @@ inherit `PYTHONPATH` and `CUDA_VISIBLE_DEVICES` from the parent, so the single
 (`auto_<n>gpu.npy`, `results.json` with an `auto_cluster_started` flag per count):
 
 ```bash
-ABTEM_SRC=$ABTEM_SRC sbatch -A <project>_g benchmark_haadf_auto.sbatch
+ABTEM_SRC=$ABTEM_SRC sbatch -A <project> benchmark_haadf_auto.sbatch
 ```
 
 Either benchmark works against the integrated `multi-gpu-on-269` branch — point
@@ -457,7 +456,7 @@ from Delta's; only their *distinctness* is checked.
 
 ## Status
 
-These launchers follow the conventions in `../../jobs/` (constraint, `_g`
+These launchers follow the conventions in `../../jobs/` (constraint,
 account, QOS, `cpus-per-task`, mount loop) and the podman-hpc patterns in
 `../../../docs/perlmutter/reference/podman-hpc.md`, but **have not been run on Perlmutter yet** — see the
 Status section of `../../jobs/README.md` for the state of the Perlmutter side of

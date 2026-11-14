@@ -53,7 +53,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 - The NERSC project has no default anywhere in the repository: `setup-user.sh` writes
   `export NERSC_PROJECT=<project>` into the block, `env.sh` sets nothing that depends on it
   while it is unset, and the scripts that need it stop with a message naming the variable.
-  Write `<project>` (`<project>_g` for GPU jobs) in templates, docs and examples, never a real ID.
+  Write `<project>` in templates, docs and examples, never a real ID.
 
 ## shared/helpers/
 

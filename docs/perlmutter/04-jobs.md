@@ -17,8 +17,8 @@ there. Everything heavier runs on **compute nodes**: either interactively with
 
 Jobs are charged in node-hours to the group allocation:
 
-- **`-A <project>`** for CPU jobs (`-C cpu`)
-- **`-A <project>_g`** for GPU jobs (`-C gpu`)
+**`-A <project>`**, for CPU jobs (`-C cpu`) and GPU jobs (`-C gpu`) alike; the `_g` suffix
+that older NERSC pages show is no longer needed.
 
 `<project>` is your NERSC project, which `setup-user.sh` exports as `$NERSC_PROJECT`
 ([page 2](02-shell-setup.md)); the examples on this page and the job templates carry the
@@ -75,13 +75,13 @@ A job can declare the file systems it uses as Slurm **licenses**, with `-L` / `-
 
 ```bash
 # 1 GPU (the usual choice)
-salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
+salloc -C gpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
 
 # 2 GPUs: note --gpus=2, not --gpus-per-task=2 (the shared queue rejects that)
-salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 64 --gpus=2
+salloc -C gpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 64 --gpus=2
 
 # a whole GPU node (4 GPUs)
-salloc -C gpu -q interactive -A <project>_g -t 01:00:00 -N 1 --gpus 4
+salloc -C gpu -q interactive -A <project> -t 01:00:00 -N 1 --gpus 4
 
 # part of a CPU node: 16 cores, ~60 GB
 salloc -C cpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32
@@ -104,13 +104,12 @@ argument:
 
 ```bash
 cd /global/cfs/cdirs/<project>/projects/<name>/<project>  # output files land here
-sbatch -A "${NERSC_PROJECT}_g" ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
+sbatch -A "$NERSC_PROJECT" ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 ```
 
-Each template's `#SBATCH --account=` line holds the placeholder `<project>` (CPU) or
-`<project>_g` (GPU), and Slurm rejects a job that still carries it. Give the account on the
-command line as above (`-A "$NERSC_PROJECT"` for a CPU template), or replace the
-placeholder in your copy of the template.
+Each template's `#SBATCH --account=` line holds the placeholder `<project>`, and Slurm
+rejects a job that still carries it. Give the account on the command line as above, or
+replace the placeholder in your copy of the template.
 
 | Template | Resources |
 |---|---|
