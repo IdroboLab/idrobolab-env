@@ -118,14 +118,14 @@ replace the placeholder in your copy of the template.
 | `gpu_2gpu_shared.sbatch` | 2 GPUs, shared, 4 h |
 | `gpu_4gpu_node.sbatch` / `gpu_4gpu_hbm80g.sbatch` | a whole node, 4×A100 40 GB / 80 GB |
 | `gpu_multinode_mpi.sbatch` | 2 nodes, one MPI rank per GPU |
-| `ptyrad_1gpu_shared.sbatch` / `ptyrad_2gpu_shared.sbatch` / `ptyrad_4gpu_node.sbatch` | ptyrad: `sbatch <template> params.yaml` on 1, 2 or 4 GPUs; with `SEEDS=random sbatch ...` the 2- and 4-GPU ones run independent reconstructions instead, each with its own random seed (`SEEDS=<n>`: seeds n, n+10⁶, …). A run given no seed (`--seed`, or `init_params.random_seed` in the params) gets a random one, which ptyrad logs; `--seed <k>` on the same template repeats that run's random choices (initial guesses, batch orders), not its bits; one run of an independent-runs job repeats on the 1-GPU template, its seed being in its folder name. `SEEDS` overrides `init_params.random_seed`. One GPU is the default |
+| `ptyrad_1gpu_shared.sbatch` / `ptyrad_2gpu_shared.sbatch` / `ptyrad_4gpu_node.sbatch` | ptyrad: `sbatch -A "$NERSC_PROJECT" <template> params.yaml` on 1, 2 or 4 GPUs; with `SEEDS=random sbatch -A "$NERSC_PROJECT" ...` the 2- and 4-GPU ones run independent reconstructions instead, each with its own random seed (`SEEDS=<n>`: seeds n, n+10⁶, …). A run given no seed (`--seed`, or `init_params.random_seed` in the params) gets a random one, which ptyrad logs; `--seed <k>` on the same template repeats that run's random choices (initial guesses, batch orders), not its bits; one run of an independent-runs job repeats on the 1-GPU template, its seed being in its folder name. `SEEDS` overrides `init_params.random_seed`. One GPU is the default |
 | `gpaw_cpu_singlenode.sbatch` / `gpaw_cpu_multinode.sbatch` | GPAW with MPI on 1 / 4 CPU nodes |
 | `abtem_uv_gpu_shared.sbatch` | 1 or 2 GPUs, shared: abTEM from your own uv environment instead of the container ([page 7](07-abtem.md)) |
 | `abtem_uv_gpu_node.sbatch` | a whole node: four independent single-GPU abTEM runs (a sweep) from your uv environment |
 
 To change the time, name or resources, copy a template into your project folder and
 edit its `#SBATCH` lines, or override them on the command line
-(`sbatch -t 08:00:00 -J myrun ...`). Keep the `#SBATCH --licenses=` line matching what your copy touches (see above). Details and pitfalls: [`../jobs/README.md`](../../perlmutter/jobs/README.md).
+(`sbatch -A "$NERSC_PROJECT" -t 08:00:00 -J myrun ...`). Keep the `#SBATCH --licenses=` line matching what your copy touches (see above). Details and pitfalls: [`../jobs/README.md`](../../perlmutter/jobs/README.md).
 
 A minimal job of your own, here a uv script ([page 5](05-python-uv.md)) on part of a
 CPU node:

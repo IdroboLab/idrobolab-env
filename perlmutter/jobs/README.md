@@ -1,11 +1,11 @@
 # Slurm submission files for the project containers on Perlmutter
 
 Template job scripts per node type and QOS. All take the payload as
-arguments (`sbatch <script>.sbatch my_script.py [args...]`; the `ptyrad_*` ones take a
-ptyrad params file, `sbatch <script>.sbatch params.yaml [options...]`), locate the image
+arguments (`sbatch -A "$NERSC_PROJECT" <script>.sbatch my_script.py [args...]`; the `ptyrad_*` ones take a
+ptyrad params file, `sbatch -A "$NERSC_PROJECT" <script>.sbatch params.yaml [options...]`), locate the image
 via `$IMAGE` (default `$IDROBOLAB_IMAGE` from `env.sh`, a full reference to
 `ghcr.io/idrobolab/idrobolab:latest`, else `idrobolab`; overridable at submit time with
-`IMAGE=... sbatch ...`). A bare name resolves to
+`IMAGE=... sbatch -A "$NERSC_PROJECT" ...`). A bare name resolves to
 `ghcr.io/${IMAGE_OWNER:-idrobolab}/<name>:${TAG:-latest}`, so `TAG` and
 `IMAGE_OWNER` take effect only together with a bare name (`IMAGE=idrobolab TAG=v2`);
 a value containing `/` is used verbatim, which is how any other image is given.
@@ -268,7 +268,7 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
   64 GB works out to 38 cores at the node's ~1.7 GB per logical core, so
   spelling out the memory share is what breaks the request. Ask for
   `--cpus-per-task=$((32 * gpus))` and nothing else; the slice arrives with
-  its proportional memory (~55 GB per GPU) regardless. `sbatch --test-only`
+  its proportional memory (~55 GB per GPU) regardless. `sbatch --test-only -A "$NERSC_PROJECT" ...`
   checks a template against the queue rules without charging anything.
 - **`salloc <command>` runs the command on the LOGIN node.** Only `srun`
   steps land on the allocated node. `salloc` with *no* command is the case
@@ -300,7 +300,7 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
 One row per template or script; the second column is what the repository records about
 running it on Perlmutter: a job ID and date where the repo has one, "run, not recorded"
 where it only says the script was run, otherwise "not yet run". The group should test
-every template systematically (short time limit, e.g. `sbatch -t 00:10:00`; note the job
+every template systematically (short time limit, e.g. `sbatch -A "$NERSC_PROJECT" -t 00:10:00`; note the job
 ID, date, image digest and result in the PR) and update this table.
 
 | Template / script | Recorded on Perlmutter |

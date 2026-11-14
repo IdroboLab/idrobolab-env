@@ -149,7 +149,7 @@ The first runs the example on 1 GPU. The second is a script of your own on 2 GPU
 process sees both; the example uses one). The third books a whole node and runs four
 independent single-GPU copies of the script, one per GPU, as a four-point sweep
 (electron energies 60, 100, 150 and 200 keV for the example; edit the `srun` line of a
-copy for your own parameters). The job scripts run `~/venvs/abtem/bin/python`; `VENV=<path> sbatch ...`
+copy for your own parameters). The job scripts run `~/venvs/abtem/bin/python`; `VENV=<path> sbatch -A "$NERSC_PROJECT" ...`
 selects another environment.
 
 ## Good habits
