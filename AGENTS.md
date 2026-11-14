@@ -48,7 +48,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   `# >>> idrobolab-env (<project>) >>>` / `# <<< idrobolab-env (<project>) <<<` and the
   `IDROBOLAB_ENV_*` variables replace the `hpcenvs` marker and `HPCENVS_*` variables from
   before the rename. `setup-user.sh` renames the old marker on a rerun (and still removes it with `--undo`); the
-  scripts still read the old variables, so existing setups keep working.
+  scripts no longer read the old `HPCENVS_*` variables.
 
 ## shared/helpers/
 
