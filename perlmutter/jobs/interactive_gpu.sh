@@ -137,5 +137,5 @@ exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=interactive \
         "$IMAGE" "${CMD[@]}"
 
 # CPU-only equivalent (no GPU allocation, charged against the CPU account):
-#   salloc -A <project> -C cpu -q interactive -N 1 -t 01:00:00 -L scratch,cfs \
+#   salloc -A "$NERSC_PROJECT" -C cpu -q interactive -N 1 -t 01:00:00 -L scratch,cfs \
 #       podman-hpc run --rm $GROUP_FLAGS -it -v $SCRATCH:$SCRATCH "$IMAGE" /bin/bash

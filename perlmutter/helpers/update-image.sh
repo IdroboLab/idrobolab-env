@@ -361,6 +361,6 @@ cat <<EOF
 
    Re-check from a compute node (this node's graph-root copy would mask a
    broken store):
-       srun -A <project> -C gpu -q debug -N1 -t5 -L cfs \\
+       srun -A "\$NERSC_PROJECT" -C gpu -q debug -N1 -t5 -L cfs \\
            podman-hpc run --rm $REF python -P -c "print('ok')"
 EOF

@@ -285,7 +285,7 @@ echo "Preflight passed. Edit the --account line (or pass -A \"\$NERSC_PROJECT\")
 echo "submit FROM THIS DIRECTORY -- the launcher"
 echo "resolves the shared payload dir relative to \$SLURM_SUBMIT_DIR:"
 echo
-echo "    cd $HERE && ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch"
+echo "    cd $HERE && ABTEM_SRC=$ABTEM_SRC sbatch -A \"\$NERSC_PROJECT\" multigpu_verify.sbatch"
 echo
 echo "Add --timing for a 1-vs-4 GPU wall-clock comparison; IMAGE=... sbatch ..."
 echo "overrides the image. The HAADF scaling benchmarks are"
