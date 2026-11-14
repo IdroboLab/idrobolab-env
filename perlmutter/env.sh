@@ -158,7 +158,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # yours). Deliberately written against $SCRATCH and `squeue --me` rather
     # than a hard-coded username, so they are correct for everyone in the
     # project — these started life as one group member's personal aliases.
-    if [ "${IDROBOLAB_ENV_ALIASES:-${HPCENVS_ALIASES:-1}}" != "0" ] && [ -n "${PS1:-}" ]; then
+    if [ "${IDROBOLAB_ENV_ALIASES:-1}" != "0" ] && [ -n "${PS1:-}" ]; then
 
         # Personal scratch. Guarded: unset $SCRATCH would make `cds` a `cd` to
         # $HOME, which is a silent and confusing wrong answer on a purge-aware
@@ -193,7 +193,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # also sourced for the remote end of scp/rsync/`ssh host cmd`; anything
     # written to stdout there corrupts the protocol stream and the transfer
     # fails with a confusing "protocol error".
-    if [ "${IDROBOLAB_ENV_VERBOSE:-${HPCENVS_ENV_VERBOSE:-0}}" = "1" ] && [ -n "${PS1:-}" ]; then
+    if [ "${IDROBOLAB_ENV_VERBOSE:-0}" = "1" ] && [ -n "${PS1:-}" ]; then
         echo "idrobolab-env/perlmutter: project=$NERSC_PROJECT" >&2
         echo "  PODMAN_STORE                $PODMAN_STORE" >&2
         echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES" >&2
