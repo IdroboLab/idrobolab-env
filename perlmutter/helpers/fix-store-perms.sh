@@ -30,7 +30,7 @@ set -euo pipefail
 CHECK=0
 if [ "${1:-}" = "--check" ]; then CHECK=1; shift; fi
 
-STORE=${1:-${PODMAN_STORE:-/global/cfs/cdirs/<project>/podman-hpc/images}}
+STORE=${1:-${PODMAN_STORE:?pass the store path, or set NERSC_PROJECT and source env.sh}}
 
 case "$STORE" in
     /dvs_ro/*)

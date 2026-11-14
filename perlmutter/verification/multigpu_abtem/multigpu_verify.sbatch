@@ -61,7 +61,7 @@
 # Charging: walltime x 1 node x QOS factor 1.0 = 1 GPU node-hour per hour.
 #
 #SBATCH --job-name=abtem_mgpu
-#SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>_g   # <- replace, or pass sbatch -A; see jobs/README.md on _g
 #SBATCH --constraint=gpu
 #SBATCH --qos=debug
 #SBATCH --nodes=1

@@ -24,7 +24,7 @@
 # seed given, the job draws a random one (Seeds, below).
 #
 #SBATCH --job-name=ptyrad_2gpu
-#SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>_g   # <- replace, or pass sbatch -A; see jobs/README.md on _g
 #SBATCH --constraint=gpu
 #SBATCH --qos=shared
 #SBATCH --nodes=1

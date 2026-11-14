@@ -32,7 +32,7 @@ set -euo pipefail
 # passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
-ACCOUNT=${ACCOUNT:-<project>_g}            # override with sbatch -A; see jobs/README.md on _g
+ACCOUNT=${ACCOUNT:-${NERSC_PROJECT:?export NERSC_PROJECT=<project> (or ACCOUNT=<project>_g)}_g}   # your <project>_g; see jobs/README.md on _g
 CONSTRAINT=${CONSTRAINT:-gpu}
 GPUS=${GPUS:-1}
 TIME=${TIME:-01:00:00}

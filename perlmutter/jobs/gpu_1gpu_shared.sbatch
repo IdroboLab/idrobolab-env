@@ -12,7 +12,7 @@
 # Usage:  sbatch gpu_1gpu_shared.sbatch my_gpu_script.py [args...]
 #
 #SBATCH --job-name=eels_1gpu
-#SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>_g   # <- replace, or pass sbatch -A; see jobs/README.md on _g
 #SBATCH --constraint=gpu
 #SBATCH --qos=shared
 #SBATCH --nodes=1

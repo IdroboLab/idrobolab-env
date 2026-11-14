@@ -10,8 +10,8 @@
 # if it exists; --if-absent leaves an existing file alone. Open the file with
 # File > Open Workspace from File... instead of opening a bare folder.
 #
-# Folders, in this order: $HOME, /global/cfs/cdirs/$NERSC_PROJECT (<project> unless
-# NERSC_PROJECT is set), each DIR (in the order given), $SCRATCH. Home comes first on
+# Folders, in this order: $HOME, /global/cfs/cdirs/$NERSC_PROJECT (left out
+# while NERSC_PROJECT is unset), each DIR (in the order given), $SCRATCH. Home comes first on
 # purpose: the Claude Code extension scopes its working directory, its memory and its
 # list of past sessions to the FIRST folder of the window, so every window opened from
 # this file shows the same sessions. A bare folder gives its own list.
@@ -40,8 +40,8 @@ if [ "$if_absent" = 1 ] && [ -e "$out" ]; then echo "$out exists, left alone"; e
 js() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
 
 folders=("$HOME")
-cfs=/global/cfs/cdirs/${NERSC_PROJECT:-<project>}
-if [ -d "$cfs" ]; then folders+=("$cfs"); fi
+cfs=/global/cfs/cdirs/${NERSC_PROJECT:-}
+if [ -n "${NERSC_PROJECT:-}" ] && [ -d "$cfs" ]; then folders+=("$cfs"); fi
 # The folders you name are written as absolute paths: VS Code resolves a relative one
 # against the workspace file, not against where you ran this.
 for d in "$@"; do folders+=("$(realpath -s -- "$d")"); done

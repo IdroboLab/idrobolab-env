@@ -32,7 +32,7 @@ esac
 HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 CLONE=$(dirname "$(dirname "$HELPERS")")
 CLONE_REAL=$(readlink -f "$CLONE")
-PROJECT=${NERSC_PROJECT:-<project>}
+PROJECT=${NERSC_PROJECT:?export NERSC_PROJECT=<project> (setup-user.sh writes it into your shell profile)}
 
 fails=0
 ok()   { printf 'OK    %s\n' "$*"; }

@@ -9,7 +9,7 @@
 #         sbatch debug_gpu.sbatch            # runs the built-in smoke test
 #
 #SBATCH --job-name=eels_debug
-#SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>_g   # <- replace, or pass sbatch -A; see jobs/README.md on _g
 #SBATCH --constraint=gpu
 #SBATCH --qos=debug
 #SBATCH --nodes=1

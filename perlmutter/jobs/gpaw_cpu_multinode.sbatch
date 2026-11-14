@@ -12,7 +12,7 @@
 # Usage:  sbatch gpaw_cpu_multinode.sbatch my_gpaw_script.py [args...]
 #
 #SBATCH --job-name=gpaw_mpi
-#SBATCH --account=<project>                 # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>      # <- replace, or pass sbatch -A; see jobs/README.md on _g
 #SBATCH --constraint=cpu
 #SBATCH --qos=regular
 #SBATCH --nodes=4
