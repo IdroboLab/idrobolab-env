@@ -18,7 +18,9 @@
 # from another checkout is reported, not replaced: --undo, then run it again.
 #
 # What it does:
-#   0. finds your NERSC project, the <project> you pass to -A (--project, else $NERSC_PROJECT, else it asks)
+#   0. finds your NERSC project, the <project> you pass to -A (--project, else
+#      $NERSC_PROJECT, else the one named in the marker of a block from an
+#      earlier version, else it asks)
 #   1. exports NERSC_PROJECT and sources env.sh from your shell startup file
 #      (image store, aliases, PATH); a block from an earlier version gets the
 #      export added
@@ -136,8 +138,17 @@ if [ -n "$GHMAIL" ] && [ "$CHECK" = 0 ]; then
 fi
 
 # The NERSC project, the <project> you pass to -A. It
-# is written into the shell startup file and becomes part of paths.
+# is written into the shell startup file and becomes part of paths. A block from
+# an earlier version names it in its marker, `(<project>)`, so a member who has
+# one is not asked.
 [ -n "$PROJECT" ] || PROJECT="${NERSC_PROJECT:-}"
+if [ -z "$PROJECT" ]; then
+    for rc in "$HOME/.bashrc" "$HOME/.bashrc.ext"; do
+        [ -f "$rc" ] || continue
+        PROJECT=$(sed -nE '/^# >>> (idrobolab-env|hpcenvs) \(([^)]*)\) >>>$/{s//\2/;p;q}' "$rc")
+        [ -z "$PROJECT" ] || break
+    done
+fi
 if [ -z "$PROJECT" ] && [ -t 0 ]; then
     read -r -p "NERSC project (the <project> you pass to sbatch -A): " PROJECT
 fi
@@ -191,11 +202,13 @@ if [ -n "$FOUND_IN" ]; then
             fi
         fi
         # An earlier version's block does not export the project. A line of the
-        # member's own anywhere in the file counts.
-        if grep -qE '^[[:space:]]*export[[:space:]]+NERSC_PROJECT=' "$FOUND_IN"; then
-            ok "$FOUND_IN exports NERSC_PROJECT"
+        # member's own counts when it is above the env.sh line: env.sh reads the
+        # variable when it is sourced.
+        src_line=$(grep -nF "$ENVSH" "$FOUND_IN" | head -n 1 | cut -d: -f1)
+        if sed -n "1,$((src_line - 1))p" "$FOUND_IN" | grep -qE '^[[:space:]]*export[[:space:]]+NERSC_PROJECT='; then
+            ok "$FOUND_IN exports NERSC_PROJECT before sourcing env.sh"
         elif [ "$CHECK" = 1 ]; then
-            warn "$FOUND_IN does not export NERSC_PROJECT (run without --check to add it)"
+            warn "$FOUND_IN does not export NERSC_PROJECT before sourcing env.sh (run without --check to add it)"
         else
             sed -E -i --follow-symlinks "/^${ANY_START}\$/a export NERSC_PROJECT=${PROJECT}" "$FOUND_IN"
             act "added 'export NERSC_PROJECT=$PROJECT' to the block in $FOUND_IN"

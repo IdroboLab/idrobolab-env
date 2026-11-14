@@ -25,7 +25,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     if [ -n "${NERSC_PROJECT:-}" ]; then
         export NERSC_PROJECT
     elif [ -n "${PS1:-}" ]; then
-        echo "idrobolab-env/perlmutter: NERSC_PROJECT is not set; add 'export NERSC_PROJECT=<project>' above the idrobolab-env line in ~/.bashrc (perlmutter/helpers/setup-user.sh does it)" >&2
+        echo "idrobolab-env/perlmutter: NERSC_PROJECT is not set; run perlmutter/helpers/setup-user.sh once: it writes 'export NERSC_PROJECT=<project>' into the idrobolab-env block of ~/.bashrc, above the line that sources this file" >&2
     fi
 
     # Root of the project's CFS directory. Everything group-shared lives below
