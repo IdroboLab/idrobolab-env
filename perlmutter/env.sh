@@ -20,8 +20,15 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     : "${NERSC_PROJECT:=<project>}"
     export NERSC_PROJECT
 
+    # Root of the project's CFS directory. Everything group-shared lives below
+    # it (podman-hpc/, projects/). Override by exporting it before sourcing;
+    # it must lie under /global/cfs/, since PODMAN_STORE_RO is derived from it
+    # by swapping that prefix for /dvs_ro/cfs/.
+    : "${IDROBOLAB_ENV_PROJECT_ROOT:=/global/cfs/cdirs/${NERSC_PROJECT}}"
+    export IDROBOLAB_ENV_PROJECT_ROOT
+
     # Two paths to the same store, and the distinction matters:
-    #   PODMAN_STORE     writable /global/cfs path — pull/build into this
+    #   PODMAN_STORE     writable path under the project root — pull/build into this
     #   PODMAN_STORE_RO  /dvs_ro read-only mirror — read from this in jobs
     # DVS caches reads for ~30 s, which is ideal for immutable squashed images
     # and the reason compute-node startup is faster through it.
@@ -31,7 +38,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # tail out twice: maintained separately they drifted, PODMAN_STORE_RO kept
     # pointing a level too high, and a job sourcing this file could not resolve
     # the image at all.
-    export PODMAN_STORE="/global/cfs/cdirs/${NERSC_PROJECT}/podman-hpc/images"
+    export PODMAN_STORE="${IDROBOLAB_ENV_PROJECT_ROOT}/podman-hpc/images"
     export PODMAN_STORE_RO="/dvs_ro/cfs/${PODMAN_STORE#/global/cfs/}"
 
     # Keep podman's LOCAL staging store off CFS. It holds a full second copy of
@@ -153,7 +160,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # yours). Deliberately written against $SCRATCH and `squeue --me` rather
     # than a hard-coded username, so they are correct for everyone in the
     # project — these started life as one group member's personal aliases.
-    if [ "${IDROBOLAB_ENV_ALIASES:-${HPCENVS_ALIASES:-1}}" != "0" ] && [ -n "${PS1:-}" ]; then
+    if [ "${IDROBOLAB_ENV_ALIASES:-1}" != "0" ] && [ -n "${PS1:-}" ]; then
 
         # Personal scratch. Guarded: unset $SCRATCH would make `cds` a `cd` to
         # $HOME, which is a silent and confusing wrong answer on a purge-aware
@@ -173,7 +180,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
         # container unless mounted (jobs/*.sbatch mount both, see
         # jobs/README.md). Landing on the canonical path keeps $PWD -- and
         # anything derived from it -- usable in a container command line.
-        : "${IDROBOLAB_ENV_PROJECT_DIR:=${HPCENVS_PROJECT_DIR:-/global/cfs/cdirs/${NERSC_PROJECT}/projects}}"
+        : "${IDROBOLAB_ENV_PROJECT_DIR:=${IDROBOLAB_ENV_PROJECT_ROOT}/projects}"
         export IDROBOLAB_ENV_PROJECT_DIR
         alias cdp='cd "$IDROBOLAB_ENV_PROJECT_DIR"'
 
@@ -188,7 +195,7 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # also sourced for the remote end of scp/rsync/`ssh host cmd`; anything
     # written to stdout there corrupts the protocol stream and the transfer
     # fails with a confusing "protocol error".
-    if [ "${IDROBOLAB_ENV_VERBOSE:-${HPCENVS_ENV_VERBOSE:-0}}" = "1" ] && [ -n "${PS1:-}" ]; then
+    if [ "${IDROBOLAB_ENV_VERBOSE:-0}" = "1" ] && [ -n "${PS1:-}" ]; then
         echo "idrobolab-env/perlmutter: project=$NERSC_PROJECT" >&2
         echo "  PODMAN_STORE                $PODMAN_STORE" >&2
         echo "  PODMANHPC_ADDITIONAL_STORES $PODMANHPC_ADDITIONAL_STORES" >&2

@@ -61,5 +61,5 @@ This repo was split out of the `hpcenvs` repo: its Perlmutter and Delta director
 here with their history, and `hpcenvs` holds nothing this repo needs any more.
 The `# >>> idrobolab-env (<project>) >>>` block that `setup-user.sh` writes into your shell
 startup file and the `IDROBOLAB_ENV_*` variables were `hpcenvs` and `HPCENVS_*` before the
-split. The old marker and the old variables are still recognised, so existing setups go on
-working.
+split. The old marker is still recognised, so existing setups go on working; the old
+variables are not.

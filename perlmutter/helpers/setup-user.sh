@@ -54,7 +54,7 @@ fi
 PERLMUTTER=$(dirname "$HELPERS")
 DOCS="$(dirname "$PERLMUTTER")/docs/perlmutter"
 PROJECT="${NERSC_PROJECT:-<project>}"
-SHARED_JUPYTER="${IDROBOLAB_ENV_SHARED_JUPYTER:-${HPCENVS_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}}"
+SHARED_JUPYTER="${IDROBOLAB_ENV_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
 
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }
 warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
