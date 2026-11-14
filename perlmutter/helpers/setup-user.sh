@@ -18,8 +18,7 @@
 # from another checkout is reported, not replaced: --undo, then run it again.
 #
 # What it does:
-#   0. finds your NERSC project, the <project> of your <project> and <project>_g
-#      accounts (--project, else $NERSC_PROJECT, else it asks)
+#   0. finds your NERSC project, the <project> you pass to -A (--project, else $NERSC_PROJECT, else it asks)
 #   1. exports NERSC_PROJECT and sources env.sh from your shell startup file
 #      (image store, aliases, PATH); a block from an earlier version gets the
 #      export added
@@ -136,11 +135,11 @@ if [ -n "$GHMAIL" ] && [ "$CHECK" = 0 ]; then
     echo
 fi
 
-# The NERSC project, the <project> of the <project> and <project>_g accounts. It
+# The NERSC project, the <project> you pass to -A. It
 # is written into the shell startup file and becomes part of paths.
 [ -n "$PROJECT" ] || PROJECT="${NERSC_PROJECT:-}"
 if [ -z "$PROJECT" ] && [ -t 0 ]; then
-    read -r -p "NERSC project (the <project> of your <project> and <project>_g accounts): " PROJECT
+    read -r -p "NERSC project (the <project> you pass to sbatch -A): " PROJECT
 fi
 case "$PROJECT" in
     "") echo "no NERSC project: run with --project NAME" >&2; exit 1 ;;

@@ -1,6 +1,6 @@
 # Perlmutter shell environment for the idrobolab container stack.
 # Source it from ~/.bashrc, below the line that names your NERSC project (the
-# <project> of your <project> and <project>_g accounts, see iris.nersc.gov):
+# <project> you pass to sbatch -A, see iris.nersc.gov):
 #
 #     export NERSC_PROJECT=<project>
 #     [ -r "$HOME/idrobolab-env/perlmutter/env.sh" ] && . "$HOME/idrobolab-env/perlmutter/env.sh"
@@ -225,12 +225,11 @@ fi
 
 # --- optional, deliberately left commented --------------------------------
 #
-# Default Slurm account, so `sbatch`/`salloc` need no -A. Left off because
-# the two allocations differ by suffix and picking one silently mischarges
-# the other kind of job: GPU work needs <project>_g, CPU work needs <project>.
+# Default Slurm account, so `sbatch`/`salloc` need no -A. Left off because it
+# silently charges the wrong project for a member who belongs to several.
 #
-#   export SBATCH_ACCOUNT=<project>_g
-#   export SALLOC_ACCOUNT=<project>_g
+#   export SBATCH_ACCOUNT=<project>
+#   export SALLOC_ACCOUNT=<project>
 #
 # GHCR credentials that survive logout (podman-hpc's default auth.json lives
 # in $XDG_RUNTIME_DIR and does not). Point login and pull at a persistent file:

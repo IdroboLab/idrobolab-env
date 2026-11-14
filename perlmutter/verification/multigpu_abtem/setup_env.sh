@@ -281,8 +281,8 @@ PY
 # here, so unlike Delta (gpuA100x8 / gpuH200x8) the GPU-count sweep tops out at
 # 1/2/4 and the launchers have no 8-GPU variant to switch to.
 echo
-echo "Preflight passed. Edit the --account line (GPU accounts carry the _g"
-echo "suffix, e.g. -A <project>_g), then submit FROM THIS DIRECTORY -- the launcher"
+echo "Preflight passed. Edit the --account line (or pass -A \"\$NERSC_PROJECT\"), then"
+echo "submit FROM THIS DIRECTORY -- the launcher"
 echo "resolves the shared payload dir relative to \$SLURM_SUBMIT_DIR:"
 echo
 echo "    cd $HERE && ABTEM_SRC=$ABTEM_SRC sbatch multigpu_verify.sbatch"

@@ -15,7 +15,7 @@
 # Usage:  sbatch gpaw_cpu_singlenode.sbatch my_gpaw_script.py [args...]
 #
 #SBATCH --job-name=gpaw_cpu
-#SBATCH --account=<project>      # <- replace, or pass sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=cpu
 #SBATCH --qos=regular
 #SBATCH --nodes=1

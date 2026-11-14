@@ -23,7 +23,7 @@
 #         VENV=~/venvs/other sbatch abtem_uv_gpu_shared.sbatch my_script.py            # another environment
 #
 #SBATCH --job-name=abtem_uv
-#SBATCH --account=<project>_g   # <- replace, or pass sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=gpu
 #SBATCH --qos=shared
 #SBATCH --nodes=1

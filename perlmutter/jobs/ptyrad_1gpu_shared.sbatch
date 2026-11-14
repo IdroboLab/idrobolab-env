@@ -15,7 +15,7 @@
 # seed given, the job draws a random one (Seeds, below).
 #
 #SBATCH --job-name=ptyrad_1gpu
-#SBATCH --account=<project>_g   # <- replace, or pass sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=gpu
 #SBATCH --qos=shared
 #SBATCH --nodes=1

@@ -11,7 +11,7 @@
 #   PORT=9100 ./interactive_jupyter.sh
 #   GPUS=2 TIME=04:00:00 ./interactive_jupyter.sh
 #   QOS=interactive GPUS=4 ./interactive_jupyter.sh                # whole GPU node
-#   GPUS=0 CONSTRAINT=cpu ACCOUNT=<project> ./interactive_jupyter.sh   # CPU session
+#   GPUS=0 CONSTRAINT=cpu ./interactive_jupyter.sh   # CPU session
 #   ./interactive_jupyter.sh --ServerApp.root_dir=$SCRATCH         # extra jupyter args
 #
 # Then, on your laptop, paste the printed line and open the printed URL. The
@@ -37,7 +37,7 @@ set -euo pipefail
 # note in interactive_gpu.sh. Set PODMAN_GROUP_FLAGS= to disable.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
-ACCOUNT=${ACCOUNT:-${NERSC_PROJECT:?export NERSC_PROJECT=<project> (or ACCOUNT=<project>_g)}_g}   # your <project>_g (<project> for CPU); see jobs/README.md on _g
+ACCOUNT=${ACCOUNT:-${NERSC_PROJECT:?export NERSC_PROJECT=<project> (or ACCOUNT=<project>)}}   # your <project>; no _g needed, see jobs/README.md
 CONSTRAINT=${CONSTRAINT:-gpu}
 QOS=${QOS:-shared_interactive}         # or interactive, for a whole node
 NODES=${NODES:-1}
@@ -77,8 +77,7 @@ esac
 CPUS=${CPUS:-$(( GPUS > 0 ? GPUS * 32 : 32 ))}
 MEM=${MEM:-}
 
-# GPUs are opt-out: GPUS=0 gives a CPU session (pair it with CONSTRAINT=cpu and
-# the non-_g account, or Slurm rejects the combination).
+# GPUs are opt-out: GPUS=0 gives a CPU session (pair it with CONSTRAINT=cpu).
 RUN_GPU_FLAGS=""
 if [ "$GPUS" -gt 0 ] 2>/dev/null; then
     RUN_GPU_FLAGS="--gpu"
