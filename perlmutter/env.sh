@@ -21,12 +21,14 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     export NERSC_PROJECT
 
     # Root of the project's CFS directory. Everything group-shared lives below
-    # it (podman-hpc/, projects/). Override by exporting it before sourcing.
+    # it (podman-hpc/, projects/). Override by exporting it before sourcing;
+    # it must lie under /global/cfs/, since PODMAN_STORE_RO is derived from it
+    # by swapping that prefix for /dvs_ro/cfs/.
     : "${IDROBOLAB_ENV_PROJECT_ROOT:=/global/cfs/cdirs/${NERSC_PROJECT}}"
     export IDROBOLAB_ENV_PROJECT_ROOT
 
     # Two paths to the same store, and the distinction matters:
-    #   PODMAN_STORE     writable /global/cfs path — pull/build into this
+    #   PODMAN_STORE     writable path under the project root — pull/build into this
     #   PODMAN_STORE_RO  /dvs_ro read-only mirror — read from this in jobs
     # DVS caches reads for ~30 s, which is ideal for immutable squashed images
     # and the reason compute-node startup is faster through it.
