@@ -138,6 +138,22 @@ The script doesn't touch anything else in `~/.bashrc`, so you can keep your own
 additions there. NERSC's old `~/.bashrc.ext` files are deprecated; if the script warns
 about one, move its contents into `~/.bashrc`.
 
+**Settings you can override.** The defaults suit the group, and a variable you export
+yourself takes precedence. Put the `export` line in `~/.bashrc` above the marked block, so
+it runs before `env.sh` is sourced, then start a new shell. The `setup-user.sh` and
+`update-image.sh` rows are read when you run that script, so export the variable in the
+same shell as the command.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `NERSC_PROJECT` | `<project>` | The NERSC project; the root and store paths below derive from it |
+| `IDROBOLAB_ENV_PROJECT_ROOT` | `/global/cfs/cdirs/$NERSC_PROJECT` | The project's CFS root, which holds `podman-hpc/` and `projects/`. Must lie under `/global/cfs/` |
+| `IDROBOLAB_ENV_PROJECT_DIR` | `$IDROBOLAB_ENV_PROJECT_ROOT/projects` | Where `cdp` goes; set it to your own subdirectory (`.../projects/<name>`) to land there |
+| `IDROBOLAB_ENV_ALIASES` | `1` | `0` turns off the `cds`, `cdp`, `q`, `sr` and `sp` aliases |
+| `IDROBOLAB_ENV_VERBOSE` | `0` | `1` makes `env.sh` print what it set, in an interactive shell |
+| `IDROBOLAB_ENV_SHARED_JUPYTER` | `/global/common/software/$NERSC_PROJECT/share/jupyter` | The shared kernel directory that `setup-user.sh` links into your account ([page 8](08-jupyter.md)) |
+| `IDROBOLAB_ENV_UMASK` | `0002` | The umask `update-image.sh` uses when it writes the shared container store (admins) |
+
 ## 5. Keeping your clone current
 
 Everything in these pages (job templates, helper scripts, `env.sh`, the container
