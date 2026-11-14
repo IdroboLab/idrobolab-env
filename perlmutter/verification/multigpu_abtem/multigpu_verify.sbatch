@@ -32,14 +32,14 @@
 #   export ABTEM_SRC=$SCRATCH/code/abTEM         # 'multi-gpu-support' checkout
 #
 #   Image selection (any of these):
-#     IMAGE=idrobolab sbatch ...                 # short name -> ghcr.io/idrobolab/idrobolab:latest
-#     IMAGE=idrobolab TAG=v3 sbatch ...          # short name, explicit tag
-#     IMAGE=ghcr.io/other/img:tag sbatch ...     # full reference, used verbatim
+#     IMAGE=idrobolab sbatch -A "$NERSC_PROJECT" ...                 # short name -> ghcr.io/idrobolab/idrobolab:latest
+#     IMAGE=idrobolab TAG=v3 sbatch -A "$NERSC_PROJECT" ...          # short name, explicit tag
+#     IMAGE=ghcr.io/other/img:tag sbatch -A "$NERSC_PROJECT" ...     # full reference, used verbatim
 #   Default is idrobolab; the short name matches `update-image.sh <name>`.
 #   git -C "$ABTEM_SRC" switch multi-gpu-support
-#   sbatch multigpu_verify.sbatch                # 4 GPUs, default checks
-#   sbatch multigpu_verify.sbatch --timing       # + 1-GPU vs N-GPU wall clock
-#   IMAGE=... ABTEM_SRC=... sbatch multigpu_verify.sbatch --gpus 2 --configs 16
+#   sbatch -A "$NERSC_PROJECT" multigpu_verify.sbatch                # 4 GPUs, default checks
+#   sbatch -A "$NERSC_PROJECT" multigpu_verify.sbatch --timing       # + 1-GPU vs N-GPU wall clock
+#   IMAGE=... ABTEM_SRC=... sbatch -A "$NERSC_PROJECT" multigpu_verify.sbatch --gpus 2 --configs 16
 #     ^ --gpus caps the dask CLUSTER, not the ALLOCATION: Slurm still hands over
 #       (and charges for) the 4 GPUs requested below. To actually allocate fewer,
 #       use the shared-QOS block further down.
@@ -145,7 +145,7 @@ fi
 # reference (`ghcr.io/user/img:tag`, or one pinned by @sha256:...). A value with
 # no "/" is treated as a short name and expanded against the same registry and
 # owner update-image.sh uses, so `./update-image.sh idrobolab` and
-# `IMAGE=idrobolab sbatch ...` always name the same image. TAG applies only to
+# `IMAGE=idrobolab sbatch -A "$NERSC_PROJECT" ...` always name the same image. TAG applies only to
 # the short-name form; a full reference carries its own.
 IMAGE=${IMAGE:-${IDROBOLAB_IMAGE:-idrobolab}}
 case "$IMAGE" in

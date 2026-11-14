@@ -9,7 +9,7 @@
 #   2 GPU -> 32 physical cores + 128 GB -> 0.5  node-hour per wallclock hour
 # Max walltime 48 h, max half a node.
 #
-# Usage:  sbatch gpu_1gpu_shared.sbatch my_gpu_script.py [args...]
+# Usage:  sbatch -A "$NERSC_PROJECT" gpu_1gpu_shared.sbatch my_gpu_script.py [args...]
 #
 #SBATCH --job-name=eels_1gpu
 #SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)

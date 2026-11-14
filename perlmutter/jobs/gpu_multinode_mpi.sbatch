@@ -12,7 +12,7 @@
 # Charging: walltime x nodes x 1.0. GPU jobs of 128+ nodes in the regular QOS
 # get a 25% big-job discount (QOS factor 0.75).
 #
-# Usage:  sbatch gpu_multinode_mpi.sbatch my_gpu_script.py [args...]
+# Usage:  sbatch -A "$NERSC_PROJECT" gpu_multinode_mpi.sbatch my_gpu_script.py [args...]
 #
 #SBATCH --job-name=eels_gpumpi
 #SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)

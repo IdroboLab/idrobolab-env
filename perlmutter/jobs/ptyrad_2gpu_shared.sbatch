@@ -9,8 +9,8 @@
 #   2 GPU -> 32 physical cores + 128 GB -> 0.5 node-hour per wallclock hour
 # Max walltime 48 h, max half a node.
 #
-# Usage:  sbatch ptyrad_2gpu_shared.sbatch params.yaml [ptyrad run options...]
-#         SEEDS=random sbatch ptyrad_2gpu_shared.sbatch params.yaml [ptyrad run options...]
+# Usage:  sbatch -A "$NERSC_PROJECT" ptyrad_2gpu_shared.sbatch params.yaml [ptyrad run options...]
+#         SEEDS=random sbatch -A "$NERSC_PROJECT" ptyrad_2gpu_shared.sbatch params.yaml [ptyrad run options...]
 #
 # The first form splits one reconstruction over the 2 GPUs. The second runs
 # 2 independent reconstructions instead, one per GPU, each with its own

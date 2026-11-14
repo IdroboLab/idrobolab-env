@@ -7,7 +7,7 @@
 #   1 GPU -> 16 physical cores + 64 GB -> 0.25 node-hour per wallclock hour
 # Max walltime 48 h, max half a node.
 #
-# Usage:  sbatch ptyrad_1gpu_shared.sbatch params.yaml [ptyrad run options...]
+# Usage:  sbatch -A "$NERSC_PROJECT" ptyrad_1gpu_shared.sbatch params.yaml [ptyrad run options...]
 #
 # The params file is a ptyrad .yaml (`ptyrad get-templates` writes starters);
 # relative paths in it resolve against the directory you submit from. Options

@@ -17,8 +17,8 @@
 #
 # Charging: walltime x 1 node x 1.0 (4x the 1-GPU shared job per hour).
 #
-# Usage:  sbatch abtem_uv_gpu_node.sbatch my_script.py [args...]
-#         sbatch abtem_uv_gpu_node.sbatch ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py
+# Usage:  sbatch -A "$NERSC_PROJECT" abtem_uv_gpu_node.sbatch my_script.py [args...]
+#         sbatch -A "$NERSC_PROJECT" abtem_uv_gpu_node.sbatch ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py
 #
 #SBATCH --job-name=abtem_uv4
 #SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)

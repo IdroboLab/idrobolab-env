@@ -5,8 +5,8 @@
 #
 # Charging is the same as regular (QOS factor 1.0), so keep it short.
 #
-# Usage:  sbatch debug_gpu.sbatch my_script.py [args...]
-#         sbatch debug_gpu.sbatch            # runs the built-in smoke test
+# Usage:  sbatch -A "$NERSC_PROJECT" debug_gpu.sbatch my_script.py [args...]
+#         sbatch -A "$NERSC_PROJECT" debug_gpu.sbatch            # runs the built-in smoke test
 #
 #SBATCH --job-name=eels_debug
 #SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)

@@ -8,7 +8,7 @@
 # Charging: walltime x 1 node x 1.0 — i.e. 4x what the shared 1-GPU script
 # costs per hour. Use gpu_1gpu_shared.sbatch unless you really need 4 GPUs.
 #
-# Usage:  sbatch gpu_4gpu_node.sbatch my_gpu_script.py [args...]
+# Usage:  sbatch -A "$NERSC_PROJECT" gpu_4gpu_node.sbatch my_gpu_script.py [args...]
 #
 #SBATCH --job-name=eels_4gpu
 #SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)

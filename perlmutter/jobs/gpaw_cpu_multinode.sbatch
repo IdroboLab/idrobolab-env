@@ -9,7 +9,7 @@
 # Node: 2x AMD EPYC 7763 (Milan), 128 physical cores (256 logical), 512 GB.
 # Charging: walltime x nodes x 1.0.  4 nodes x 2 h = 8 CPU node-hours.
 #
-# Usage:  sbatch gpaw_cpu_multinode.sbatch my_gpaw_script.py [args...]
+# Usage:  sbatch -A "$NERSC_PROJECT" gpaw_cpu_multinode.sbatch my_gpaw_script.py [args...]
 #
 #SBATCH --job-name=gpaw_mpi
 #SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
