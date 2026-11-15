@@ -15,8 +15,29 @@ first, then the step-by-step Perlmutter introduction or the Delta page.
 | [windows/idrobolab-uploads/](windows/idrobolab-uploads/) | The IdroboLab Uploads tool for the Windows measurement PCs: upload folders, files or a Nion Swift project to the group's Google Drive (PowerShell script, installer, README) |
 | [assets/](assets/) | The IdroboLab logo and the icons made from it (ThinLinc folder, upload tool), under CC BY 4.0 with their own copyright holder ([license](assets/LICENSE)) |
 | [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/idrobolab/idrobolab`) |
-| [shared/helpers/](shared/helpers/) | Code the clusters' `setup-user.sh` scripts share: the git address for GitHub repositories (`--github-email`) |
+| [core/](core/) | Vendored copy of [hpcenv-core](https://github.com/pzeiger/hpcenv-core) (shared shell helpers for the `setup-user.sh` scripts, the `sbatch`/`salloc` account functions, the personal-data check, the LAMMPS GPU self-test). Never edited here, see [Shared code: `core/`](#shared-code-core) |
 | [shared/verification/multigpu_abtem/](shared/verification/multigpu_abtem/) | Payloads for the abTEM multi-GPU verification launched from `perlmutter/verification/` and `delta/verification/` |
+
+## Shared code: `core/`
+
+`core/` is an exact copy of one commit of hpcenv-core, the code several of the group's
+environment repositories share; `core/CORE_COMMIT` holds that commit's SHA. Nothing in `core/` is
+edited here: a change goes to hpcenv-core by pull request and arrives with the next sync. To move
+to another hpcenv-core commit, from the top of a clone, on a branch:
+
+```bash
+core/sync/sync-core.sh main        # or a tag or a full commit SHA; replaces core/, commits nothing
+git add core && git commit -m "core: update hpcenv-core"
+core/sync/sync-core.sh --check     # exit 1, naming the paths, if core/ differs from CORE_COMMIT
+```
+
+The workflows in `.github/workflows/` run `--check` on every pull request (`core-drift`), run the
+personal-data check (`personal-data`; exceptions are in `personal-data-allow.txt`, each with its
+reason) and open a pull request when hpcenv-core `main` moves (`core-sync`, weekly; it needs the
+setting "Allow GitHub Actions to create and approve pull requests"). The `account-kinds` workflow
+checks the job templates of `perlmutter/jobs/` and `delta/jobs/` (see
+[Perlmutter jobs](perlmutter/jobs/README.md#sbatch-and-salloc-add-the-account) and
+[Delta](docs/delta/README.md#sbatch-and-salloc-add-the-account)).
 
 ## Your own clone
 
@@ -51,6 +72,8 @@ Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/` 
   they can be copied into scripts without attribution.
 - The files in `perlmutter/agents/nersc/` are NERSC's and keep their own
   [BSD 3-Clause License](perlmutter/agents/nersc/LICENSE).
+- The files in `core/` are hpcenv-core's and keep its licenses: code under
+  [BSD 3-Clause](core/LICENSE), `core/docs/` under [CC BY 4.0](core/docs/LICENSE).
 - The IdroboLab logo and the icons made from it, in `assets/`, are copyright (c) 2026,
   IdroboLab, and under [Creative Commons Attribution 4.0 International](assets/LICENSE)
   (CC BY 4.0).

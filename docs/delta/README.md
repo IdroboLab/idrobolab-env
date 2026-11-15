@@ -33,14 +33,40 @@ Delta (environment variables, where files live, the editable-install import trap
    export DELTA_PROJECT=<project>
    if [ -r "<clone>/delta/env.sh" ]; then . "<clone>/delta/env.sh"; fi
    ```
-   The second line sources [`delta/env.sh`](../../delta/env.sh). It sets `SCRATCH_BASE` (`/scratch/<project>`) and `PROJECTS_BASE` (`/projects/<project>`), which the job templates and `get-image.sh` read and Delta does not define, keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota, and points uv at the project's [shared cache](#the-shared-cache) once an admin has created it, and puts the group's [uv](#uv) on your `PATH`. `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if the `SCRATCH_BASE` line reads `<unset>`, `DELTA_PROJECT` is not exported above the line that sources the file, is mistyped, or `/scratch/<project>` does not exist on that node. A `SCRATCH_BASE` or `PROJECTS_BASE` you set yourself takes precedence.
+   The second line sources [`delta/env.sh`](../../delta/env.sh). It sets `SCRATCH_BASE` (`/scratch/<project>`) and `PROJECTS_BASE` (`/projects/<project>`), which the job templates and `get-image.sh` read and Delta does not define, keeps the Apptainer cache on your scratch (`$SCRATCH_BASE/$USER`) instead of your home quota, and points uv at the project's [shared cache](#the-shared-cache) once an admin has created it, puts the group's [uv](#uv) on your `PATH`, and makes `sbatch` and `salloc` [add your account](#sbatch-and-salloc-add-the-account). `IDROBOLAB_ENV_VERBOSE=1 . ~/idrobolab-env/delta/env.sh` prints what it set; if the `SCRATCH_BASE` line reads `<unset>`, `DELTA_PROJECT` is not exported above the line that sources the file, is mistyped, or `/scratch/<project>` does not exist on that node. A `SCRATCH_BASE` or `PROJECTS_BASE` you set yourself takes precedence.
 4. Build the image once, on a login node (it queues the conversion on a compute node itself, because the conversion is too heavy for a login node):
    ```bash
-   mkdir -p $PROJECTS_BASE/software/containers && ACCOUNT=<project>-delta-cpu SIF=$PROJECTS_BASE/software/containers/idrobolab.sif ~/idrobolab-env/delta/get-image.sh
+   mkdir -p $PROJECTS_BASE/software/containers && SIF=$PROJECTS_BASE/software/containers/idrobolab.sif ~/idrobolab-env/delta/get-image.sh
    ```
+   It queues on your `<project>-delta-cpu` account, taken from `DELTA_PROJECT`; `ACCOUNT=<project>-delta-cpu` in front of the command names another one.
    The `.sif` lands in `$PROJECTS_BASE/software/containers/`, where the job templates look for it, not in scratch. Record `sha256sum` of the image with your results. The script pulls the group image `ghcr.io/idrobolab/idrobolab` by default; if it stops with `unauthorized`, ask an admin (see [The images](#the-images)).
-5. Copy the job template for your partition from [`delta/jobs/`](../../delta/jobs/), replace `<project>` in its `--account` line, and submit it with your script as the argument: `sbatch gpu_a100_1gpu.sbatch my_script.py`. Always set `--time`: the default is 30 minutes.
+5. Copy the job template for your partition from [`delta/jobs/`](../../delta/jobs/) and submit it with your script as the argument: `sbatch gpu_a100_1gpu.sbatch my_script.py`; `sbatch` adds the account ([below](#sbatch-and-salloc-add-the-account)), so the template's `--account=<project>-delta-gpu` line stays as it is. Always set `--time`: the default is 30 minutes.
 6. Run the smoke tests of the [first-run checklist](../../delta/jobs/README.md#first-run-checklist) once before the first real job.
+
+## `sbatch` and `salloc` add the account
+
+Every job needs one of your two accounts: `<project>-delta-cpu` for the CPU partitions and
+`<project>-delta-gpu` for the GPU partitions (`accounts` lists them). With `DELTA_PROJECT` exported
+and `delta/env.sh` sourced (step 3, in a new shell), `sbatch` and `salloc` are shell functions
+(from `core/shell/accounts.sh`) that add `-A <project>-delta-gpu` when the job asks for a `gpu*`
+partition or for GPUs (`-G`, `--gpus`, `--gres=gpu`), else `-A <project>-delta-cpu`; `sbatch
+gpu_a100_1gpu.sbatch my_script.py` needs no `-A` and no edit of the template. The partition and
+the GPU request are read from the command line and from the template's `#SBATCH` lines. An `-A` or
+`--account` of your own, a non-empty `SBATCH_ACCOUNT` or `SALLOC_ACCOUNT`, or an unset
+`DELTA_PROJECT` leave the command unchanged. `srun` is not covered. In a shell that has not
+sourced `env.sh`, pass `-A` as before; Slurm rejects a job that still carries the placeholder.
+
+[`delta/jobs/account-kinds.txt`](../../delta/jobs/account-kinds.txt) lists each template as `cpu`
+or `gpu` (add a line for a new template). The `account-kinds` workflow checks it, or by hand on
+Delta, from the top of a clone, with `pytest` available:
+
+```bash
+. delta/env.sh
+HPCENV_ACCOUNT_CHECK_TABLE="$PWD/delta/jobs/account-kinds.txt" pytest core/shell/test_accounts.py -k test_consumer_template
+```
+
+(an absolute table path). `env.sh` acts only where `/scratch/<project>` exists; elsewhere it sets
+nothing, and the check then fails on the missing `HPCENV_ACCOUNT_CPU`.
 
 ## uv
 

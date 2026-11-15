@@ -101,7 +101,9 @@ from the marker of a block an earlier version wrote, else it asks. Then it:
 1. Adds a short, marked block to `~/.bashrc` that exports `NERSC_PROJECT=<project>` and
    sources the group's [`env.sh`](../../perlmutter/env.sh). A block written by an earlier
    version gets the export added when you re-run the script. Without `NERSC_PROJECT`,
-   `env.sh` prints a one-line hint and sets nothing that depends on the project.
+   `env.sh` prints a one-line hint and sets nothing that depends on the project. With it,
+   `env.sh` also makes `sbatch` and `salloc` add `-A "$NERSC_PROJECT"`
+   ([page 4](04-jobs.md#batch-jobs-sbatch)).
 2. Links the group's shared Jupyter kernels into your account
    ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,

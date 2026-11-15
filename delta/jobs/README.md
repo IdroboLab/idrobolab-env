@@ -6,10 +6,15 @@ Template job scripts per partition. All take the payload as arguments
 (`sbatch <script>.sbatch my_script.py [args...]`), locate the image via
 `$SIF` (default `$PROJECTS_BASE/software/containers/idrobolab.sif`, overridable at
 submit time with `SIF=... sbatch ...`), and bind `/projects`, `/scratch`,
-`/work` when present. Before first use, replace `<project>` in the
-`--account` lines — run `accounts` to list your charge accounts
+`/work` when present. The `--account` lines keep the placeholder `<project>-delta-{cpu,gpu}`
+and name the kind of account the template needs: with `DELTA_PROJECT` exported and `delta/env.sh`
+sourced (`delta/helpers/setup-user.sh`; a new shell), `sbatch <template>` adds
+`-A <project>-delta-cpu` or `-A <project>-delta-gpu` itself (see
+[docs/delta/README.md](../../docs/delta/README.md#sbatch-and-salloc-add-the-account)). Without it,
+pass `-A` or replace `<project>` in your copy — run `accounts` to list your charge accounts
 (`<project>-delta-cpu` for CPU partitions, `<project>-delta-gpu` for GPU
-partitions; they are charged separately).
+partitions; they are charged separately). [`account-kinds.txt`](account-kinds.txt) lists each
+template as `cpu` or `gpu`; a new template gets a line there.
 
 Every template declares `--constraint="scratch&projects"`: Slurm then places the job on a
 node that sees both file systems (the image is read from `/projects`, output goes to

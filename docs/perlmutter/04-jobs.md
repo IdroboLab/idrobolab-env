@@ -109,7 +109,11 @@ sbatch -A "$NERSC_PROJECT" ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatc
 
 Each template's `#SBATCH --account=` line holds the placeholder `<project>`, and Slurm
 rejects a job that still carries it. Give the account on the command line as above, or
-replace the placeholder in your copy of the template.
+replace the placeholder in your copy of the template. In a new shell after `setup-user.sh`,
+`env.sh` makes `sbatch` and `salloc` add `-A "$NERSC_PROJECT"` themselves (an `-A` of your own
+wins, and `srun` is not covered), so `-A "$NERSC_PROJECT"` is only needed where `env.sh` has not
+been sourced; [`perlmutter/jobs/README.md`](../../perlmutter/jobs/README.md#sbatch-and-salloc-add-the-account)
+has the details.
 
 | Template | Resources |
 |---|---|
