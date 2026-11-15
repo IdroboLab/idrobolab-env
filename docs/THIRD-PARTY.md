@@ -69,15 +69,21 @@ license texts, not legal advice.
 
 - **CUDA and cuDNN base layers.** The
   [NVIDIA Deep Learning Container License](https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license)
-  allows a derived container that adds material functionality. The notices must be kept,
-  NVIDIA's components must not be redistributed stand-alone, and the image must not claim
-  NVIDIA's endorsement.
+  allows a derived container that includes the entire NVIDIA container and adds material
+  functionality. The derived container must be distributed under terms at least as
+  protective of NVIDIA's components as that license, the notices must be kept, NVIDIA's
+  components must not be redistributed stand-alone, and the image must not claim NVIDIA's
+  endorsement.
 - **NVIDIA HPC SDK runtime libraries** copied into the image by `install-qe-gpu.sh`. The
   [HPC SDK license](https://docs.nvidia.com/hpc-sdk/eula/index.html) allows them to be
-  redistributed only if they come from the SDK's REDIST directories, and the image's users
+  redistributed only if they come from the SDK's REDIST directories and are bundled with,
+  and used only by, the application that needs them (Quantum ESPRESSO); the image's users
   may not redistribute them further.
-- **NVIDIA wheels from PyPI** carry the CUDA EULA and cuDNN terms, with the same
-  conditions.
+- **NVIDIA wheels from PyPI.** The license files of `nvidia-cublas-cu12`,
+  `nvidia-cuda-runtime-cu12`, `nvidia-cufft-cu12` and `nvidia-cudnn-cu12` name the CUDA
+  EULA or the cuDNN license, which allow redistribution with an application, unmodified
+  and with the notices kept. `nvidia-nccl-cu12` is under BSD 3-Clause. The license files of
+  the other NVIDIA wheels in the image were not read.
 
 Open work on the image: add a notice file to the image, and check the libraries copied by
 `install-qe-gpu.sh` against the SDK's REDIST directories.
