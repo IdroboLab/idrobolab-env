@@ -34,8 +34,8 @@ Each row is one item or one group of files that belong together. The columns are
   the source; it does not mean the item is free to use.
 - **Redistribution**: whether that license allows the item to stay in a public repository
   that carries this repository's own licenses. `yes`; `yes, with conditions` (the conditions
-  are named); `no`; `unclear` (the item is also an entry under Open questions); or `kept`
-  (no license was found, and the maintainer decided to keep the item as it is).
+  are named); `no`; or `kept` (no license was found, and the maintainer decided to keep
+  the item as it is).
 
 | Path | What | Source | License | Redistribution |
 |---|---|---|---|---|
@@ -43,7 +43,7 @@ Each row is one item or one group of files that belong together. The columns are
 | `core/` (all files except `core/docs/LICENSE`) | Shared shell helpers, checks, tests, workflow templates and the LAMMPS GPU self-test, copied by `core/sync/sync-core.sh` | hpcenv-core, the repository linked in `README.md`; commit in `core/CORE_COMMIT` | BSD 3-Clause, copyright held by the person named in `core/LICENSE` | yes, with conditions: keep `core/LICENSE` with the files. The copyright holder named in `core/LICENSE` is this repository's maintainer, who licensed `core/` under BSD 3-Clause |
 | `.github/workflows/core-drift.yml`, `core-sync.yml`, `personal-data.yml` | Copies of the workflow templates in `core/sync/workflows/`, made once and since the repository's own | hpcenv-core, as above | BSD 3-Clause, as `core/` | yes, with conditions: as `core/` |
 | `docs/LICENSE`, `assets/LICENSE` (second part), `core/docs/LICENSE` | The legal text of the Creative Commons Attribution 4.0 International license, unaltered | <https://creativecommons.org/licenses/by/4.0/legalcode> | The text is dedicated to the public domain under CC0 (stated at the end of each file) | yes |
-| `assets/idrobolab-folder.png`, `assets/idrobolab-uploads.ico` | The IdroboLab logo, and the same logo with a cloud added, as the ThinLinc folder icon and the upload tool's icon | The group; `assets/LICENSE` | CC BY 4.0, copyright IdroboLab | yes, with conditions: attribution as in `assets/LICENSE`; the member who drew the logo agreed to its release under CC BY 4.0 |
+| `assets/idrobolab-folder.png`, `assets/idrobolab-uploads.ico` | The IdroboLab logo, and the same logo with a cloud added, as the ThinLinc folder icon and the upload tool's icon | The group; `assets/LICENSE` | CC BY 4.0, copyright IdroboLab | yes, with conditions: attribution as in `assets/LICENSE`; the group member who drew the logo and the cloud agreed to their release under CC BY 4.0 |
 | `docs/perlmutter/README.md` (acknowledgement quotation under "Acknowledging NERSC") | The wording NERSC asks users to put in publications | <https://www.nersc.gov/users/become-a-nersc-user/acknowledgement> | None found; NERSC publishes the wording for users to copy | yes: reuse is the purpose of the text |
 | `perlmutter/agents/skills/delta-cluster/SKILL.md`, `docs/delta/README.md`, `delta/jobs/README.md` | Delta facts the group measured or read in NCSA's documentation: a partition and charge-factor table, the file-system label table, and a few quoted phrases | NCSA's Delta documentation, <https://docs.ncsa.illinois.edu/systems/delta/> (the page `running_jobs.html` and the Data Management page are named in the text) | None found | kept: short factual tables and quotations with a link to the source (the maintainer's decision) |
 | `docs/perlmutter/` pages (for example `04-jobs.md`, `reference/nersc-filesystem-guard.md`, `reference/podman-hpc.md`) | Descriptions of NERSC services and of NERSC's filesystem-guard hook (short quoted phrases, one checksum), with links to NERSC's pages | <https://docs.nersc.gov/> and the hook file named in `reference/nersc-filesystem-guard.md` | Not confirmed for the documentation; none found for the hook file | kept: the level of quotation is acceptable (the maintainer's decision) |
@@ -60,24 +60,28 @@ Each row is one item or one group of files that belong together. The columns are
 - Every other script, job template, document and agent skill carries no foreign copyright
   line, SPDX tag or "adapted from" note.
 
+## Container image (outside this tree)
+
+The recipe in `shared/containers/x86_64-cuda/idrobolab/` builds the public image
+`ghcr.io/idrobolab/idrobolab`. The image is not part of this tree, but it carries NVIDIA
+software, so its terms are recorded here. The findings below are a reading of NVIDIA's
+license texts, not legal advice.
+
+- **CUDA and cuDNN base layers.** The
+  [NVIDIA Deep Learning Container License](https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license)
+  allows a derived container that adds material functionality. The notices must be kept,
+  NVIDIA's components must not be redistributed stand-alone, and the image must not claim
+  NVIDIA's endorsement.
+- **NVIDIA HPC SDK runtime libraries** copied into the image by `install-qe-gpu.sh`. The
+  [HPC SDK license](https://docs.nvidia.com/hpc-sdk/eula/index.html) allows them to be
+  redistributed only if they come from the SDK's REDIST directories, and the image's users
+  may not redistribute them further.
+- **NVIDIA wheels from PyPI** carry the CUDA EULA and cuDNN terms, with the same
+  conditions.
+
+Open work on the image: add a notice file to the image, and check the libraries copied by
+`install-qe-gpu.sh` against the SDK's REDIST directories.
+
 ## Open questions
 
-Each entry is a question for the maintainer. The items stay conditional until it is
-answered.
-
-1. **The container image (outside this tree).** `install-qe-gpu.sh` copies runtime
-   libraries of the NVIDIA HPC SDK into the final image, and the image is built on
-   NVIDIA's CUDA and cuDNN images. The package `ghcr.io/idrobolab/idrobolab` is already
-   public (an anonymous client can list its tags). Do NVIDIA's redistribution terms for
-   those libraries and layers allow a public image?
-2. **The cloud in the upload icon.** Is the cloud added to the logo in
-   `assets/idrobolab-uploads.ico` drawn in the group, or taken from a stock or third-party
-   source?
-3. **The group's own unpublished work.** Job-template comments quote measured timings (for
-   example in `perlmutter/jobs/ptyrad_4gpu_node.sbatch`). The results of a benchmark run
-   whose log is no longer in the repository (job <jobid>: scaling at <efficiency>, image
-   invariant to GPU count) are still quoted in
-   `shared/containers/x86_64-cuda/idrobolab/README.md` (Status section),
-   `docs/perlmutter/reference/podman-hpc.md` and `docs/perlmutter/07-abtem.md`, now without
-   the log behind them. Are these timings and results cleared for publication, and should
-   the quoted results stay or be removed?
+There are none.

@@ -160,4 +160,4 @@ Three things that were only reasoned about are now measured:
   `abtem.__file__` and never on `__version__`.
 
 Not yet exercised: the nionswift GUI path (needs a forwarded display), the
-LAMMPS/QE GPU binaries, and multi-node GPU MPI (this was a single node).
+LAMMPS/QE GPU binaries, and multi-node GPU MPI.
