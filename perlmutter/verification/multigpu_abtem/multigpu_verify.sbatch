@@ -276,8 +276,7 @@ echo "mounts:$MOUNTS"
 # point -- a nonzero status is ambiguous. "Image not visible on the compute
 # node", "abtem does not import at all" and "the WRONG abtem imported" are
 # three different problems with three different fixes, and reporting all of
-# them as a broken injection sends the reader to the wrong place. Same idiom as
-# benchmark_haadf.sbatch.
+# them as a broken injection sends the reader to the wrong place.
 #
 # No srun: the batch script already runs on the first allocated compute node,
 # so podman-hpc runs there directly -- the `podman-hpc images` call above relies

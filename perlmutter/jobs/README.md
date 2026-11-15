@@ -58,15 +58,15 @@ $ sacctmgr -nP show assoc user=$USER format=account | sort -u
 
 $ sbatch -A "$NERSC_PROJECT"   -C gpu -q debug -N1 -t1 --wrap=true     # no suffix
 $ sbatch -A "$NERSC_PROJECT"_g -C gpu -q debug -N1 -t1 --wrap=true     # suffix
-$ sacct -j <jobid>,<jobid> -o JobID,Account
+$ sacct -j <jobid1>,<jobid2> -o JobID,Account
 JobID           Account
-<jobid>        <project>_g      <- submitted as <project>
-<jobid>.ba+    <project>_g
-<jobid>        <project>_g      <- submitted as <project>_g
-<jobid>.ba+    <project>_g
+<jobid1>        <project>_g      <- submitted as <project>
+<jobid1>.ba+    <project>_g
+<jobid2>        <project>_g      <- submitted as <project>_g
+<jobid2>.ba+    <project>_g
 ```
 
-A real GPU run behaves the same: job <jobid>, submitted `-A "$NERSC_PROJECT"`, recorded
+A real GPU run behaves the same: a job submitted `-A "$NERSC_PROJECT"` recorded
 `<project>_g` alongside `gres/gpu:a100=4`. The running-jobs page's "the one without the
 trailing `_g`" (in its CPU-only MPI example) names the CPU account.
 
@@ -242,8 +242,9 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
   ```
 
   Definitions (functions, classes, constants) can stay at module level — they
-  are what the child needs to import. The payloads in
-  `../verification/multigpu_abtem/` are written this way if you want a template.
+  are what the child needs to import. The payload
+  `../../shared/verification/multigpu_abtem/verify_multigpu.py` is written this way if you
+  want a template.
 
 - **`GPAW_MPI_BACKEND=cgpaw` is mandatory under `srun`.** The image ships
   GPAW 26.7.1b1, and since 26.7.0 GPAW aborts at import with *"GPAW appears
@@ -320,14 +321,14 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
 ## Testing status
 
 One row per template or script; the second column is what the repository records about
-running it on Perlmutter: a job ID and date where the repo has one, "run, not recorded"
+running it on Perlmutter: a date where the repo has one, "run, not recorded"
 where it only says the script was run, otherwise "not yet run". The group should test
 every template systematically (short time limit, e.g. `sbatch -A "$NERSC_PROJECT" -t 00:10:00`; note the job
 ID, date, image digest and result in the PR) and update this table.
 
 | Template / script | Recorded on Perlmutter |
 |---|---|
-| `debug_gpu.sbatch` | not yet run (the 2026-08-19 jobs <jobid> and <jobid> were `--wrap=true` tests of the account mapping) |
+| `debug_gpu.sbatch` | not yet run (two `--wrap=true` jobs on 2026-08-19 tested the account mapping) |
 | `gpu_1gpu_shared.sbatch` | not yet run (its `--mem` removal of 2026-08-27 is recorded as "not yet run on-cluster") |
 | `gpu_2gpu_shared.sbatch` | not yet run |
 | `gpu_4gpu_node.sbatch` | not yet run |
@@ -337,14 +338,13 @@ ID, date, image digest and result in the PR) and update this table.
 | `gpaw_cpu_multinode.sbatch` | not yet run |
 | `abtem_uv_gpu_shared.sbatch` | not yet run |
 | `abtem_uv_gpu_node.sbatch` | not yet run |
-| `ptyrad_1gpu_shared.sbatch`, `ptyrad_2gpu_shared.sbatch`, `ptyrad_4gpu_node.sbatch` | run as batch jobs on 2026-11-04 (ptyrad 1.0.0, a demo cut to 20 iterations, `--time=00:15:00`, the 4-GPU ones in `-q debug`): 1 GPU <jobid>; 2 GPU `accelerate` <jobid>, `FIRST_SEED=1` <jobid>; 4 GPU `accelerate` <jobid>, `FIRST_SEED=1` <jobid>. All five ended `COMPLETED` with exit code 0, and each wrote its reconstruction, `FIRST_SEED` one folder per seed (`_seed1`, `_seed1000001`, ...). The five jobs above used an earlier seed mechanism, `FIRST_SEED`, since replaced by `SEEDS`. The current seed handling ran the same day as <jobid> (1 GPU, drawn seed) and <jobid> (2 GPU, `SEEDS=random`), both `COMPLETED` with exit code 0: ptyrad logged each drawn seed as "provided by CLI argument", and the `SEEDS=random` runs wrote folders ending `_seed<k>` with their two distinct seeds |
+| `ptyrad_1gpu_shared.sbatch`, `ptyrad_2gpu_shared.sbatch`, `ptyrad_4gpu_node.sbatch` | run as batch jobs on 2026-11-04 (ptyrad 1.0.0, a demo cut to 20 iterations, `--time=00:15:00`, the 4-GPU ones in `-q debug`): 1 GPU; 2 GPU `accelerate` and `FIRST_SEED=1`; 4 GPU `accelerate` and `FIRST_SEED=1`. All five ended `COMPLETED` with exit code 0, and each wrote its reconstruction, `FIRST_SEED` one folder per seed (`_seed1`, `_seed1000001`, ...). The five jobs above used an earlier seed mechanism, `FIRST_SEED`, since replaced by `SEEDS`. The current seed handling ran the same day (1 GPU, drawn seed; 2 GPU, `SEEDS=random`), both `COMPLETED` with exit code 0: ptyrad logged each drawn seed as "provided by CLI argument", and the `SEEDS=random` runs wrote folders ending `_seed<k>` with their two distinct seeds |
 | `examples/abtem/abtem_gpu_example.py` | not yet run on Perlmutter (only `--device cpu`, on a workstation, 2026-10-06) |
 | `interactive_gpu.sh` | not yet run since its `srun` fix of 2026-08-27 |
 | `interactive_gpu_shared.sh` | not yet run |
 | `interactive_jupyter.sh` | run 2026-08-27 on nid001012, no job ID recorded (commit 4322e26) |
-| `../verification/multigpu_abtem/benchmark_haadf_auto.sbatch` | job <jobid>, 2026-08-19, 4 A100: scaling at <efficiency> and invariant image (log in that folder) |
-| `../verification/multigpu_abtem/multigpu_verify.sbatch`, `benchmark_haadf.sbatch` | not yet run |
+| `../verification/multigpu_abtem/multigpu_verify.sbatch` | not yet run |
 
-Job <jobid> (2026-08-19, 4 A100) was a real GPU run, and a multi-GPU run without the
-`__main__` guard failed that day (see Gotchas, commit 46938b2); the repo does not say
-which template either used, so the rows above stay "not yet run".
+A real 4-A100 GPU run on 2026-08-19, and a multi-GPU run without the `__main__` guard
+that failed that day (see Gotchas, commit 46938b2), are not tied to a template in the
+repo, so the rows above stay "not yet run".

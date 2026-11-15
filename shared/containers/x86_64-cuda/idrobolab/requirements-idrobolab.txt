@@ -1,6 +1,6 @@
 # requirements-idrobolab.txt
 # Curated top-level packages for the idrobolab container. HAND-MAINTAINED
-# (these are not in the ROCm dev venv, so nothing is scraped). Resolved by uv
+# (these are not in the maintainer's ROCm dev venv, so no pins are scraped). Resolved by uv
 # at build time; torch/torchvision/cupy are installed separately from the CUDA
 # index FIRST (see the Dockerfile) so nothing here drags in a different torch.
 #

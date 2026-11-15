@@ -7,11 +7,8 @@ supported at NERSC).
 
 This is the idrobolab recipe (`shared/containers/x86_64-cuda/idrobolab/`) as a
 Dockerfile. **Status: built and published.** `ghcr.io/idrobolab/idrobolab` exists and is
-public, and has been pulled and **verified end to end on Perlmutter**:
-a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
-invariant to GPU count (job <jobid>, which ran under the image's earlier
-registry name; log under `perlmutter/verification/multigpu_abtem/`, analysis in
-`shared/containers/x86_64-cuda/idrobolab/README.md`).
+public, and has been pulled on Perlmutter (`shared/containers/x86_64-cuda/idrobolab/README.md`,
+Status).
 
 ## Fit to Perlmutter
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Full quad-A100 node on the 80 GB HBM2e variant — the large-GPU-memory
-# flagship for another image: complex128 EMCD runs, exact-S2 / large-crop
+# flagship for complex128 EMCD runs, exact-S2 / large-crop
 # asymmetry gates, big abTEM S-matrix budgets that spill 40 GB.
 #
 # Only 256 of Perlmutter's 1,792 GPU nodes have the 80 GB A100s, so these

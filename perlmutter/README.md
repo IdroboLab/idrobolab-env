@@ -12,7 +12,7 @@ via podman-hpc, OCI/Docker images only).
 | [../shared/containers/x86_64-cuda/idrobolab/](../shared/containers/x86_64-cuda/idrobolab/) | The idrobolab container recipe — build & publish in its README |
 | [podman-hpc.md](../docs/perlmutter/reference/podman-hpc.md) | Perlmutter run notes: `podman-hpc pull`/`run`, MPI, GPU |
 | [jupyter.md](../docs/perlmutter/reference/jupyter.md) | Notebooks: jupyter.nersc.gov via a registered kernel, or your own allocation + `ssh -L`. Knobs, gotchas, troubleshooting |
-| [verification/multigpu_abtem/](verification/multigpu_abtem/) | abTEM multi-GPU verification + HAADF scaling benchmark (launchers; payloads in `shared/`) |
+| [verification/multigpu_abtem/](verification/multigpu_abtem/) | abTEM multi-GPU verification (launcher; payload in `shared/`) |
 | [jobs/](jobs/) | Slurm templates per node type and QOS (CPU 1/N-node, GPU shared 1-2 GPUs/full-node/hbm80g/multi-node, abTEM from a uv environment, debug, interactive) + node specs, QOS limits, charging, testing status |
 | [jobs/interactive_gpu_shared.sh](jobs/interactive_gpu_shared.sh) | Container shell on 1 or 2 GPUs of a shared node (`shared_interactive`, ≤ 4 h); `interactive_gpu.sh` is the whole-node twin |
 | [examples/abtem/](examples/abtem/) | `abtem_gpu_example.py`: a small abTEM HAADF-type scan on a GPU or CPU, run by the uv job templates ([page 7](../docs/perlmutter/07-abtem.md)) |

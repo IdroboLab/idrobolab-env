@@ -18,7 +18,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   so this rule is the only guard: an unreviewed push to `main` reaches every member's
   shell on their next pull. The member-facing workflow is `docs/CONTRIBUTING.md`.
 - All documentation lives in `docs/`: the general pages (`01-github.md`, `02-cloning.md`,
-  `03-globus.md`), `CONTRIBUTING.md`, the Perlmutter section `docs/perlmutter/`, with
+  `03-globus.md`), `CONTRIBUTING.md`, `THIRD-PARTY.md`, the Perlmutter section `docs/perlmutter/`, with
   its reference notes in `docs/perlmutter/reference/`, and the Delta page
   `docs/delta/README.md`. The general and Perlmutter series are numbered in reading
   order, so renaming or adding a page means updating every `[page N]` link and the tables
@@ -82,9 +82,9 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 - The job templates default `SIF` to `$PROJECTS_BASE/software/containers/idrobolab.sif`
   (`get-image.sh` pulls `ghcr.io/idrobolab/idrobolab` into it; on Delta that image has so far
   run only a 2-node MPI hello-world). Account handling is in `delta/AGENTS.md`.
-- The Python payloads of the multi-GPU verification are shared with Perlmutter in
+- The Python payload of the multi-GPU verification is shared with Perlmutter in
   `shared/verification/multigpu_abtem/`; the launchers in `delta/verification/` and
-  `perlmutter/verification/` locate them relative to themselves. Change a payload once,
+  `perlmutter/verification/` locate it relative to themselves. Change the payload once,
   there.
 - Read `delta/AGENTS.md` before editing anything in `delta/`.
 
