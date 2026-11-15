@@ -27,7 +27,7 @@ set -euo pipefail
 # passes them through. Set PODMAN_GROUP_FLAGS= to disable if it ever misbehaves.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
-ACCOUNT=${ACCOUNT:-<project>_g}            # override with sbatch -A; see jobs/README.md on _g
+ACCOUNT=${ACCOUNT:-${NERSC_PROJECT:?export NERSC_PROJECT=<project> (or ACCOUNT=<project>)}}   # your <project>; no _g needed, see jobs/README.md
 CONSTRAINT=${CONSTRAINT:-gpu}
 NODES=${NODES:-1}
 GPUS=${GPUS:-4}
@@ -137,5 +137,5 @@ exec salloc --account="$ACCOUNT" --constraint="$CONSTRAINT" --qos=interactive \
         "$IMAGE" "${CMD[@]}"
 
 # CPU-only equivalent (no GPU allocation, charged against the CPU account):
-#   salloc -A <project> -C cpu -q interactive -N 1 -t 01:00:00 -L scratch,cfs \
+#   salloc -A "$NERSC_PROJECT" -C cpu -q interactive -N 1 -t 01:00:00 -L scratch,cfs \
 #       podman-hpc run --rm $GROUP_FLAGS -it -v $SCRATCH:$SCRATCH "$IMAGE" /bin/bash

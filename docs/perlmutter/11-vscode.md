@@ -114,7 +114,7 @@ lines inside the outer `{ }`:
 
    ```bash
    ssh perlmutter
-   salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
+   salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
    ```
 
    When the session starts, `salloc` prints the node (`salloc: Nodes nid200021 are

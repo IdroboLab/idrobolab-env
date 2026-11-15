@@ -5,6 +5,7 @@
 # Run it from your own clone of idrobolab-env:
 #
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh           # do it
+#     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --project NAME   # name the NERSC project
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --check   # report only, change nothing
 #     ~/idrobolab-env/perlmutter/helpers/setup-user.sh --undo    # remove the block and the GitHub e-mail rule
 #         (a startup file is left untouched, exit 1, unless its block's two marker lines are intact)
@@ -17,7 +18,12 @@
 # from another checkout is reported, not replaced: --undo, then run it again.
 #
 # What it does:
-#   1. sources env.sh from your shell startup file (image store, aliases, PATH)
+#   0. finds your NERSC project, the <project> you pass to -A (--project, else
+#      $NERSC_PROJECT, else the one named in the marker of a block from an
+#      earlier version, else it asks)
+#   1. exports NERSC_PROJECT and sources env.sh from your shell startup file
+#      (image store, aliases, PATH); a block from an earlier version gets the
+#      export added
 #   2. links the project's shared Jupyter kernels into your own kernel dir
 #   3. checks the things that silently break later: project group membership,
 #      whether the shared image store is actually readable by you, $SCRATCH
@@ -29,13 +35,15 @@
 #      carry; the checks always report that address
 set -euo pipefail
 
-GHMAIL="" CHECK=0 UNDO=0 VSCODE=0
+GHMAIL="" CHECK=0 UNDO=0 VSCODE=0 PROJECT=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --check)   CHECK=1;   shift ;;
         --github-email) { [ $# -ge 2 ] && [ -n "$2" ]; } || { echo "--github-email needs an address" >&2; exit 1; }
                    GHMAIL=$2; shift 2 ;;
         --undo)    UNDO=1;    shift ;;
+        --project) [ $# -ge 2 ] || { echo "--project needs a name" >&2; exit 1; }
+                   PROJECT=$2; shift 2 ;;
         --vscode-workspace) VSCODE=1; shift ;;
         -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
         *) echo "unknown option: $1 (try --help)" >&2; exit 1 ;;
@@ -53,8 +61,6 @@ if [ -n "$GHMAIL" ] && ! github_identity_valid "$GHMAIL"; then
 fi
 PERLMUTTER=$(dirname "$HELPERS")
 DOCS="$(dirname "$PERLMUTTER")/docs/perlmutter"
-PROJECT="${NERSC_PROJECT:-<project>}"
-SHARED_JUPYTER="${IDROBOLAB_ENV_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
 
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }
 warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
@@ -66,12 +72,20 @@ if [ "$CHECK" = 1 ] && [ "$UNDO" = 1 ]; then
     exit 1
 fi
 
+# The block's marker lines. Blocks from earlier versions name the project in the
+# marker, `(<project>)`, and some name the repository hpcenvs; the patterns match
+# those too.
+MARK="# >>> idrobolab-env >>>"
+ENDMARK="# <<< idrobolab-env <<<"
+ANY_START='# >>> (idrobolab-env|hpcenvs)( \([^)]*\))? >>>'
+ANY_END='# <<< (idrobolab-env|hpcenvs)( \([^)]*\))? <<<'
+
 # True when FILE holds no START line, or one START line with one END line below
-# it. With anything else the range delete below would cut to the end of the file.
+# it. START and END are patterns (grep -E), matched against whole lines. With anything else the range delete below would cut to the end of the file.
 block_is_whole() {   # START END FILE
     local starts ends
-    starts=$(grep -nxF "$1" "$3" | cut -d: -f1 || true)
-    ends=$(grep -nxF "$2" "$3" | cut -d: -f1 || true)
+    starts=$(grep -nxE "$1" "$3" | cut -d: -f1 || true)
+    ends=$(grep -nxE "$2" "$3" | cut -d: -f1 || true)
     [ -z "$starts$ends" ] && return 0
     case "$starts:$ends" in
         *[!0-9:]*|:*|*:) return 1 ;;
@@ -88,19 +102,15 @@ if [ "$UNDO" = 1 ]; then
         [ -f "$rc" ] || continue
         # Whole lines only, as the removal below matches them: a marker with
         # trailing whitespace or inside a longer line is not ours to remove.
-        grep -qxF -e "# >>> idrobolab-env (${PROJECT}) >>>" -e "# >>> hpcenvs (${PROJECT}) >>>" "$rc" || continue
-        if ! block_is_whole "# >>> idrobolab-env (${PROJECT}) >>>" "# <<< idrobolab-env (${PROJECT}) <<<" "$rc" \
-           || ! block_is_whole "# >>> hpcenvs (${PROJECT}) >>>" "# <<< hpcenvs (${PROJECT}) <<<" "$rc"; then
+        grep -qxE "$ANY_START" "$rc" || continue
+        if ! block_is_whole "$ANY_START" "$ANY_END" "$rc"; then
             echo "$rc: the idrobolab-env (or hpcenvs) markers are not one start line followed by one" >&2
             echo "  end line; nothing changed there. Remove the block by hand." >&2
             refused=1
             continue
         fi
         cp -p "$rc" "$rc.idrobolab-env-backup"
-        # Blocks written before the repo was renamed carry the name hpcenvs.
-        sed -i --follow-symlinks \
-            -e "/^# >>> idrobolab-env (${PROJECT}) >>>$/,/^# <<< idrobolab-env (${PROJECT}) <<<$/d" \
-            -e "/^# >>> hpcenvs (${PROJECT}) >>>$/,/^# <<< hpcenvs (${PROJECT}) <<<$/d" "$rc"
+        sed -E -i --follow-symlinks "/^${ANY_START}\$/,/^${ANY_END}\$/d" "$rc"
         # ...including the blank line we wrote before it, so the file comes back
         # byte-identical when ours was the only addition.
         sed -i --follow-symlinks -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$rc"
@@ -115,7 +125,7 @@ if [ "$UNDO" = 1 ]; then
     exit "$refused"
 fi
 
-echo "idrobolab-env user setup — project $PROJECT"
+echo "idrobolab-env user setup"
 [ "$CHECK" = 1 ] && echo "(--check: reporting only, nothing will be changed)"
 echo
 
@@ -127,20 +137,41 @@ if [ -n "$GHMAIL" ] && [ "$CHECK" = 0 ]; then
     echo
 fi
 
+# The NERSC project, the <project> you pass to -A. It
+# is written into the shell startup file and becomes part of paths. A block from
+# an earlier version names it in its marker, `(<project>)`, so a member who has
+# one is not asked.
+[ -n "$PROJECT" ] || PROJECT="${NERSC_PROJECT:-}"
+if [ -z "$PROJECT" ]; then
+    for rc in "$HOME/.bashrc" "$HOME/.bashrc.ext"; do
+        [ -f "$rc" ] || continue
+        PROJECT=$(sed -nE '/^# >>> (idrobolab-env|hpcenvs) \(([^)]*)\) >>>$/{s//\2/;p;q}' "$rc")
+        [ -z "$PROJECT" ] || break
+    done
+fi
+if [ -z "$PROJECT" ] && [ -t 0 ]; then
+    read -r -p "NERSC project (the <project> you pass to sbatch -A): " PROJECT
+fi
+case "$PROJECT" in
+    "") echo "no NERSC project: run with --project NAME" >&2; exit 1 ;;
+    *[!A-Za-z0-9_]*) echo "not a project name: $PROJECT" >&2; exit 1 ;;
+esac
+SHARED_JUPYTER="${IDROBOLAB_ENV_SHARED_JUPYTER:-/global/common/software/${PROJECT}/share/jupyter}"
+echo "project $PROJECT"
+echo
+
 # --- 1. shell startup --------------------------------------------------------
 # ~/.bashrc, per NERSC's current guidance: the .bashrc.ext / .bash_profile.ext
 # split is deprecated and the standard dotfiles are yours to edit.
 # https://docs.nersc.gov/environment/#customizing-your-shell-environment
 echo "1. shell startup"
 RC="$HOME/.bashrc"
-MARK="# >>> idrobolab-env (${PROJECT}) >>>"
-ENDMARK="# <<< idrobolab-env (${PROJECT}) <<<"
-OLDMARK="# >>> hpcenvs (${PROJECT}) >>>"   # written before the repo was renamed
 ENVSH="${PERLMUTTER}/env.sh"
 
 # An account created before February 2020 may still have a .ext file, and an
 # earlier version of this script wrote the block there, and earlier versions
-# marked it hpcenvs. Find it wherever it is and under either name, so a re-run
+# marked it hpcenvs or named the project. Find it wherever it is and under any
+# marker, so a re-run
 # neither duplicates the block nor reports it missing. A marker counts only as a
 # whole line, as --undo matches it; a line that merely contains one (trailing
 # whitespace, a carriage return, text around it) is reported, since --undo
@@ -148,28 +179,39 @@ ENVSH="${PERLMUTTER}/env.sh"
 FOUND_IN="" DAMAGED_IN=""
 for rc in "$RC" "$HOME/.bashrc.ext"; do
     [ -f "$rc" ] || continue
-    grep -qxF -e "$MARK" -e "$OLDMARK" "$rc" && { FOUND_IN=$rc; break; }
-    grep -qF -e "$MARK" -e "$OLDMARK" "$rc" && [ -z "$DAMAGED_IN" ] && DAMAGED_IN=$rc
+    grep -qxE "$ANY_START" "$rc" && { FOUND_IN=$rc; break; }
+    grep -qE "$ANY_START" "$rc" && [ -z "$DAMAGED_IN" ] && DAMAGED_IN=$rc
 done
 # A start line without its one end line below is damaged too: --undo refuses it.
-if [ -n "$FOUND_IN" ] && { ! block_is_whole "$MARK" "$ENDMARK" "$FOUND_IN" \
-        || ! block_is_whole "$OLDMARK" "# <<< hpcenvs (${PROJECT}) <<<" "$FOUND_IN"; }; then
+if [ -n "$FOUND_IN" ] && ! block_is_whole "$ANY_START" "$ANY_END" "$FOUND_IN"; then
     DAMAGED_IN=$FOUND_IN FOUND_IN=""
 fi
 
 if [ -n "$FOUND_IN" ]; then
     if grep -qF "$ENVSH" "$FOUND_IN"; then
         ok "$FOUND_IN already sources env.sh"
-        if grep -qxF "$OLDMARK" "$FOUND_IN"; then
+        if ! grep -qxF "$MARK" "$FOUND_IN"; then
             if [ "$CHECK" = 1 ]; then
-                warn "$FOUND_IN marks the block hpcenvs (run without --check to rename it)"
+                warn "$FOUND_IN has the marker of an earlier version (run without --check to rename it)"
             else
                 cp -p "$FOUND_IN" "$FOUND_IN.idrobolab-env-backup"
-                sed -i --follow-symlinks \
-                    -e "s/^# >>> hpcenvs (${PROJECT}) >>>\$/${MARK}/" \
-                    -e "s/^# <<< hpcenvs (${PROJECT}) <<<\$/${ENDMARK}/" "$FOUND_IN"
-                act "renamed the hpcenvs markers in $FOUND_IN (backup: $FOUND_IN.idrobolab-env-backup)"
+                sed -E -i --follow-symlinks \
+                    -e "s/^${ANY_START}\$/${MARK}/" \
+                    -e "s/^${ANY_END}\$/${ENDMARK}/" "$FOUND_IN"
+                act "renamed the markers in $FOUND_IN (backup: $FOUND_IN.idrobolab-env-backup)"
             fi
+        fi
+        # An earlier version's block does not export the project. A line of the
+        # member's own counts when it is above the env.sh line: env.sh reads the
+        # variable when it is sourced.
+        src_line=$(grep -nF "$ENVSH" "$FOUND_IN" | head -n 1 | cut -d: -f1)
+        if sed -n "1,$((src_line - 1))p" "$FOUND_IN" | grep -qE '^[[:space:]]*export[[:space:]]+NERSC_PROJECT='; then
+            ok "$FOUND_IN exports NERSC_PROJECT before sourcing env.sh"
+        elif [ "$CHECK" = 1 ]; then
+            warn "$FOUND_IN does not export NERSC_PROJECT before sourcing env.sh (run without --check to add it)"
+        else
+            sed -E -i --follow-symlinks "/^${ANY_START}\$/a export NERSC_PROJECT=${PROJECT}" "$FOUND_IN"
+            act "added 'export NERSC_PROJECT=$PROJECT' to the block in $FOUND_IN"
         fi
         [ "$FOUND_IN" = "$HOME/.bashrc.ext" ] && \
             warn "  that is a deprecated .ext file -- see the note below"
@@ -190,6 +232,7 @@ else
         echo "$MARK"
         echo "# Added by setup-user.sh. Safe to source anywhere: it is silent,"
         echo "# idempotent, and does nothing off Perlmutter."
+        echo "export NERSC_PROJECT=$PROJECT"
         echo "if [ -r \"$ENVSH\" ]; then . \"$ENVSH\"; fi"
         echo "$ENDMARK"
     } >> "$RC"

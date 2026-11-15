@@ -17,13 +17,13 @@
 #
 # Charging: 1 GPU -> 0.25 node-hour per wallclock hour, 2 GPUs -> 0.5.
 #
-# Usage:  sbatch abtem_uv_gpu_shared.sbatch my_script.py [args...]
-#         sbatch abtem_uv_gpu_shared.sbatch ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py
-#         sbatch --gpus=2 --cpus-per-task=64 abtem_uv_gpu_shared.sbatch my_script.py   # 2 GPUs
-#         VENV=~/venvs/other sbatch abtem_uv_gpu_shared.sbatch my_script.py            # another environment
+# Usage:  sbatch -A "$NERSC_PROJECT" abtem_uv_gpu_shared.sbatch my_script.py [args...]
+#         sbatch -A "$NERSC_PROJECT" abtem_uv_gpu_shared.sbatch ~/idrobolab-env/perlmutter/examples/abtem/abtem_gpu_example.py
+#         sbatch -A "$NERSC_PROJECT" --gpus=2 --cpus-per-task=64 abtem_uv_gpu_shared.sbatch my_script.py   # 2 GPUs
+#         VENV=~/venvs/other sbatch -A "$NERSC_PROJECT" abtem_uv_gpu_shared.sbatch my_script.py            # another environment
 #
 #SBATCH --job-name=abtem_uv
-#SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=gpu
 #SBATCH --qos=shared
 #SBATCH --nodes=1

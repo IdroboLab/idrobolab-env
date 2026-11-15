@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pull (or refresh) a container image into the <project> shared podman-hpc store on
+# Pull (or refresh) a container image into the project's shared podman-hpc store on
 # CFS, so it survives $SCRATCH purges and is readable by the whole project.
 #
 # Run on a Perlmutter LOGIN node — compute nodes have no route to ghcr.io.
@@ -16,7 +16,7 @@ set -euo pipefail
 
 # Defaults match env.sh; sourcing that file first parameterises this script
 # (PODMAN_STORE / PODMAN_STORE_RO), and STORE / STORE_RO still win if set.
-STORE=${STORE:-${PODMAN_STORE:-/global/cfs/cdirs/<project>/podman-hpc/images}}
+STORE=${STORE:-${PODMAN_STORE:?set NERSC_PROJECT and source env.sh, or pass STORE=}}
 
 # Derive the read path FROM $STORE instead of defaulting it separately. As two
 # independent literals they drift — and a stale STORE_RO is invisible here,
@@ -361,6 +361,6 @@ cat <<EOF
 
    Re-check from a compute node (this node's graph-root copy would mask a
    broken store):
-       srun -A <project>_g -C gpu -q debug -N1 -t5 -L cfs \\
+       srun -A "\$NERSC_PROJECT" -C gpu -q debug -N1 -t5 -L cfs \\
            podman-hpc run --rm $REF python -P -c "print('ok')"
 EOF

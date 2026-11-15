@@ -12,10 +12,10 @@
 # Node: 2x AMD EPYC 7763 (Milan), 128 physical cores (256 logical), 512 GB.
 # Charging: walltime x nodes x 1.0 (Perlmutter charge factor is 1.0).
 #
-# Usage:  sbatch gpaw_cpu_singlenode.sbatch my_gpaw_script.py [args...]
+# Usage:  sbatch -A "$NERSC_PROJECT" gpaw_cpu_singlenode.sbatch my_gpaw_script.py [args...]
 #
 #SBATCH --job-name=gpaw_cpu
-#SBATCH --account=<project>                 # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=cpu
 #SBATCH --qos=regular
 #SBATCH --nodes=1

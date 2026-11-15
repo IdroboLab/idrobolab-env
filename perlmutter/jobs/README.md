@@ -1,11 +1,11 @@
 # Slurm submission files for the project containers on Perlmutter
 
 Template job scripts per node type and QOS. All take the payload as
-arguments (`sbatch <script>.sbatch my_script.py [args...]`; the `ptyrad_*` ones take a
-ptyrad params file, `sbatch <script>.sbatch params.yaml [options...]`), locate the image
+arguments (`sbatch -A "$NERSC_PROJECT" <script>.sbatch my_script.py [args...]`; the `ptyrad_*` ones take a
+ptyrad params file, `sbatch -A "$NERSC_PROJECT" <script>.sbatch params.yaml [options...]`), locate the image
 via `$IMAGE` (default `$IDROBOLAB_IMAGE` from `env.sh`, a full reference to
 `ghcr.io/idrobolab/idrobolab:latest`, else `idrobolab`; overridable at submit time with
-`IMAGE=... sbatch ...`). A bare name resolves to
+`IMAGE=... sbatch -A "$NERSC_PROJECT" ...`). A bare name resolves to
 `ghcr.io/${IMAGE_OWNER:-idrobolab}/<name>:${TAG:-latest}`, so `TAG` and
 `IMAGE_OWNER` take effect only together with a bare name (`IMAGE=idrobolab TAG=v2`);
 a value containing `/` is used verbatim, which is how any other image is given.
@@ -13,40 +13,40 @@ The templates mount `$SCRATCH`, `$CFS`, and `$HOME` when present. The exceptions
 are `abtem_uv_gpu_shared.sbatch` and `abtem_uv_gpu_node.sbatch`, which run abTEM
 from a uv environment on the host (`~/venvs/abtem`) and use no container.
 
-The `--account` lines are set to **<project>** (CPU templates) and **<project>_g** (GPU
-templates); `sbatch -A <other>` overrides per submission.
+The `--account` lines hold the placeholder **`<project>`**, your NERSC project
+(`$NERSC_PROJECT`, exported by `setup-user.sh`): one account for CPU and GPU jobs. Slurm
+rejects a job that still carries the placeholder: pass the account when you submit,
+`sbatch -A "$NERSC_PROJECT" gpu_1gpu_shared.sbatch ...`, which overrides the line, or replace
+the placeholder in your copy. The interactive launchers (`interactive_*.sh`) read
+`$NERSC_PROJECT` themselves.
 
-**On the `_g` suffix — resolved, and it does not matter.** Both accounts exist,
-and Slurm **remaps a GPU job to the `_g` pool automatically**. Verified on
-Perlmutter 2026-08-19 by submitting with the plain account and reading back what
-was recorded:
+**On the `_g` suffix: not needed.** NERSC's [Perlmutter timeline](https://docs.nersc.gov/systems/perlmutter/timeline/)
+records the change (6 June 2022): "Users can now use just -A <account name> (i.e., the extra
+_g is no longer needed) for jobs requesting GPU resources." The `<project>_g` accounts
+still exist and still work, but nothing here needs them.
+
+The check behind that, on Perlmutter 2026-08-19: Slurm remaps a GPU job submitted with the
+plain account to the `_g` pool. Both submissions below were recorded under `<project>_g`, on
+every step:
 
 ```
 $ sacctmgr -nP show assoc user=$USER format=account | sort -u
 <project>
 <project>_g
 
-$ sbatch -A <project>   -C gpu -q debug -N1 -t1 --wrap=true     # no suffix
-$ sbatch -A <project>_g -C gpu -q debug -N1 -t1 --wrap=true     # suffix
+$ sbatch -A "$NERSC_PROJECT"   -C gpu -q debug -N1 -t1 --wrap=true     # no suffix
+$ sbatch -A "$NERSC_PROJECT"_g -C gpu -q debug -N1 -t1 --wrap=true     # suffix
 $ sacct -j <jobid>,<jobid> -o JobID,Account
 JobID           Account
-<jobid>        <project>_g          <- submitted as <project>
+<jobid>        <project>_g      <- submitted as <project>
 <jobid>.ba+    <project>_g
-<jobid>        <project>_g          <- submitted as <project>_g
+<jobid>        <project>_g      <- submitted as <project>_g
 <jobid>.ba+    <project>_g
 ```
 
-Both arms land in `<project>_g`, on every step. A real GPU run behaves the same:
-job <jobid>, submitted `-A <project>`, recorded `<project>_g` alongside
-`gres/gpu:a100=4`. So the GPU allocation is what gets charged regardless of
-which name you pass. That is why NERSC's two doc
-pages look contradictory and are both right: the policy page's "no suffix
-needed" describes the submission (true — the filter fixes it up), and the
-running-jobs page's "the one without the trailing `_g`" describes the accounts
-(also true — the suffixed one exists and is where GPU work lands).
-
-The GPU templates still say `<project>_g` because it names the pool the job will be
-charged to, which is worth stating outright. `-A <project>` works identically.
+A real GPU run behaves the same: job <jobid>, submitted `-A "$NERSC_PROJECT"`, recorded
+`<project>_g` alongside `gres/gpu:a100=4`. The running-jobs page's "the one without the
+trailing `_g`" (in its CPU-only MPI example) names the CPU account.
 
 To find your own accounts on another project, use `-P`: `sacctmgr` truncates
 columns by default, which is exactly how a wrong account name goes unnoticed.
@@ -162,7 +162,7 @@ podman-hpc images --digests          # record the digest with your results
 # (a locally BUILT image also needs `podman-hpc migrate <tag>` to be visible
 #  on compute nodes; pulled images are migrated automatically)
 
-sbatch debug_gpu.sbatch              # runs the built-in smoke test:
+sbatch -A "$NERSC_PROJECT" debug_gpu.sbatch   # runs the built-in smoke test:
                                      #   GPUs visible, abtem/cupy/torch/gpaw versions,
                                      #   a small abTEM multislice on the GPU,
                                      #   4-rank Cray-MPICH world
@@ -268,7 +268,7 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
   64 GB works out to 38 cores at the node's ~1.7 GB per logical core, so
   spelling out the memory share is what breaks the request. Ask for
   `--cpus-per-task=$((32 * gpus))` and nothing else; the slice arrives with
-  its proportional memory (~55 GB per GPU) regardless. `sbatch --test-only`
+  its proportional memory (~55 GB per GPU) regardless. `sbatch --test-only -A "$NERSC_PROJECT" ...`
   checks a template against the queue rules without charging anything.
 - **`salloc <command>` runs the command on the LOGIN node.** Only `srun`
   steps land on the allocated node. `salloc` with *no* command is the case
@@ -300,7 +300,7 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
 One row per template or script; the second column is what the repository records about
 running it on Perlmutter: a job ID and date where the repo has one, "run, not recorded"
 where it only says the script was run, otherwise "not yet run". The group should test
-every template systematically (short time limit, e.g. `sbatch -t 00:10:00`; note the job
+every template systematically (short time limit, e.g. `sbatch -A "$NERSC_PROJECT" -t 00:10:00`; note the job
 ID, date, image digest and result in the PR) and update this table.
 
 | Template / script | Recorded on Perlmutter |

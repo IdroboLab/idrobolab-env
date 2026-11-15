@@ -17,10 +17,13 @@ there. Everything heavier runs on **compute nodes**: either interactively with
 
 Jobs are charged in node-hours to the group allocation:
 
-- **`-A <project>`** for CPU jobs (`-C cpu`)
-- **`-A <project>_g`** for GPU jobs (`-C gpu`)
+**`-A "$NERSC_PROJECT"`**, for CPU jobs (`-C cpu`) and GPU jobs (`-C gpu`) alike; the `_g` suffix
+that older NERSC pages show is no longer needed.
 
-The hours left are shown in <https://iris.nersc.gov> under project <project>. A whole node
+`<project>` is your NERSC project, which `setup-user.sh` exports as `$NERSC_PROJECT`
+([page 2](02-shell-setup.md)); the examples on this page and the job templates carry the
+placeholder where it goes. The hours left are shown in <https://iris.nersc.gov> under your
+project. A whole node
 costs one node-hour per hour **whether you use it or not**, so an idle interactive
 session burns hours too.
 
@@ -72,16 +75,16 @@ A job can declare the file systems it uses as Slurm **licenses**, with `-L` / `-
 
 ```bash
 # 1 GPU (the usual choice)
-salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
+salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32 --gpus-per-task=1
 
 # 2 GPUs: note --gpus=2, not --gpus-per-task=2 (the shared queue rejects that)
-salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 64 --gpus=2
+salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 64 --gpus=2
 
 # a whole GPU node (4 GPUs)
-salloc -C gpu -q interactive -A <project>_g -t 01:00:00 -N 1 --gpus 4
+salloc -C gpu -q interactive -A "$NERSC_PROJECT" -t 01:00:00 -N 1 --gpus 4
 
 # part of a CPU node: 16 cores, ~60 GB
-salloc -C cpu -q shared_interactive -A <project> -t 01:00:00 -n 1 -c 32
+salloc -C cpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32
 ```
 
 `hostname` should now print a compute node (`nid...`), not `login...`. Run programs
@@ -101,8 +104,12 @@ argument:
 
 ```bash
 cd /global/cfs/cdirs/<project>/projects/<name>/<project>  # output files land here
-sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
+sbatch -A "$NERSC_PROJECT" ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 ```
+
+Each template's `#SBATCH --account=` line holds the placeholder `<project>`, and Slurm
+rejects a job that still carries it. Give the account on the command line as above, or
+replace the placeholder in your copy of the template.
 
 | Template | Resources |
 |---|---|
@@ -111,21 +118,21 @@ sbatch ~/idrobolab-env/perlmutter/jobs/gpu_1gpu_shared.sbatch my_script.py
 | `gpu_2gpu_shared.sbatch` | 2 GPUs, shared, 4 h |
 | `gpu_4gpu_node.sbatch` / `gpu_4gpu_hbm80g.sbatch` | a whole node, 4×A100 40 GB / 80 GB |
 | `gpu_multinode_mpi.sbatch` | 2 nodes, one MPI rank per GPU |
-| `ptyrad_1gpu_shared.sbatch` / `ptyrad_2gpu_shared.sbatch` / `ptyrad_4gpu_node.sbatch` | ptyrad: `sbatch <template> params.yaml` on 1, 2 or 4 GPUs; with `SEEDS=random sbatch ...` the 2- and 4-GPU ones run independent reconstructions instead, each with its own random seed (`SEEDS=<n>`: seeds n, n+10⁶, …). A run given no seed (`--seed`, or `init_params.random_seed` in the params) gets a random one, which ptyrad logs; `--seed <k>` on the same template repeats that run's random choices (initial guesses, batch orders), not its bits; one run of an independent-runs job repeats on the 1-GPU template, its seed being in its folder name. `SEEDS` overrides `init_params.random_seed`. One GPU is the default |
+| `ptyrad_1gpu_shared.sbatch` / `ptyrad_2gpu_shared.sbatch` / `ptyrad_4gpu_node.sbatch` | ptyrad: `sbatch -A "$NERSC_PROJECT" <template> params.yaml` on 1, 2 or 4 GPUs; with `SEEDS=random sbatch -A "$NERSC_PROJECT" ...` the 2- and 4-GPU ones run independent reconstructions instead, each with its own random seed (`SEEDS=<n>`: seeds n, n+10⁶, …). A run given no seed (`--seed`, or `init_params.random_seed` in the params) gets a random one, which ptyrad logs; `--seed <k>` on the same template repeats that run's random choices (initial guesses, batch orders), not its bits; one run of an independent-runs job repeats on the 1-GPU template, its seed being in its folder name. `SEEDS` overrides `init_params.random_seed`. One GPU is the default |
 | `gpaw_cpu_singlenode.sbatch` / `gpaw_cpu_multinode.sbatch` | GPAW with MPI on 1 / 4 CPU nodes |
 | `abtem_uv_gpu_shared.sbatch` | 1 or 2 GPUs, shared: abTEM from your own uv environment instead of the container ([page 7](07-abtem.md)) |
 | `abtem_uv_gpu_node.sbatch` | a whole node: four independent single-GPU abTEM runs (a sweep) from your uv environment |
 
 To change the time, name or resources, copy a template into your project folder and
 edit its `#SBATCH` lines, or override them on the command line
-(`sbatch -t 08:00:00 -J myrun ...`). Keep the `#SBATCH --licenses=` line matching what your copy touches (see above). Details and pitfalls: [`../jobs/README.md`](../../perlmutter/jobs/README.md).
+(`sbatch -A "$NERSC_PROJECT" -t 08:00:00 -J myrun ...`). Keep the `#SBATCH --licenses=` line matching what your copy touches (see above). Details and pitfalls: [`../jobs/README.md`](../../perlmutter/jobs/README.md).
 
 A minimal job of your own, here a uv script ([page 5](05-python-uv.md)) on part of a
 CPU node:
 
 ```bash
 #!/bin/bash
-#SBATCH -A <project>
+#SBATCH -A <project>             # your NERSC project (or: sbatch -A "$NERSC_PROJECT")
 #SBATCH -C cpu
 #SBATCH -q shared
 #SBATCH -n 1
@@ -141,7 +148,8 @@ export OMP_NUM_THREADS=8
 srun uv run --script analyse.py
 ```
 
-Submit it with `sbatch analysis.sbatch`. `sbatch --test-only analysis.sbatch` checks
+Submit it with `sbatch -A "$NERSC_PROJECT" analysis.sbatch` (or replace `<project>` in the
+file). `sbatch --test-only -A "$NERSC_PROJECT" analysis.sbatch` checks
 the request against the queue rules without submitting it.
 
 ## Watching your jobs
@@ -154,7 +162,7 @@ the request against the queue rules without submitting it.
 | Why is it pending? | `squeue --me -o "%i %q %T %r"`, or `scontrol show job <jobid>` |
 | Cancel one / all of mine | `scancel <jobid>` / `scancel -u $USER` |
 | Finished jobs of the last week | `sacct -X --starttime=now-7days --format=JobID,JobName%20,QOS,State,Elapsed,ExitCode` |
-| Hours left | <https://iris.nersc.gov> → project <project> |
+| Hours left | <https://iris.nersc.gov> → your project |
 | Disk usage | `showquota` ([page 3](03-storage-and-transfer.md#checking-usage)) |
 | Outages and maintenance | <https://www.nersc.gov/live-status/motd/> |
 

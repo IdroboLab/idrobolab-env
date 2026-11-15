@@ -70,7 +70,7 @@ done
 # Jupyter does not search there by default; each user runs --link once.
 if [ -n "${SHARED:-}" ]; then
     [ -n "$PREFIX" ] && die "--shared and --prefix are mutually exclusive"
-    PREFIX="/global/common/software/${NERSC_PROJECT:-<project>}/share/jupyter"
+    PREFIX="/global/common/software/${NERSC_PROJECT:?export NERSC_PROJECT=<project> (setup-user.sh writes it into your shell profile)}/share/jupyter"
 fi
 KERNEL_ROOT="${PREFIX:-$HOME/.local/share/jupyter}/kernels"
 
@@ -92,7 +92,7 @@ fi
 # found with nothing else to configure. The kernel.json stays in the project
 # tree, so the maintainer updates it for everyone in one place.
 if [ -n "${LINK:-}" ]; then
-    [ "$LINK" = default ] && LINK="/global/common/software/${NERSC_PROJECT:-<project>}/share/jupyter"
+    [ "$LINK" = default ] && LINK="/global/common/software/${NERSC_PROJECT:?export NERSC_PROJECT=<project> (setup-user.sh writes it into your shell profile)}/share/jupyter"
     src="${LINK%/}/kernels"
     [ -d "$src" ] || die "no kernels directory at $src"
     dest="$HOME/.local/share/jupyter/kernels"
@@ -327,8 +327,8 @@ kernel_json > "$DEST/kernel.json"
 # A shared kernel is useless if the group cannot read it, and the default umask
 # on a personal file leaves it 0600. Same problem install-uv.sh exists to solve.
 if [ -n "${SHARED:-}" ]; then
-    chgrp -R "${NERSC_PROJECT:-<project>}" "$DEST" 2>/dev/null \
-        || echo "WARNING: could not chgrp $DEST to ${NERSC_PROJECT:-<project>}" >&2
+    chgrp -R "${NERSC_PROJECT}" "$DEST" 2>/dev/null \
+        || echo "WARNING: could not chgrp $DEST to ${NERSC_PROJECT}" >&2
     chmod -R g+rX "$DEST" 2>/dev/null \
         || echo "WARNING: could not make $DEST group-readable" >&2
 fi

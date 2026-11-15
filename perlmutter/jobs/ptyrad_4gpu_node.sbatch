@@ -10,8 +10,8 @@
 # Charging: walltime x 1 node x 1.0 — i.e. 4x what ptyrad_1gpu_shared.sbatch
 # costs per hour.
 #
-# Usage:  sbatch ptyrad_4gpu_node.sbatch params.yaml [ptyrad run options...]
-#         SEEDS=random sbatch ptyrad_4gpu_node.sbatch params.yaml [ptyrad run options...]
+# Usage:  sbatch -A "$NERSC_PROJECT" ptyrad_4gpu_node.sbatch params.yaml [ptyrad run options...]
+#         SEEDS=random sbatch -A "$NERSC_PROJECT" ptyrad_4gpu_node.sbatch params.yaml [ptyrad run options...]
 #
 # The first form splits one reconstruction over the 4 GPUs. The second runs
 # 4 independent reconstructions instead, one per GPU, each with its own
@@ -25,7 +25,7 @@
 # seed given, the job draws a random one (Seeds, below).
 #
 #SBATCH --job-name=ptyrad_4gpu
-#SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=gpu
 #SBATCH --qos=regular
 #SBATCH --nodes=1

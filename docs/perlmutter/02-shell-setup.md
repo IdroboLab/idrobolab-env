@@ -1,5 +1,11 @@
 # 2. Shell and group setup
 
+> **Existing members:** run `~/idrobolab-env/perlmutter/helpers/setup-user.sh` once after
+> you update your clone (`git pull`). `env.sh` no longer assumes the group's NERSC
+> project, so a shell that has not been through the script loses the shared container
+> store and `cdp`. The script takes the project from your existing block and adds the one
+> `export NERSC_PROJECT=...` line to it; it asks nothing.
+
 One-time setup on a Perlmutter login node: git access to GitHub, your clone of
 `idrobolab-env`, a nicer prompt (optional), then the group environment. It builds on the
 GitHub account and SSH key from the [GitHub page](../01-github.md). **Do the steps in
@@ -88,10 +94,14 @@ Run the group setup script once:
 ~/idrobolab-env/perlmutter/helpers/setup-user.sh
 ```
 
-The script:
+The script needs your NERSC project, the `<project>` you pass to `sbatch -A` (the PI
+knows it). It takes it from `--project NAME`, else from an exported `NERSC_PROJECT`, else
+from the marker of a block an earlier version wrote, else it asks. Then it:
 
-1. Adds a short, marked block to `~/.bashrc` that sources the group's
-   [`env.sh`](../../perlmutter/env.sh).
+1. Adds a short, marked block to `~/.bashrc` that exports `NERSC_PROJECT=<project>` and
+   sources the group's [`env.sh`](../../perlmutter/env.sh). A block written by an earlier
+   version gets the export added when you re-run the script. Without `NERSC_PROJECT`,
+   `env.sh` prints a one-line hint and sets nothing that depends on the project.
 2. Links the group's shared Jupyter kernels into your account
    ([page 8](08-jupyter.md)).
 3. Checks the things that otherwise break later: that you are in the `<project>` group,
@@ -146,7 +156,7 @@ same shell as the command.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `NERSC_PROJECT` | `<project>` | The NERSC project; the root and store paths below derive from it |
+| `NERSC_PROJECT` | none; `setup-user.sh` writes it into your block | The NERSC project; the root and store paths below derive from it |
 | `IDROBOLAB_ENV_PROJECT_ROOT` | `/global/cfs/cdirs/$NERSC_PROJECT` | The project's CFS root, which holds `podman-hpc/` and `projects/`. Must lie under `/global/cfs/` |
 | `IDROBOLAB_ENV_PROJECT_DIR` | `$IDROBOLAB_ENV_PROJECT_ROOT/projects` | Where `cdp` goes; set it to your own subdirectory (`.../projects/<name>`) to land there |
 | `IDROBOLAB_ENV_ALIASES` | `1` | `0` turns off the `cds`, `cdp`, `q`, `sr` and `sp` aliases |

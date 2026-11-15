@@ -17,7 +17,7 @@
 # NIONSWIFT_* environment variables of the same names).
 set -euo pipefail
 
-ACCOUNT="${NIONSWIFT_ACCOUNT:-<project>}"
+ACCOUNT="${NIONSWIFT_ACCOUNT:-${NERSC_PROJECT:?export NERSC_PROJECT=<project> (setup-user.sh writes it into your shell profile)}}"
 ENV="${NIONSWIFT_ENV:-/global/common/software/${ACCOUNT}/venvs/nionswift-py313}"
 DEFAULT_MEM_GB="${NIONSWIFT_DEFAULT_MEM_GB:-64}"
 DEFAULT_TIME="${NIONSWIFT_DEFAULT_TIME:-4:00:00}"

@@ -1,6 +1,6 @@
 # idrobolab-env
 
-The IdroboLab group's environments for NERSC Perlmutter (project <project>) and NCSA Delta:
+The IdroboLab group's environments for NERSC Perlmutter and NCSA Delta:
 shell setup, Slurm job templates, the `idrobolab` container recipe, Jupyter and Nion
 Swift setup on Perlmutter, and the documentation for new group members.
 
@@ -59,7 +59,7 @@ Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/` 
 
 This repo was split out of the `hpcenvs` repo: its Perlmutter and Delta directories moved
 here with their history, and `hpcenvs` holds nothing this repo needs any more.
-The `# >>> idrobolab-env (<project>) >>>` block that `setup-user.sh` writes into your shell
+The `# >>> idrobolab-env >>>` block that `setup-user.sh` writes into your shell
 startup file and the `IDROBOLAB_ENV_*` variables were `hpcenvs` and `HPCENVS_*` before the
-split. The old marker is still recognised, so existing setups go on working; the old
-variables are not.
+split. The old marker (also with the project in it, `idrobolab-env (<project>)`) is still
+recognised, so existing setups go on working; the old variables are not.

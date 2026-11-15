@@ -7,7 +7,7 @@
 #   1 GPU -> 16 physical cores + 64 GB -> 0.25 node-hour per wallclock hour
 # Max walltime 48 h, max half a node.
 #
-# Usage:  sbatch ptyrad_1gpu_shared.sbatch params.yaml [ptyrad run options...]
+# Usage:  sbatch -A "$NERSC_PROJECT" ptyrad_1gpu_shared.sbatch params.yaml [ptyrad run options...]
 #
 # The params file is a ptyrad .yaml (`ptyrad get-templates` writes starters);
 # relative paths in it resolve against the directory you submit from. Options
@@ -15,7 +15,7 @@
 # seed given, the job draws a random one (Seeds, below).
 #
 #SBATCH --job-name=ptyrad_1gpu
-#SBATCH --account=<project>_g               # override with sbatch -A; see jobs/README.md on _g
+#SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=gpu
 #SBATCH --qos=shared
 #SBATCH --nodes=1

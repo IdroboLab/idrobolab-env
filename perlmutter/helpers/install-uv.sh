@@ -6,10 +6,10 @@
 # rest of the project off — exactly the failure this script exists to
 # prevent; `cp -p` from a home directory does the same).
 #
-# The project group is $NERSC_PROJECT (default <project>), matching env.sh.
+# The project group is $NERSC_PROJECT, matching env.sh.
 set -euo pipefail
 
-PROJECT="${NERSC_PROJECT:-<project>}"
+PROJECT="${NERSC_PROJECT:?export NERSC_PROJECT=<project> (setup-user.sh writes it into your shell profile)}"
 BIN_DIR="/global/common/software/${PROJECT}/bin"
 
 mkdir -p "$BIN_DIR"

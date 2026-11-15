@@ -1,6 +1,6 @@
 # Perlmutter: getting started
 
-A step-by-step introduction for group members (NERSC project **<project>**), from a new
+A step-by-step introduction for group members, from a new
 account to running jobs, Python, the group container, Jupyter and Nion Swift. Work
 through the pages in order; each builds on the ones before. The pages are part of the
 group repository [IdroboLab/idrobolab-env](https://github.com/IdroboLab/idrobolab-env),
@@ -44,7 +44,8 @@ Six things to remember:
 
 1. Your login key comes from `sshproxy` and lasts **24 hours**.
 2. **Login nodes are shared:** run real work on compute nodes.
-3. CPU jobs are charged to **`<project>`**, GPU jobs to **`<project>_g`**. For 1–2 GPUs, use
+3. Jobs are charged to **`<project>`**, your group's NERSC project (`$NERSC_PROJECT`), CPU
+   and GPU jobs alike. For 1–2 GPUs, use
    the **shared** QOS; it is up to 4× cheaper than booking a whole node.
 4. **`$SCRATCH` is purged** after 8 weeks without access: keep results on CFS
    (`/global/cfs/cdirs/<project>`).
@@ -57,8 +58,8 @@ Six things to remember:
 |---|---|
 | New login key (on your laptop, daily) | `sshproxy -u <username>` |
 | Log in | `ssh perlmutter` |
-| Interactive 1-GPU session | `salloc -C gpu -q shared_interactive -A <project>_g -t 01:00:00 -n 1 -c 32 --gpus-per-task=1` |
-| Submit / cancel a job | `sbatch job.sbatch` / `scancel <jobid>` |
+| Interactive 1-GPU session | `salloc -C gpu -q shared_interactive -A "$NERSC_PROJECT" -t 01:00:00 -n 1 -c 32 --gpus-per-task=1` |
+| Submit / cancel a job | `sbatch -A "$NERSC_PROJECT" job.sbatch` / `scancel <jobid>` |
 | My jobs | `squeue --me` (alias `q`) or `sqs` |
 | Disk usage | `showquota` |
 | Hours left | <https://iris.nersc.gov> |
@@ -75,7 +76,7 @@ it, in the wording NERSC gives for our allocation:
 > U.S. Department of Energy under Contract No. DE-AC02-05CH11231 using NERSC award
 > BES-ERCAP0038959.
 
-BES-ERCAP0038959 is the award for project <project>. Source:
+BES-ERCAP0038959 is the award for the group's project. Source:
 <https://www.nersc.gov/users/become-a-nersc-user/acknowledgement>.
 
 ## Help

@@ -1,11 +1,11 @@
-# IdroboLab group rules (NERSC project <project>)
+# IdroboLab group rules (NERSC Perlmutter)
 
 These rules add to NERSC's guidance above and never relax it. Details are in the
 group's Perlmutter pages, `~/idrobolab-env/docs/perlmutter/` (clone path may differ).
 
 ## Jobs
 
-- Accounts: `-A <project>` for CPU jobs, `-A <project>_g` for GPU jobs.
+- Account: `-A "$NERSC_PROJECT"` (`$NERSC_PROJECT`) for CPU and GPU jobs; no `_g` suffix.
 - 1 or 2 GPUs go to the `shared` / `shared_interactive` QOS, with the CPU count given
   explicitly: `-c 32` for 1 GPU, `-c 64` for 2. Whole nodes (`interactive`, `regular`)
   only for work that uses all four GPUs. See `docs/perlmutter/04-jobs.md`.
