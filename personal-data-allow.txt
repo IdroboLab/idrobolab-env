@@ -30,3 +30,8 @@ perlmutter/jobs/interactive_jupyter.sh	path	/global/cfs/cdirs/}
 perlmutter/jobs/ptyrad_1gpu_shared.sbatch	path	/global/cfs/cdirs/}
 perlmutter/jobs/ptyrad_2gpu_shared.sbatch	path	/global/cfs/cdirs/}
 perlmutter/jobs/ptyrad_4gpu_node.sbatch	path	/global/cfs/cdirs/}
+
+# The public URL of the public hpcenv-core repository, which core/ is synced from; it names the
+# repository owner's GitHub account, as hpcenv-core's own allow list records.
+README.md	extra	github.com/pzeiger/hpcenv-core
+.github/workflows/core-sync.yml	extra	github.com/pzeiger/hpcenv-core
