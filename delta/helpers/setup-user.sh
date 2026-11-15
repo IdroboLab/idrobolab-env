@@ -28,83 +28,22 @@
 # replaced: --undo, then run it again.
 set -euo pipefail
 
-GHMAIL="" CHECK=0 UNDO=0 PROJ=""
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --check)   CHECK=1; shift ;;
-        --github-email) { [ $# -ge 2 ] && [ -n "$2" ]; } || { echo "--github-email needs an address" >&2; exit 1; }
-                   GHMAIL=$2; shift 2 ;;
-        --undo)    UNDO=1;  shift ;;
-        --project) [ $# -ge 2 ] || { echo "--project needs a name" >&2; exit 1; }
-                   PROJ=$2; shift 2 ;;
-        -h|--help) sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'; exit 0 ;;
-        *) echo "unknown option: $1 (try --help)" >&2; exit 1 ;;
-    esac
-done
-
 HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-# shellcheck source=../../shared/helpers/github-identity.sh
-. "$(dirname "$(dirname "$HELPERS")")/shared/helpers/github-identity.sh"
-if [ -n "$GHMAIL" ] && ! github_identity_valid "$GHMAIL"; then
-    echo "not an e-mail address: $GHMAIL" >&2
-    exit 1
-fi
+# shellcheck source=../../core/shell/setup-user-common.sh
+. "$(dirname "$(dirname "$HELPERS")")/core/shell/setup-user-common.sh"
+SETUP_USER_NAME=idrobolab-env
+SETUP_USER_PROJECT_NOUN="a name"
+setup_user_parse_args "$@"
+setup_user_validate
 ENVSH="$(dirname "$HELPERS")/env.sh"
 RC="$HOME/.bashrc"
 MARK="# >>> idrobolab-env (delta) >>>"
 ENDMARK="# <<< idrobolab-env (delta) <<<"
 
-WARNINGS=0
-ok()   { printf '  ok    %s\n' "$*"; }
-warn() { printf '  warn  %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
-act()  { printf '  did   %s\n' "$*"; }
-more() { printf '        %s\n' "$*"; }   # second line of a warning: not counted again
-
-if [ "$CHECK" = 1 ] && [ "$UNDO" = 1 ]; then
-    echo "--check and --undo exclude each other" >&2
-    exit 1
-fi
-
 # --- undo: remove our block, leave everything else alone ---------------------
-if [ "$UNDO" = 1 ]; then
-    github_identity_undo
-    if [ -f "$RC" ] && grep -qxF "$MARK" "$RC"; then
-        # One start marker with one end marker below it; with anything else
-        # the range below would cut to the end of the file.
-        starts=$(grep -nxF "$MARK" "$RC" | cut -d: -f1 || true)
-        ends=$(grep -nxF "$ENDMARK" "$RC" | cut -d: -f1 || true)
-        case "$starts:$ends" in
-            *[!0-9:]*|:*|*:) starts=0; ends=0 ;;
-        esac
-        if [ "$starts" -ge "$ends" ]; then
-            echo "$RC: the idrobolab-env markers are not one start line followed by one" >&2
-            echo "  end line; nothing changed. Remove the block by hand." >&2
-            exit 1
-        fi
-        cp -p "$RC" "$RC.idrobolab-env-backup"
-        sed -i --follow-symlinks "/^${MARK}\$/,/^${ENDMARK}\$/d" "$RC"
-        # ...and the blank lines at the end of the file, which removes the one
-        # written before the block when the block was the last thing added.
-        sed -i --follow-symlinks -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$RC"
-        echo ">> removed the idrobolab-env block from $RC (backup: $RC.idrobolab-env-backup)"
-        echo "   Open a new shell; the current one still has env.sh applied."
-    else
-        echo ">> no idrobolab-env block found in $RC"
-    fi
-    exit 0
-fi
+if [ "$UNDO" = 1 ]; then setup_user_undo; fi
 
-echo "idrobolab-env user setup: Delta"
-[ "$CHECK" = 1 ] && echo "(--check: reporting only, nothing will be changed)"
-echo
-
-# The address commits in GitHub repositories carry. Set here, before anything
-# below can stop the script: it does not depend on the cluster or the project.
-if [ -n "$GHMAIL" ] && [ "$CHECK" = 0 ]; then
-    github_identity_set "$GHMAIL"
-    act "GitHub repositories now commit as $GHMAIL (~/.gitconfig-github)"
-    echo
-fi
+setup_user_begin "idrobolab-env user setup: Delta"
 
 # --- 1. project --------------------------------------------------------------
 echo "1. Delta project"
@@ -130,9 +69,7 @@ if [ -z "$PROJ" ]; then
 fi
 if [ -z "$PROJ" ]; then
     warn "no Delta project: run with --project NAME (see the \`accounts\` command)"
-    echo
-    echo "$WARNINGS warning(s) above."
-    exit 1
+    setup_user_stop
 fi
 # The name is written into ~/.bashrc and becomes part of two paths.
 case "$PROJ" in
@@ -148,9 +85,7 @@ DELTA_PROJECT=$PROJ
 if [ -z "${SCRATCH_BASE:-}" ]; then
     warn "env.sh sets nothing for $PROJ: /scratch/$PROJ is not a directory here (wrong"
     more "project name, or this is not Delta); ~/.bashrc unchanged"
-    echo
-    echo "$WARNINGS warning(s) above."
-    exit 1
+    setup_user_stop
 fi
 ok "$PROJ  (SCRATCH_BASE=$SCRATCH_BASE  PROJECTS_BASE=$PROJECTS_BASE)"
 echo
@@ -167,17 +102,7 @@ if [ -f "$RC" ] && grep -qxF "$MARK" "$RC"; then
 elif [ "$CHECK" = 1 ]; then
     warn "$RC has no idrobolab-env block (run without --check to add it)"
 else
-    {
-        echo ""
-        echo "$MARK"
-        echo "# Added by setup-user.sh. Safe to source anywhere: env.sh is silent,"
-        echo "# idempotent, and does nothing off Delta."
-        echo "export DELTA_PROJECT=$PROJ"
-        echo "if [ -r \"$ENVSH\" ]; then . \"$ENVSH\"; fi"
-        echo "$ENDMARK"
-    } >> "$RC"
-    act "added the block to $RC"
-    act "run '. $RC' or open a new shell to pick it up now"
+    setup_user_add_block DELTA_PROJECT "$PROJ" Delta
 fi
 # env.sh keeps a value that is already set, so an assignment elsewhere in
 # ~/.bashrc decides instead of it.
@@ -195,21 +120,9 @@ echo
 # --- 3. the things that break later -----------------------------------------
 echo "3. checks"
 CACHE=$APPTAINER_CACHEDIR
-if [ -d "$CACHE" ]; then
-    ok "apptainer cache directory exists: $CACHE"
-elif [ "$CHECK" = 1 ]; then
-    warn "no apptainer cache directory yet: $CACHE (run without --check to create it)"
-elif mkdir -p "$CACHE"; then
-    act "created $CACHE"
-else
-    warn "could not create $CACHE"
-fi
+setup_user_cache_dir "$CACHE"
 
-if command -v apptainer >/dev/null 2>&1; then
-    ok "apptainer is on PATH"
-else
-    warn "apptainer is not on PATH (are you on a login node?)"
-fi
+setup_user_check_apptainer
 
 if command -v uv >/dev/null 2>&1; then
     ok "uv is on PATH: $(command -v uv)"
@@ -226,10 +139,7 @@ else
 fi
 
 # The address commits in GitHub repositories carry.
-if [ -n "$GHMAIL" ] && [ "$CHECK" = 1 ]; then
-    warn "--github-email is not applied with --check"
-fi
-github_identity_report
+setup_user_github_report
 
 SIF="$PROJECTS_BASE/software/containers/idrobolab.sif"
 if [ -f "$SIF" ]; then
@@ -238,9 +148,4 @@ else
     warn "no image at $SIF yet: see $(dirname "$HELPERS")/get-image.sh"
 fi
 
-echo
-if [ "$WARNINGS" -eq 0 ]; then
-    echo "All good."
-else
-    echo "$WARNINGS warning(s) above."
-fi
+setup_user_summary

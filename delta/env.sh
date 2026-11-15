@@ -13,6 +13,8 @@
 # `set -e` or calls `exit` (either would kill the login shell). Set
 # IDROBOLAB_ENV_VERBOSE=1 before sourcing to see what it did.
 #
+# Bash only: it uses BASH_SOURCE, and core/shell/accounts.sh, which it sources, is bash.
+#
 # Do NOT `chmod +x` this file: it is meant to be sourced, not run.
 
 # The directory test keeps the file inert off Delta and for a mistyped
@@ -66,6 +68,23 @@ if [ -n "${DELTA_PROJECT:-}" ] && [ -d "/scratch/${DELTA_PROJECT}" ]; then
         esac
     fi
     unset _idrobolab_env_bin
+
+    # sbatch and salloc add -A, so that `sbatch template.sbatch` needs no edit of the
+    # template's --account line (core/shell/accounts.sh; its header and core/README.md
+    # describe the variables). The accounts are <project>-delta-cpu and <project>-delta-gpu
+    # (the `accounts` command lists them); a job counts as a GPU job when it asks for a
+    # partition `gpu*` or for GPUs. Exported: the template check and the scripts that source
+    # accounts.sh (jobs/interactive_gpu.sh, get-image.sh) read them.
+    # They are set from the cluster's rules and the project variable each time this file is
+    # sourced, so a value set beforehand is not kept.
+    export HPCENV_ACCOUNT_PROJECT="$DELTA_PROJECT"
+    export HPCENV_ACCOUNT_CPU='{project}-delta-cpu'
+    export HPCENV_ACCOUNT_GPU='{project}-delta-gpu'
+    export HPCENV_ACCOUNT_GPU_PARTITIONS='gpu*'
+    _idrobolab_env_accounts="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/../core/shell/accounts.sh"
+    # shellcheck source=../core/shell/accounts.sh
+    if [ -r "$_idrobolab_env_accounts" ]; then . "$_idrobolab_env_accounts"; fi
+    unset _idrobolab_env_accounts
 fi
 
 # Diagnostics go to stderr, and only in an interactive shell: ~/.bashrc is

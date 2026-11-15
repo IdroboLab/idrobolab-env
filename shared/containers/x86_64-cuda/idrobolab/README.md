@@ -27,8 +27,9 @@ different torch minor means a different fairchem release.
 | `Dockerfile` | The recipe (base: NGC `nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04`) |
 | `requirements-idrobolab.txt` | Curated Python stack — **hand-maintained** (not scraped from a dev venv) |
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
-| `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`) |
-| `publish.sh` | Build + push to `ghcr.io/idrobolab/idrobolab` |
+| `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`), and `lammps-gpu-selftest.sh` from `core/lammps/` |
+| `publish.sh` | Build + push to `ghcr.io/idrobolab/idrobolab`; refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
+| `lammps-gpu-selftest.sh` | Not tracked: `prepare_build_context.sh` stages it from `core/lammps/` (the vendored hpcenv-core) for the Dockerfile's `COPY` |
 
 ### Multi-GPU abTEM (dask-cuda)
 

@@ -5,6 +5,8 @@
 # the old single-level pattern and 5781 staged files slipped into history
 # (purged 2026-08-26).
 shared/containers/**/src/
+# lammps-gpu-selftest.sh, staged from core/lammps/ by prepare_build_context.sh
+shared/containers/x86_64-cuda/idrobolab/lammps-gpu-selftest.sh
 
 # Built container images and exports — never commit (multi-GB)
 *.sif

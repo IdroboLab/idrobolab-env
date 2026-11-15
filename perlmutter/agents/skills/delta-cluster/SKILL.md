@@ -123,6 +123,12 @@ Base and preempt partitions allow 48 h, interactive ones 1 h. The core/RAM figur
 from the node login banners in NCSA's own examples, not from a spec sheet. The partition
 list changes over time, so check with `sinfo -a` before trusting a hard-coded name.
 
+- **The Slurm account is `<project>-delta-cpu` for the CPU partitions and `<project>-delta-gpu` for
+  the GPU ones (`accounts` lists them), charged separately.** With `DELTA_PROJECT` exported and
+  `delta/env.sh` sourced, the `sbatch` and `salloc` functions of `delta/env.sh` add the right `-A`
+  (partition `gpu*` or GPUs requested: `-delta-gpu`, else `-delta-cpu`); an `-A` of the user's own
+  wins, and `srun` is not covered (`docs/delta/README.md`, *`sbatch` and `salloc` add the account*).
+  In a shell that has not sourced `env.sh`, a template's `<project>` placeholder is rejected.
 - **An `-interactive` partition costs 2× the base rate, and you get 1 running + 2 queued
   jobs per user.** It's for quick checks, not for real work.
 - **`-preempt` is half price, but only use it for jobs that checkpoint.** A preempted job

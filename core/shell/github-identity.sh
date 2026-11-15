@@ -1,7 +1,11 @@
 # github-identity.sh: the git e-mail address for GitHub repositories.
-# Sourced by the setup-user.sh scripts, not run. The caller defines ok, warn
-# and act. idrobolab-env and ruszlab-env each carry this file; keep the two
-# copies identical.
+# Sourced by a setup-user.sh script, not run. The caller defines ok and warn
+# (shell/setup-user-common.sh does, with act). Functions: github_identity_valid,
+# github_identity_set, github_identity_effective, github_identity_report,
+# github_identity_undo. They read and write $HOME/.gitconfig-github and the
+# global git config of $HOME, and the reports name the calling script as
+# setup-user.sh.
+# shellcheck shell=bash
 #
 # Commits in a repository with a github.com remote take user.email from
 # ~/.gitconfig-github, which includeIf entries in the global git config pull
@@ -11,6 +15,7 @@
 # public commits and still counts them as contributions.
 
 GITHUB_IDENTITY_FILE="$HOME/.gitconfig-github"
+# shellcheck disable=SC2088  # the tilde is written literally into the git config
 GITHUB_IDENTITY_PATH='~/.gitconfig-github'   # as written into the global config
 # One glob for each way of writing a github.com remote, and beside each a
 # remote of that form for the check in github_identity_effective. The globs

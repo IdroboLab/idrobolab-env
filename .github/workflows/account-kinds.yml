@@ -1,0 +1,44 @@
+# Each sbatch template in perlmutter/jobs/ and delta/jobs/ must get the account of the kind
+# named in that directory's account-kinds.txt when submitted with `sbatch <template>` after
+# sourcing the cluster's env.sh. Stubs stand in for the cluster: NERSC_HOST names Perlmutter
+# and a directory /scratch/<project> stands in for the Delta project's scratch.
+name: account-kinds
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perlmutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install pytest==9.2.0
+          NERSC_HOST=perlmutter NERSC_PROJECT=ab1 bash -c '
+            . perlmutter/env.sh
+            HPCENV_ACCOUNT_CHECK_TABLE="$PWD/perlmutter/jobs/account-kinds.txt" \
+              "$RUNNER_TEMP/venv/bin/pytest" core/shell/test_accounts.py -k test_consumer_template -q'
+
+  delta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install pytest==9.2.0
+          sudo mkdir -p /scratch/ab1
+          DELTA_PROJECT=ab1 bash -c '
+            . delta/env.sh
+            HPCENV_ACCOUNT_CHECK_TABLE="$PWD/delta/jobs/account-kinds.txt" \
+              "$RUNNER_TEMP/venv/bin/pytest" core/shell/test_accounts.py -k test_consumer_template -q'

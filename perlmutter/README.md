@@ -22,7 +22,7 @@ via podman-hpc, OCI/Docker images only).
 | [helpers/](helpers/) | Scripts run by hand on a login node: image pulls, store permissions, shared uv, the Nion Swift launcher |
 | [helpers/update-image.sh](helpers/update-image.sh) | Pull/refresh an image into the shared CFS store (`/global/cfs/cdirs/<project>/podman-hpc`). Login nodes only |
 | [nersc-filesystem-guard.md](../docs/perlmutter/reference/nersc-filesystem-guard.md) | NERSC's hook that checks every Bash command an AI agent runs for broad filesystem scans: what it blocks, harmless `grep -r` regexes it blocks too, and how to write those |
-| [env.sh](env.sh) | Source from `~/.bashrc`: `PODMANHPC_ADDITIONAL_STORES` and friends, plus interactive aliases (`cds` `cdp` `q` `sr` `sp`). Silent, idempotent, inert off Perlmutter |
+| [env.sh](env.sh) | Source from `~/.bashrc`: `PODMANHPC_ADDITIONAL_STORES` and friends, plus interactive aliases (`cds` `cdp` `q` `sr` `sp`) and `sbatch`/`salloc` functions that add `-A "$NERSC_PROJECT"`. Silent, idempotent, inert off Perlmutter |
 
 ## Conventions
 

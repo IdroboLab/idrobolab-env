@@ -12,12 +12,18 @@
 # The image is public, so nothing untracked may reach it: a working tree holds
 # agent session data (.claude/), other branches' worktrees (.worktrees/),
 # caches and local scratch files.
+#
+# It also stages lammps-gpu-selftest.sh from core/lammps/ (the vendored hpcenv-core)
+# into this directory, where the Dockerfile COPYs it; the staged file is git-ignored,
+# and publish.sh refuses to build when it is missing or differs from the core copy.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 CODE_DIR=${CODE_DIR:-/workspaces/code}
 
 mkdir -p src
+
+cp ../../../../core/lammps/lammps-gpu-selftest.sh lammps-gpu-selftest.sh
 
 # GPAW: staged from its MASTER branch (the committed tree, via git archive),
 # NOT the working tree — the image always carries vanilla gpaw/master no

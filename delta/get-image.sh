@@ -9,7 +9,8 @@
 # `mksquashfs ... malloc(): invalid size (unsorted)`. From inside an salloc shell
 # it uses that allocation instead of queueing a new job.
 #
-#   ACCOUNT=<project>-delta-cpu ./get-image.sh          # see the `accounts` command
+#   ./get-image.sh                                      # account: your -delta-cpu one, from DELTA_PROJECT (delta/env.sh)
+#   ACCOUNT=<project>-delta-cpu ./get-image.sh          # or name it; see the `accounts` command
 #
 # Knobs (env): IMAGE, TAG, SIF; PARTITION (cpu-interactive: max 1 h, 2.0x charge;
 # use PARTITION=cpu TIME=02:00:00 if a cold-cache download needs longer), TIME,
@@ -29,7 +30,11 @@ if [[ $(hostname -s) == dt-login* && ${NO_SRUN:-0} != 1 ]]; then
         echo ">> in salloc allocation $SLURM_JOB_ID: running the build there"
         exec srun --nodes=1 --ntasks=1 "$SELF"
     fi
-    : "${ACCOUNT:?export ACCOUNT=<project>-delta-cpu (see the accounts command)}"
+    # shellcheck source=../core/shell/accounts.sh
+    . "$(dirname "$SELF")/../core/shell/accounts.sh"
+    # An exported ACCOUNT wins; otherwise the -delta-cpu account env.sh's variables give.
+    ACCOUNT=${ACCOUNT:-$(hpcenv_account cpu || true)}
+    : "${ACCOUNT:?export ACCOUNT=<project>-delta-cpu (see the accounts command), or DELTA_PROJECT=<project> in ~/.bashrc above the idrobolab-env block}"
     PARTITION=${PARTITION:-cpu-interactive}
     echo ">> login node: queueing the build on $PARTITION (Ctrl-C cancels the job)"
     # srun propagates the environment (IMAGE/TAG/SIF/...) and the working

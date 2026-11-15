@@ -17,8 +17,30 @@ The `--account` lines hold the placeholder **`<project>`**, your NERSC project
 (`$NERSC_PROJECT`, exported by `setup-user.sh`): one account for CPU and GPU jobs. Slurm
 rejects a job that still carries the placeholder: pass the account when you submit,
 `sbatch -A "$NERSC_PROJECT" gpu_1gpu_shared.sbatch ...`, which overrides the line, or replace
-the placeholder in your copy. The interactive launchers (`interactive_*.sh`) read
+the placeholder in your copy. With `NERSC_PROJECT` exported and `env.sh` sourced
+(`perlmutter/helpers/setup-user.sh`, in a new shell), `sbatch` and `salloc` add
+`-A "$NERSC_PROJECT"` themselves (see below), so the explicit `-A` is only needed in a shell that has
+not sourced `env.sh`. The interactive launchers (`interactive_*.sh`) read
 `$NERSC_PROJECT` themselves.
+
+## `sbatch` and `salloc` add the account
+
+`env.sh` defines `sbatch` and `salloc` shell functions (from `core/shell/accounts.sh`) that add
+`-A "$NERSC_PROJECT"`, for CPU and GPU jobs alike, so `sbatch gpu_1gpu_shared.sbatch my_script.py`
+needs no `-A` and no edit of the template. An `-A` or `--account` of your own, a non-empty
+`SBATCH_ACCOUNT` or `SALLOC_ACCOUNT`, or an unset `NERSC_PROJECT` leave the command unchanged;
+`srun` is not covered. The project is the value `NERSC_PROJECT` had when `env.sh` was sourced: after
+you change it in a running shell, pass `-A` or source `env.sh` again. [`account-kinds.txt`](account-kinds.txt) lists each template as `cpu` or
+`gpu` (a new template gets a line); the `account-kinds` workflow checks it, or by hand on Perlmutter,
+from the top of a clone, with `pytest` available:
+
+```bash
+. perlmutter/env.sh
+HPCENV_ACCOUNT_CHECK_TABLE="$PWD/perlmutter/jobs/account-kinds.txt" pytest core/shell/test_accounts.py -k test_consumer_template
+```
+
+(an absolute table path). Both kinds get the same account here, so the table checks that every
+listed template is found and gets `-A "$NERSC_PROJECT"`.
 
 **On the `_g` suffix: not needed.** NERSC's [Perlmutter timeline](https://docs.nersc.gov/systems/perlmutter/timeline/)
 records the change (6 June 2022): "Users can now use just -A <account name> (i.e., the extra

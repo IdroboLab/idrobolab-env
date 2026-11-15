@@ -7,9 +7,9 @@
 # run it inside the container ON A GPU NODE to confirm both accelerator paths
 # actually run on the hardware and agree with the CPU reference.
 #
-#   Delta (apptainer):   apptainer exec --nv idrobolab.sif lammps-gpu-selftest
-#   Perlmutter (podman): podman-hpc run --gpu <image> lammps-gpu-selftest
-#   plain docker:        docker run --gpus all <image> lammps-gpu-selftest
+#   apptainer:   apptainer exec --nv <image>.sif lammps-gpu-selftest
+#   podman-hpc:  podman-hpc run --gpu <image> lammps-gpu-selftest
+#   docker:      docker run --gpus all <image> lammps-gpu-selftest
 #
 # It runs a small Lennard-Jones melt three ways — CPU (plain), the GPU package
 # (-sf gpu), and KOKKOS-CUDA (-k on g 1 -sf kk) — and checks that the step-0
@@ -17,6 +17,7 @@
 # identical across backends, so this isolates the pair-kernel result from
 # chaotic trajectory divergence). Exit 0 = PASS, 1 = ran but mismatch/failure,
 # 2 = cannot run (no lmp / no GPU).
+# shellcheck disable=SC2164  # the cd goes into a directory mktemp -d just made
 set -uo pipefail
 
 TOL=${LAMMPS_GPU_SELFTEST_TOL:-1e-2}   # relative tolerance on step-0 TotEng
