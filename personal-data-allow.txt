@@ -1,0 +1,32 @@
+# Exceptions to core/checks/personal_data.py: <path glob> TAB <pattern name> TAB <text>.
+# Each entry names one file and the exact matched text; the reason is the comment above its group.
+
+# Ways of writing a github.com SSH remote (user@host), which look like e-mail addresses.
+README.md	email	git@github.com
+docs/01-github.md	email	git@github.com
+docs/01-github.md	email	git@ssh.github.com
+docs/02-cloning.md	email	git@github.com
+docs/perlmutter/02-shell-setup.md	email	git@github.com
+docs/perlmutter/reference/nionswift-perlmutter-thinlinc.md	email	git@github.com
+
+# Placeholder paths in prose: Globus's public example path, an example home directory.
+docs/03-globus.md	path	/home/share
+docs/perlmutter/03-storage-and-transfer.md	path	/home/me
+
+# Shell glob patterns that strip or match a path prefix; no user name in them.
+perlmutter/helpers/install-jupyter-kernel.sh	path	/global/cfs/cdirs/}
+perlmutter/helpers/setup-nionswift-launcher.sh	path	/global/homes/*|/home
+perlmutter/jobs/debug_gpu.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/gpaw_cpu_multinode.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/gpaw_cpu_singlenode.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/gpu_1gpu_shared.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/gpu_2gpu_shared.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/gpu_4gpu_hbm80g.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/gpu_4gpu_node.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/gpu_multinode_mpi.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/interactive_gpu.sh	path	/global/cfs/cdirs/}
+perlmutter/jobs/interactive_gpu_shared.sh	path	/global/cfs/cdirs/}
+perlmutter/jobs/interactive_jupyter.sh	path	/global/cfs/cdirs/}
+perlmutter/jobs/ptyrad_1gpu_shared.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/ptyrad_2gpu_shared.sbatch	path	/global/cfs/cdirs/}
+perlmutter/jobs/ptyrad_4gpu_node.sbatch	path	/global/cfs/cdirs/}
