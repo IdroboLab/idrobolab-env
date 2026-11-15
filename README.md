@@ -78,6 +78,9 @@ Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/` 
   IdroboLab, and under [Creative Commons Attribution 4.0 International](assets/LICENSE)
   (CC BY 4.0).
 
+The third-party material in the repository, with its sources and licenses, is listed in
+[docs/THIRD-PARTY.md](docs/THIRD-PARTY.md).
+
 ## History
 
 This repo was split out of the `hpcenvs` repo: its Perlmutter and Delta directories moved
