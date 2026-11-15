@@ -18,6 +18,8 @@ They apply on any machine, not only on Perlmutter.
 
 [Contributing](CONTRIBUTING.md) explains how to propose a change to this repository
 (every change reaches `main` through a pull request).
+[Third-party material](THIRD-PARTY.md) lists what in the repository was not written in the
+group, with its source and license.
 
 ## Perlmutter
 

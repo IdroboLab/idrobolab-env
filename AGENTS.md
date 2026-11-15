@@ -18,7 +18,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   so this rule is the only guard: an unreviewed push to `main` reaches every member's
   shell on their next pull. The member-facing workflow is `docs/CONTRIBUTING.md`.
 - All documentation lives in `docs/`: the general pages (`01-github.md`, `02-cloning.md`,
-  `03-globus.md`), `CONTRIBUTING.md`, the Perlmutter section `docs/perlmutter/`, with
+  `03-globus.md`), `CONTRIBUTING.md`, `THIRD-PARTY.md`, the Perlmutter section `docs/perlmutter/`, with
   its reference notes in `docs/perlmutter/reference/`, and the Delta page
   `docs/delta/README.md`. The general and Perlmutter series are numbered in reading
   order, so renaming or adding a page means updating every `[page N]` link and the tables
