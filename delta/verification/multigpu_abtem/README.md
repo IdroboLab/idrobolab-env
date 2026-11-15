@@ -19,11 +19,10 @@ The launchers resolve the payload dir relative to themselves (`PAYLOAD_DIR` over
 ## How the branch abTEM is injected (no venv)
 
 > **Correction (verified 2026-08-18).** The claim below that the container ships
-> abTEM 1.0.9 is **wrong**, and the error matters. The `Dockerfile` of the earlier
-> Delta image (not in this repo) installs abTEM
+> abTEM 1.0.9 is **wrong**, and the error matters. The image installs abTEM
 > *editable from a staged dev checkout* (`COPY src/abTEM /opt/src/abTEM` +
 > `pip install -e`), so which abTEM the image holds depends on what was staged at
-> build time. The current build context stages the dev box's checkout on branch
+> build time. The image checked here was staged from a checkout on branch
 > `dev`, which reports `__version__ = "1.1.0"` and **already contains**
 > `ensure_cuda_cluster` and `is_gpu_dask_client`. Two consequences:
 >
@@ -55,14 +54,14 @@ committed `abtem/_version.py`, so no build or install step is needed.
 
 ## The dask / dask-cuda version knot (handled in the container)
 
-The earlier Delta container image ships `dask 2026.7.0` and `cupy-cuda12x
+The image checked here (2026-08) shipped `dask 2026.7.0` and `cupy-cuda12x
 13.5.1`. The newest released `dask-cuda` (26.6.0) hard-pins
 `rapids-dask-dependency==26.6.*` → `dask==2026.1.1`, and both the container's abTEM and the
 `multi-gpu-support` branch *exclude* `dask 2026.1.*`. A plain `pip install
 dask-cuda` would therefore fail to resolve (or downgrade the whole stack).
 
-The **container build** resolves this once. In the earlier image's
-`Dockerfile` (not in this repo), dask-cuda is installed
+The **container build** resolves this once. In the image's
+[`Dockerfile`](../../../shared/containers/x86_64-cuda/idrobolab/Dockerfile), dask-cuda is installed
 `--no-deps` against the existing `dask 2026.7`, with only its non-dask runtime
 deps added (`nvidia-ml-py`, `cuda-core[cu12]<1.0` — the 1.x line drops the
 `cuda.core.experimental` namespace dask-cuda 26.6 imports). This pairing is
