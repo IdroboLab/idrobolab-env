@@ -3,7 +3,8 @@
 # default). Delta and Perlmutter both consume the same image.
 #
 # Prerequisites:
-#   1. ./prepare_build_context.sh first (stages ./src from /workspaces/code).
+#   1. ./prepare_build_context.sh first (stages ./src from /workspaces/code and
+#      lammps-gpu-selftest.sh from core/lammps/).
 #   2. docker or podman, and GHCR_USER (your GitHub username) and
 #      GITHUB_PACKAGE_TOKEN (a PAT with write:packages) in the environment: the
 #      script logs in to ghcr.io with them.
@@ -19,6 +20,12 @@ ENGINE=${ENGINE:-$(command -v podman || command -v docker || true)}
 
 if [ ! -d src ]; then
     echo "ERROR: build context not staged. Run ./prepare_build_context.sh first" >&2
+    exit 1
+fi
+
+# The Dockerfile COPYs lammps-gpu-selftest.sh from this directory; it is staged from core/.
+if ! cmp -s lammps-gpu-selftest.sh ../../../../core/lammps/lammps-gpu-selftest.sh; then
+    echo "ERROR: lammps-gpu-selftest.sh is missing or differs from core/lammps/. Run ./prepare_build_context.sh again" >&2
     exit 1
 fi
 
