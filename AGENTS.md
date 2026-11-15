@@ -81,12 +81,7 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 
 - The job templates default `SIF` to `$PROJECTS_BASE/software/containers/idrobolab.sif`
   (`get-image.sh` pulls `ghcr.io/idrobolab/idrobolab` into it; on Delta that image has so far
-  run only a 2-node MPI hello-world) and carry the placeholder `<project>-delta-{cpu,gpu}` in their
-  `--account` lines, which stay as they are: `delta/env.sh` exports `HPCENV_ACCOUNT_*` from
-  `DELTA_PROJECT` and sources `core/shell/accounts.sh`, so `sbatch` and `salloc` add the account.
-  A new `delta/jobs/*.sbatch` gets a `cpu`/`gpu` line in `delta/jobs/account-kinds.txt` (the
-  `account-kinds` workflow checks it). `jobs/interactive_gpu.sh` and `get-image.sh` take their
-  default account from `hpcenv_account`. The verification launchers keep the placeholder.
+  run only a 2-node MPI hello-world). Account handling is in `delta/AGENTS.md`.
 - The Python payloads of the multi-GPU verification are shared with Perlmutter in
   `shared/verification/multigpu_abtem/`; the launchers in `delta/verification/` and
   `perlmutter/verification/` locate them relative to themselves. Change a payload once,

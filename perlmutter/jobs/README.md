@@ -29,7 +29,8 @@ not sourced `env.sh`. The interactive launchers (`interactive_*.sh`) read
 `-A "$NERSC_PROJECT"`, for CPU and GPU jobs alike, so `sbatch gpu_1gpu_shared.sbatch my_script.py`
 needs no `-A` and no edit of the template. An `-A` or `--account` of your own, a non-empty
 `SBATCH_ACCOUNT` or `SALLOC_ACCOUNT`, or an unset `NERSC_PROJECT` leave the command unchanged;
-`srun` is not covered. [`account-kinds.txt`](account-kinds.txt) lists each template as `cpu` or
+`srun` is not covered. The project is the value `NERSC_PROJECT` had when `env.sh` was sourced: after
+you change it in a running shell, pass `-A` or source `env.sh` again. [`account-kinds.txt`](account-kinds.txt) lists each template as `cpu` or
 `gpu` (a new template gets a line); the `account-kinds` workflow checks it, or by hand on Perlmutter,
 from the top of a clone, with `pytest` available:
 

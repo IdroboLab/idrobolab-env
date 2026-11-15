@@ -14,7 +14,7 @@ Delta (environment variables, where files live, the editable-install import trap
 |---|---|
 | [delta/env.sh](../../delta/env.sh) | Shell setup, sourced from `~/.bashrc`: `SCRATCH_BASE` and `PROJECTS_BASE`, Apptainer cache on personal scratch, uv cache shared by the project |
 | [delta/helpers/setup-user.sh](../../delta/helpers/setup-user.sh) | Per-user setup: writes the `~/.bashrc` lines for `env.sh`, creates the Apptainer cache directory, reports what is missing (`--check`, `--undo`) |
-| [delta/get-image.sh](../../delta/get-image.sh) | Materialize the Delta `.sif` from the published registry image (from a login node it queues itself on `cpu-interactive`; needs `ACCOUNT=<project>-delta-cpu`) |
+| [delta/get-image.sh](../../delta/get-image.sh) | Materialize the Delta `.sif` from the published registry image (from a login node it queues itself on `cpu-interactive`; on your `<project>-delta-cpu` account unless `ACCOUNT` is set) |
 | [delta/jobs/](../../delta/jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper); its README has the partition matrix and the MPI launch guide |
 | [delta/verification/](../../delta/verification/) | On-node checks: [multi-GPU abTEM](../../delta/verification/multigpu_abtem/README.md) (launchers; the Python payloads are shared with Perlmutter in [`shared/verification/multigpu_abtem/`](../../shared/verification/multigpu_abtem/)) |
 | [delta/AGENTS.md](../../delta/AGENTS.md) | Conventions for Delta, read by coding agents (`delta/CLAUDE.md` imports it) |
@@ -53,8 +53,10 @@ partition or for GPUs (`-G`, `--gpus`, `--gres=gpu`), else `-A <project>-delta-c
 gpu_a100_1gpu.sbatch my_script.py` needs no `-A` and no edit of the template. The partition and
 the GPU request are read from the command line and from the template's `#SBATCH` lines. An `-A` or
 `--account` of your own, a non-empty `SBATCH_ACCOUNT` or `SALLOC_ACCOUNT`, or an unset
-`DELTA_PROJECT` leave the command unchanged. `srun` is not covered. In a shell that has not
-sourced `env.sh`, pass `-A` as before; Slurm rejects a job that still carries the placeholder.
+`DELTA_PROJECT` leave the command unchanged. `srun` is not covered. The project is the value
+`DELTA_PROJECT` had when `env.sh` was sourced: after you change it in a running shell, pass `-A` or
+source `env.sh` again. A shell that has not sourced `env.sh` needs `-A`, because Slurm rejects a job
+that still carries the placeholder.
 
 [`delta/jobs/account-kinds.txt`](../../delta/jobs/account-kinds.txt) lists each template as `cpu`
 or `gpu` (add a line for a new template). The `account-kinds` workflow checks it, or by hand on

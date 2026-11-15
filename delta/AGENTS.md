@@ -41,8 +41,10 @@ go there, not into job scripts.
 `delta/env.sh` also exports `HPCENV_ACCOUNT_*` (`{project}-delta-cpu`, `{project}-delta-gpu`,
 partitions `gpu*`) from `DELTA_PROJECT` and sources `core/shell/accounts.sh`, both inside the
 guard; the variables stay exported because `jobs/interactive_gpu.sh` and `get-image.sh` source
-`accounts.sh` themselves for `hpcenv_account`. A new sbatch template gets a `cpu` or `gpu`
-line in `jobs/account-kinds.txt`.
+`accounts.sh` themselves and default their account from `hpcenv_account`. The job templates keep the
+placeholder `<project>-delta-{cpu,gpu}` in their `--account` lines, as do the verification
+launchers (not in the tables). A new `jobs/*.sbatch` gets a `cpu` or `gpu` line in
+`jobs/account-kinds.txt`; the `account-kinds` workflow checks the listed templates.
 
 ## What lives where
 
