@@ -4,7 +4,7 @@
 #
 # requirements-idrobolab.txt is HAND-MAINTAINED
 # (its packages — nionswift, ptyrad, hiphive, pymatgen, fairchem, … — are not
-# in the ROCm dev venv, so there is nothing to scrape). This script only stages
+# in the maintainer's ROCm dev venv, so no pins are scraped from it). This script only stages
 # the three editable source trees the image installs from /opt/src, each from
 # committed files via git archive, never from the working tree:
 #   gpaw (its MASTER branch; GPAW_REF=<ref> overrides), and gpaw-weaver and
