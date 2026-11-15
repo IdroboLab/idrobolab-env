@@ -53,8 +53,8 @@ done
 # The clone's path as the user reaches it (/global/homes/..., not the physical
 # home path), so the block keeps working if NERSC moves the home directory.
 HELPERS=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-# shellcheck source=../../shared/helpers/github-identity.sh
-. "$(dirname "$(dirname "$HELPERS")")/shared/helpers/github-identity.sh"
+# shellcheck source=../../core/shell/github-identity.sh
+. "$(dirname "$(dirname "$HELPERS")")/core/shell/github-identity.sh"
 if [ -n "$GHMAIL" ] && ! github_identity_valid "$GHMAIL"; then
     echo "not an e-mail address: $GHMAIL" >&2
     exit 1
