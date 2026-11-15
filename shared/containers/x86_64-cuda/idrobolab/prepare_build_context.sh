@@ -2,7 +2,7 @@
 # Stage the build context for the idrobolab container. Run from this directory,
 # then build with docker/podman (see README).
 #
-# Unlike another image's recipe, requirements-idrobolab.txt is HAND-MAINTAINED
+# requirements-idrobolab.txt is HAND-MAINTAINED
 # (its packages — nionswift, ptyrad, hiphive, pymatgen, fairchem, … — are not
 # in the ROCm dev venv, so there is nothing to scrape). This script only stages
 # the three editable source trees the image installs from /opt/src, each from

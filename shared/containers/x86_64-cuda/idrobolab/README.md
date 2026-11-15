@@ -6,15 +6,12 @@ analysis), ML interatomic potentials (**fairchem**, **orb-models**), phonons
 (**phonopy**, **hiphive**), **pymatgen**, **dask**, **jupyterlab** — on CUDA
 12.9 / Python 3.12 / x86_64.
 
-Sibling of another image's recipe (maintained separately, not in this repo): it reuses
-the **identical compiled foundation** (MPICH + FFTW + ScaLAPACK + libxc + libvdwxc +
-GPAW) and swaps the Python stack. Builds and distributes the same way (one image for
-Delta via Apptainer and Perlmutter via podman-hpc).
+One image serves Delta (Apptainer) and Perlmutter (podman-hpc).
 
 ## The one hard constraint: torch 2.13
 
 `fairchem-core` (2.22) pins **`torch~=2.13.0`**, so this image uses **torch 2.13.0**
-(with torchvision 0.28.0), as another image does. At torch 2.13.x, `orb-models`
+(with torchvision 0.28.0). At torch 2.13.x, `orb-models`
 (≥2.8,<3) and `ptyrad` (≥2.4) are all satisfied, and `ase` is pinned `≥3.26` to
 satisfy fairchem + orb-models + pymatgen simultaneously. fairchem v2 dropped
 `torch-geometric`, so there is **no** `data.pyg.org` companion-wheel step. A
@@ -34,7 +31,7 @@ different torch minor means a different fairchem release.
 ### Multi-GPU abTEM (dask-cuda)
 
 The staged abTEM checkout carries the multi-GPU code paths, so the image also
-installs **dask-cuda 26.6.0** with `--no-deps`, matching another image. Without it
+installs **dask-cuda 26.6.0** with `--no-deps`. Without it
 `ensure_cuda_cluster()` raises *"The dask-cuda package is required to distribute
 computations across multiple GPUs"* as soon as `dask.multi-gpu` is enabled —
 loudly, not as a silent fall back to one GPU.
@@ -49,7 +46,7 @@ The Dockerfile block lists which package supplies each skipped dependency; the
 build fails loudly if the install moves `torch` off the 2.13 version fairchem pins.
 
 **Editable** installs from `/opt/src` (bind a cluster checkout over
-`/opt/src/<name>` to run any branch, as in another image): **gpaw** (vanilla
+`/opt/src/<name>` to run any branch): **gpaw** (vanilla
 `master`; `GPAW_REF=<ref>` overrides), **gpaw-weaver** and **abTEM** (the commit
 each dev checkout has checked out), all three staged from committed files by
 `prepare_build_context.sh` (its header says why): commit a change, and `git add`

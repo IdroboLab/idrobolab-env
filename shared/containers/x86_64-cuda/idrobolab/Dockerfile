@@ -4,10 +4,8 @@
 # + ML potentials (fairchem, orb-models) + phonons (phonopy, hiphive) +
 # pymatgen + dask + jupyterlab, on CUDA 12.9 / Python 3.12 / x86_64.
 #
-# Sibling of another image's recipe (maintained separately, not in this repo): it
-# reuses the identical compiled foundation (MPICH/FFTW/ScaLAPACK/libxc/libvdwxc +
-# GPAW) and swaps the Python stack. fairchem-core pins torch~=2.13.0, so this image
-# uses torch 2.13.0. fairchem v2 needs no torch-geometric wheels.
+# fairchem-core pins torch~=2.13.0, so this image uses torch 2.13.0. fairchem v2
+# needs no torch-geometric wheels.
 #
 # Build (host with docker/podman, after ./prepare_build_context.sh):
 #   podman build -t ghcr.io/idrobolab/idrobolab:latest .        # or ./publish.sh to push to ghcr
@@ -216,8 +214,7 @@ RUN uv pip install -r /opt/build/requirements-idrobolab.txt
 # (ensure_cuda_cluster / is_gpu_dask_client); only the runtime was missing, so
 # without this abTEM raises "The dask-cuda package is required to distribute
 # computations across multiple GPUs" the moment dask.multi-gpu is enabled.
-# Same pairing as another image -- see
-# delta/verification/multigpu_abtem/README.md for the full analysis.
+# See delta/verification/multigpu_abtem/README.md for the full analysis.
 #
 # --no-deps is NOT optional. dask-cuda 26.6.0 requires
 # rapids-dask-dependency==26.6.*, which pins dask==2026.1.1 -- one of the exact
@@ -232,8 +229,7 @@ RUN uv pip install -r /opt/build/requirements-idrobolab.txt
 # block collapses to a plain `pip install dask-cuda`.
 #
 # --no-deps means the rest of dask-cuda's requirements must already be here.
-# Audited against its 26.6.0 metadata (checked 2026-08-18) -- do NOT assume the
-# Another image pairing transfers, the two images have different package sets:
+# Audited against its 26.6.0 metadata (checked 2026-08-18):
 #   click>=8.1     <- dask (requires click>=8.1)
 #   cuda-core      <- installed above
 #   numpy          <- ase, torch
