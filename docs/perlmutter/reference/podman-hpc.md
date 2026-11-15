@@ -10,8 +10,7 @@ Dockerfile. **Status: built and published.** `ghcr.io/idrobolab/idrobolab` exist
 public, and has been pulled and **verified end to end on Perlmutter**:
 a 4×A100 abTEM HAADF benchmark scales at <efficiency> with the image
 invariant to GPU count (job <jobid>, which ran under the image's earlier
-registry name; log under `perlmutter/verification/multigpu_abtem/`, analysis in
-`shared/containers/x86_64-cuda/idrobolab/README.md`).
+registry name; analysis in `shared/containers/x86_64-cuda/idrobolab/README.md`).
 
 ## Fit to Perlmutter
 

@@ -13,4 +13,4 @@ containers via Apptainer).
 | [helpers/setup-user.sh](helpers/setup-user.sh) | Per-user setup: writes the `~/.bashrc` block that exports `DELTA_PROJECT` and sources `env.sh`, creates the Apptainer cache directory, reports what is missing (`--check`, `--undo`) |
 | [get-image.sh](get-image.sh) | Materialize the Delta `.sif` from the published registry image (from a login node it queues itself on `cpu-interactive`, on your `-delta-cpu` account unless `ACCOUNT` is set) |
 | [jobs/](jobs/) | Slurm submission templates per partition (cpu single/multi-node MPI, A40/A100/A100x8/H200 GPU, interactive helper) and `account-kinds.txt`; its README has the partition matrix and the MPI launch guide |
-| [verification/multigpu_abtem/](verification/multigpu_abtem/) | abTEM multi-GPU verification + HAADF scaling benchmark (launchers; payloads in [`../shared/verification/multigpu_abtem/`](../shared/verification/multigpu_abtem/)) |
+| [verification/multigpu_abtem/](verification/multigpu_abtem/) | abTEM multi-GPU verification (launcher; payload in [`../shared/verification/multigpu_abtem/`](../shared/verification/multigpu_abtem/)) |

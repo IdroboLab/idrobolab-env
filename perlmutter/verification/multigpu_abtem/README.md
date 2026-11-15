@@ -11,19 +11,15 @@ differ, because Perlmutter runs **podman-hpc** instead of Apptainer.
 |---|---|
 | `setup_env.sh` | Preflight (no venv): confirms the branch abTEM + the container's dask-cuda import together via `PYTHONPATH`. Login node is fine. |
 | `multigpu_verify.sbatch` | Slurm submission for the verification (`-C gpu`, 1 node, 4× A100). |
-| `benchmark_haadf.sbatch` | Slurm submission for the HAADF benchmark — **explicit** `LocalCUDACluster` path. |
-| `benchmark_haadf_auto.sbatch` | Slurm submission for the benchmark via the **automatic** path (`config['dask.multi-gpu']`). |
 | `../../../shared/verification/multigpu_abtem/verify_multigpu.py` | The verification payload — environment report + cluster/coverage/distribution checks. |
-| `../../../shared/verification/multigpu_abtem/benchmark_haadf.py` | Frozen-phonon HAADF benchmark: sweeps 1/2/4 GPUs, reports scaling, checks the image is invariant to GPU count. Explicit cluster. |
-| `../../../shared/verification/multigpu_abtem/benchmark_haadf_auto.py` | Same benchmark through abTEM's automatic cluster init; sweeps counts as subprocesses. |
 
-## The payloads are shared with Delta — on purpose
+## The payload is shared with Delta — on purpose
 
-The `.py` files live in `shared/verification/multigpu_abtem/`, **not** here. Both
+The `.py` file lives in `shared/verification/multigpu_abtem/`, **not** here. Both
 clusters run byte-identical Python from the same container image, so a number
 measured on Perlmutter's A100s is directly comparable with one measured on
 Delta's, and a fix to a check lands on both at once. Only the launchers (`.sbatch`,
-`setup_env.sh`) are per-cluster, and they resolve the payloads relative to
+`setup_env.sh`) are per-cluster, and they resolve the payload relative to
 themselves:
 
 ```bash
@@ -32,7 +28,7 @@ PAYLOAD_DIR=${PAYLOAD_DIR:-$HERE/../../../shared/verification/multigpu_abtem}
 
 `perlmutter/verification/multigpu_abtem/` and `delta/verification/multigpu_abtem/`
 sit at the same depth, so the same `../../../` works in both. Override
-`PAYLOAD_DIR` if you keep the payloads somewhere else. Note that `sbatch` executes
+`PAYLOAD_DIR` if you keep the payload somewhere else. Note that `sbatch` executes
 a **spool copy** of the script, so `BASH_SOURCE` points into the spool directory
 where the payload is absent — the launchers use `$SLURM_SUBMIT_DIR` and only fall
 back to the script's own directory for `bash` runs. **Submit from this
@@ -71,10 +67,7 @@ likely to bite.
   mechanism, and the container does not inherit the submitting shell's
   environment.
 - The container's working directory is not yours either, so every launcher sets
-  `--workdir` explicitly. `multigpu_verify.sbatch` and `benchmark_haadf_auto.sbatch`
-  point it at the submit directory; `benchmark_haadf.sbatch` points it at `$OUT`
-  on `$SCRATCH`, because dask-cuda workers put their spill directory in the CWD
-  and the submit directory is usually the `$HOME` checkout with its 40 GB quota.
+  `--workdir` explicitly. `multigpu_verify.sbatch` points it at the submit directory.
 
 ## How the branch abTEM is injected (no venv)
 
@@ -132,9 +125,8 @@ run of software you did not mean to test.
 **The version string cannot tell you which won**: the container's abTEM and the
 branch can both report `1.1.0`. The only proof is the path. Section 0 prints
 `abtem=<version>  <- <file>`, and `<file>` must be under `$ABTEM_SRC`.
-`setup_env.sh` asserts exactly that on a login node, and all three launchers
-re-assert it in-job and refuse to start otherwise (`benchmark_haadf_auto.sbatch`
-lets you waive its probe with `SKIP_PROBE=1` — don't) — which matters, because
+`setup_env.sh` asserts exactly that on a login node, and `multigpu_verify.sbatch`
+re-asserts it in-job and refuses to start otherwise — which matters, because
 `verify_multigpu.py` on its own would *not* fail the job: an abTEM without
 multi-GPU support is recorded `WARN` (`environment.abtem_multigpu_support`) with
 the abTEM checks `SKIP`ped, and the exit status counts only `FAIL`s. A green job
@@ -171,8 +163,8 @@ Perlmutter GPU nodes are **1× AMD EPYC 7763 (64 physical / 128 logical cores),
 256 GB DDR4, 4× NVIDIA A100 40 GB** (256 nodes carry 80 GB cards, reachable with
 `-C "gpu&hbm80g"`), 4× Slingshot-11. That is the whole menu:
 
-- **GPU-count sweeps top out at 4** (`--gpu-counts 1,2,4`). Delta's launchers
-  carry a commented-out `gpuA100x8` variant next to every `#SBATCH` block (and
+- **GPU counts top out at 4.** Delta's launcher
+  carries a commented-out `gpuA100x8` variant next to its `#SBATCH` block (and
   [`delta/jobs/`](../../../delta/jobs/) adds a `gpuH200x8` template on top of that); those blocks are
   **deliberately absent here** because Perlmutter has no 8-GPU node to switch
   to. Anything wider than 4 GPUs is a multi-node problem, and
@@ -200,19 +192,12 @@ Perlmutter GPU nodes are **1× AMD EPYC 7763 (64 physical / 128 logical cores),
   the `.sbatch` files and the interactive `salloc` below declare them.
 - **Charge** = `walltime × nodes × QOS factor`, on *actual* walltime, with
   Perlmutter's charge factor 1.0. A 10-minute verification on one node costs
-  ~0.17 GPU node-hours; a 3-hour benchmark costs 3.
+  ~0.17 GPU node-hours.
 
 | QOS | Limits | Use it for |
 |---|---|---|
 | `debug` | ≤ 30 min, ≤ 8 nodes, 2 running | `multigpu_verify.sbatch` — it is a 10-minute job and the queue is short |
-| `regular` | ≤ 48 h | the HAADF benchmarks |
 | `interactive` | ≤ 4 h, ≤ 4 nodes, 2 running | poking at the container on a GPU node (`../../jobs/interactive_gpu.sh`) |
-| `shared` | 1–2 GPUs, prorated **0.25 / 0.5** node-hr per hour | a cheap `--gpu-counts 1,2` partial sweep |
-
-The 4-GPU point needs a whole node and therefore `regular`/`debug`; only the
-1- and 2-GPU points fit in `shared`. Running the sweep split across two jobs
-saves a little allocation but loses the property that makes it trustworthy — see
-the note under *Benchmark* below.
 
 ## Run it
 
@@ -274,78 +259,6 @@ whether that image's abTEM carries the multi-GPU code — section 0 says which.
 only `$SCRATCH`, `$CFS`, and `$HOME` and passes no `-e PYTHONPATH`, so anything
 run through it uses the container's abTEM. Use the explicit `-v`/`-e` form above
 whenever you mean to test the branch.
-
-## Benchmark (HAADF: scaling + GPU-count invariance)
-
-`benchmark_haadf.py` runs the **same** frozen-phonon HAADF STEM image simulation
-on 1, 2 and 4 GPUs and reports two things:
-
-- **Scaling** — wall-clock, speedup, and parallel efficiency vs 1 GPU.
-- **Invariance** — that the HAADF image is the *same* regardless of GPU count.
-  This is the correctness gate: spreading frozen-phonon configurations / scan
-  positions across GPUs must not change the answer. The dask graph (including the
-  reduction over phonons) is fixed by the problem, not by the cluster, so on four
-  homogeneous A100s the images should agree to near machine precision — the check
-  reports the actual max relative deviation and PASSes under `--tol` (1e-4).
-
-```bash
-# full node, default STO workload; sweeps 1,2,4 GPUs internally:
-ABTEM_SRC=$ABTEM_SRC sbatch -A "$NERSC_PROJECT" benchmark_haadf.sbatch
-
-# heavier run (bump --time in the sbatch for large workloads):
-... benchmark_haadf.sbatch --configs 32 --supercell 8,8,30 --sampling 0.04
-```
-
-The whole sweep runs in **one job** on one node, so the 1/2/4-GPU images are
-produced by the same process, from the same structure and the same frozen-phonon
-seed, and compared directly in memory. Splitting the sweep across jobs (e.g. the
-1- and 2-GPU points into `shared`) weakens the invariance check to a comparison
-of separate runs — do it to save allocation, not to save time.
-
-Knobs (`--help` for all): `--structure {STO,Si}`, `--supercell nx,ny,nz`
-(z = thickness), `--configs`, `--sampling`, `--energy`, `--convergence`,
-`--inner/--outer` (HAADF angles; outer is clamped to the grid's antialiased
-cutoff and reported), `--scan-sampling`, `--gpu-counts 1,2,4`,
-`--projection {infinite,finite}` (default `infinite`),
-`--precision {float32,float64}` (float64 tightens agreement), `--tol`.
-
-Outputs (in `--output`, default `$SCRATCH/bench_haadf_<jobid>`): the structure as
-`.cif` (for VESTA), `haadf_<n>gpu.npy` per GPU count, a reference PNG and
-difference PNGs, and `results.json` (times, speedups, per-count max deviation,
-`invariance_pass`). Exit status is non-zero if the image is not invariant.
-
-`$SCRATCH` is **purged after 8 weeks without access** — copy anything you intend
-to cite into `$CFS/<project>/` when the run finishes.
-
-### Explicit vs automatic cluster
-
-`benchmark_haadf.py` creates the `dask_cuda.LocalCUDACluster` **explicitly** (and
-sizes each GPU-count run via `CUDA_VISIBLE_DEVICES` on the cluster) — it tests the
-*bring-your-own-client* path.
-
-`benchmark_haadf_auto.py` instead sets `config['dask.multi-gpu'] = True` and lets
-abTEM start the cluster itself (`ensure_cuda_cluster`) — the *automatic* path.
-Because that path always spans **all visible** GPUs, each count runs as a
-**subprocess** with `CUDA_VISIBLE_DEVICES` restricted, so every child exercises
-the auto-init on its own GPUs. (The `n=1` point has one visible GPU, so the auto
-path correctly declines to build a cluster and runs synchronously — that is the
-single-GPU reference.) The children are spawned *inside* the same container and
-inherit `PYTHONPATH` and `CUDA_VISIBLE_DEVICES` from the parent, so the single
-`podman-hpc run` in the launcher covers all of them. Same knobs, same outputs
-(`auto_<n>gpu.npy`, `results.json` with an `auto_cluster_started` flag per count):
-
-```bash
-ABTEM_SRC=$ABTEM_SRC sbatch -A "$NERSC_PROJECT" benchmark_haadf_auto.sbatch
-```
-
-Either benchmark works against the integrated `multi-gpu-on-269` branch — point
-`ABTEM_SRC` at a checkout on that branch to test the multi-GPU work together with
-the #269 GPU-memory improvements. Two caveats when using these benchmarks to
-check #269's claims: its memory-bounded potential chunking only matters at large
-grids (push with `--sampling 0.03 --supercell 10,10,40`), and its per-GPU speedup
-is `--projection finite`, float32 specific. The scaling table here shows
-*multi-GPU* scaling, not #269's per-GPU speedup; for the latter compare absolute
-times of the same run on the two branches at a fixed GPU count.
 
 ## What the checks mean
 
@@ -460,7 +373,6 @@ These launchers follow the conventions in `../../jobs/` (constraint,
 account, QOS, `cpus-per-task`, mount loop) and the podman-hpc patterns in
 `../../../docs/perlmutter/reference/podman-hpc.md`, but **have not been run on Perlmutter yet** — see the
 Status section of `../../jobs/README.md` for the state of the Perlmutter side of
-the image. The *payloads* are the ones exercised from Delta, so a failure here is
+the image. The *payload* is the one exercised from Delta, so a failure here is
 more likely in the launcher (mounts, flags) than in the checks. Start with
-`./setup_env.sh` on a login node, then the `debug`-QOS verification, before
-spending node-hours on a benchmark.
+`./setup_env.sh` on a login node, then the `debug`-QOS verification.

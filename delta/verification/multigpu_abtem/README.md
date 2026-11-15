@@ -4,7 +4,7 @@ Confirms that abTEM actually distributes a GPU simulation across **every GPU on 
 node**, using the multi-GPU support on the abTEM `multi-gpu-support` branch (lazy
 GPU computes routed through a `dask_cuda` cluster, one worker process per GPU).
 
-The three Python payloads are **shared with Perlmutter** and live in
+The Python payload is **shared with Perlmutter** and lives in
 [`shared/verification/multigpu_abtem/`](../../../shared/verification/multigpu_abtem/);
 only the launchers below are Delta-specific. Both clusters therefore run byte-identical
 simulation code, so their numbers are directly comparable — and a fix lands once.
@@ -15,10 +15,6 @@ The launchers resolve the payload dir relative to themselves (`PAYLOAD_DIR` over
 | `../../../shared/verification/multigpu_abtem/verify_multigpu.py` | The verification payload — environment report + cluster/coverage/distribution checks. Portable; runs anywhere with CuPy + dask-cuda. |
 | `setup_env.sh` | Preflight check (no venv): confirms the branch abTEM + container dask-cuda import together via `PYTHONPATH`. |
 | `multigpu_verify.sbatch` | Slurm submission for the verification (`gpuA100x4`; 8-GPU variant inline). |
-| `benchmark_haadf.py` | Frozen-phonon HAADF benchmark: sweeps 1/2/4/… GPUs, reports scaling, and checks the image is invariant to GPU count. Uses an **explicit** `LocalCUDACluster`. |
-| `benchmark_haadf.sbatch` | Slurm submission for the benchmark (`gpuA100x4`; 8-GPU variant inline). |
-| `benchmark_haadf_auto.py` | Same benchmark via the **automatic** path (`config['dask.multi-gpu']`) — no explicit cluster; sweeps counts as subprocesses. |
-| `benchmark_haadf_auto.sbatch` | Slurm submission for the automatic benchmark. |
 
 ## How the branch abTEM is injected (no venv)
 
@@ -151,90 +147,6 @@ still run; only the abTEM-distribution checks are skipped (they need the branch)
 ./interactive_gpu.sh                        # from ../../jobs/, gets you a GPU shell
 apptainer exec --nv $SIF python verify_multigpu.py            # cluster + coverage
 apptainer exec --nv $SIF python verify_multigpu.py --no-cluster   # per-GPU only
-```
-
-## Benchmark (HAADF: scaling + GPU-count invariance)
-
-`benchmark_haadf.py` runs the **same** frozen-phonon HAADF STEM image simulation
-on 1, 2, 4, … GPUs and reports two things:
-
-- **Scaling** — wall-clock, speedup, and parallel efficiency vs 1 GPU.
-- **Invariance** — that the HAADF image is the *same* regardless of GPU count.
-  This is the correctness gate: spreading frozen-phonon configurations / scan
-  positions across GPUs must not change the answer. The dask graph (including the
-  reduction over phonons) is fixed by the problem, not the cluster, so on
-  homogeneous A100s the images should agree to near machine precision — the check
-  reports the actual max relative deviation and PASSes under `--tol` (1e-4).
-
-```bash
-# 4-GPU node, default STO workload; sweeps 1,2,4 GPUs internally:
-SIF=$SIF ABTEM_SRC=$ABTEM_SRC \
-  sbatch --account=<project>-delta-gpu benchmark_haadf.sbatch
-
-# heavier run (bump --time in the sbatch for large workloads):
-... benchmark_haadf.sbatch --configs 32 --supercell 8,8,30 --sampling 0.04
-```
-
-Knobs (`--help` for all): `--structure {STO,Si}`, `--supercell nx,ny,nz`
-(z = thickness), `--configs`, `--sampling`, `--energy`, `--convergence`,
-`--inner/--outer` (HAADF angles; outer is clamped to the grid's antialiased
-cutoff and reported), `--scan-sampling`, `--gpu-counts 1,2,4,8`,
-`--projection {infinite,finite}` (default `infinite`),
-`--precision {float32,float64}` (float64 tightens agreement), `--tol`.
-
-Outputs (in `--output`, default `$SCRATCH_BASE/$USER/bench_haadf_<jobid>`): the structure as
-`.cif` (for VESTA), `haadf_<n>gpu.npy` per GPU count, a reference PNG and
-difference PNGs, and `results.json` (times, speedups, per-count max deviation,
-`invariance_pass`). Exit status is non-zero if the image is not invariant.
-
-The whole sweep runs in **one job** on a multi-GPU node, so the 1/2/4-GPU images
-are produced in the same process and compared directly.
-
-### Explicit vs automatic cluster
-
-`benchmark_haadf.py` creates the `dask_cuda.LocalCUDACluster` **explicitly** (and
-sizes each GPU-count run via `CUDA_VISIBLE_DEVICES` on the cluster) — it tests the
-*bring-your-own-client* path.
-
-`benchmark_haadf_auto.py` instead sets `config['dask.multi-gpu'] = True` and lets
-abTEM start the cluster itself (`ensure_cuda_cluster`) — it tests the *automatic*
-path. Because the automatic path always spans **all visible** GPUs, each count is
-run as a **subprocess** with `CUDA_VISIBLE_DEVICES` restricted, so every child
-exercises the auto-init on its own GPUs. (The `n=1` point has one visible GPU, so
-the auto path correctly declines to build a cluster and runs synchronously — it's
-the single-GPU reference.) Same knobs, same outputs (`auto_<n>gpu.npy`,
-`results.json` with an `auto_cluster_started` flag per count):
-
-```bash
-SIF=$SIF ABTEM_SRC=$ABTEM_SRC \
-  sbatch --account=<project>-delta-gpu benchmark_haadf_auto.sbatch
-```
-
-Either benchmark works against the integrated `multi-gpu-on-269` branch — point
-`ABTEM_SRC` at a checkout on that branch (`git checkout multi-gpu-on-269`) to test
-the multi-GPU work together with the #269 GPU-memory improvements.
-
-### Exercising the #269 improvements
-
-`multi-gpu-on-269` carries #269's memory-bounded potential chunking **and** its
-kernel speedups; the dev-based `multi-gpu-support` (PR #331) does **not**. Two
-caveats when using these benchmarks to check #269's claims:
-
-- **Memory chunking** (`potential.slice-chunk-size: "auto"`) is on by default but
-  only matters at large grids — the default STO 6×6×20 @ 0.05 Å (~469²) fits in
-  A100/A40 VRAM without much chunking. Push the grid (`--sampling 0.03
-  --supercell 10,10,40`) to reach the regime #269 targets (and that the dev-based
-  branch would OOM on).
-- **Speedup** is `projection='finite'`, float32 specific (#269's own table:
-  `infinite` ≈ 1.0×, `finite` f32 ≈ 1.9×). The default here is `infinite`, so add
-  **`--projection finite`** to see it. The scaling table shows *multi-GPU*
-  scaling, not #269's per-GPU speedup — for the latter, compare absolute times of
-  the same run on `multi-gpu-support` vs `multi-gpu-on-269` at a fixed GPU count:
-
-```bash
-# finite projection, 1 GPU, no-#269 vs #269 -> absolute-time difference = #269 speedup
-ABTEM_SRC=<checkout: multi-gpu-support> ... benchmark_haadf.sbatch --projection finite --gpu-counts 1
-ABTEM_SRC=<checkout: multi-gpu-on-269>  ... benchmark_haadf.sbatch --projection finite --gpu-counts 1
 ```
 
 ## What the checks mean

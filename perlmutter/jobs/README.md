@@ -242,8 +242,9 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
   ```
 
   Definitions (functions, classes, constants) can stay at module level — they
-  are what the child needs to import. The payloads in
-  `../verification/multigpu_abtem/` are written this way if you want a template.
+  are what the child needs to import. The payload
+  `../../shared/verification/multigpu_abtem/verify_multigpu.py` is written this way if you
+  want a template.
 
 - **`GPAW_MPI_BACKEND=cgpaw` is mandatory under `srun`.** The image ships
   GPAW 26.7.1b1, and since 26.7.0 GPAW aborts at import with *"GPAW appears
@@ -342,8 +343,7 @@ ID, date, image digest and result in the PR) and update this table.
 | `interactive_gpu.sh` | not yet run since its `srun` fix of 2026-08-27 |
 | `interactive_gpu_shared.sh` | not yet run |
 | `interactive_jupyter.sh` | run 2026-08-27 on nid001012, no job ID recorded (commit 4322e26) |
-| `../verification/multigpu_abtem/benchmark_haadf_auto.sbatch` | job <jobid>, 2026-08-19, 4 A100: scaling at <efficiency> and invariant image (log in that folder) |
-| `../verification/multigpu_abtem/multigpu_verify.sbatch`, `benchmark_haadf.sbatch` | not yet run |
+| `../verification/multigpu_abtem/multigpu_verify.sbatch` | not yet run |
 
 Job <jobid> (2026-08-19, 4 A100) was a real GPU run, and a multi-GPU run without the
 `__main__` guard failed that day (see Gotchas, commit 46938b2); the repo does not say

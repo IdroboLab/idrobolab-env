@@ -288,6 +288,4 @@ echo
 echo "    cd $HERE && ABTEM_SRC=$ABTEM_SRC sbatch -A \"\$NERSC_PROJECT\" multigpu_verify.sbatch"
 echo
 echo "Add --timing for a 1-vs-4 GPU wall-clock comparison; IMAGE=... sbatch -A \"\$NERSC_PROJECT\" ..."
-echo "overrides the image. The HAADF scaling benchmarks are"
-echo "benchmark_haadf.sbatch (explicit cluster) and benchmark_haadf_auto.sbatch"
-echo "(automatic dask.multi-gpu path)."
+echo "overrides the image."

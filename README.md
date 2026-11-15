@@ -16,7 +16,7 @@ first, then the step-by-step Perlmutter introduction or the Delta page.
 | [assets/](assets/) | The IdroboLab logo and the icons made from it (ThinLinc folder, upload tool), under CC BY 4.0 with their own copyright holder ([license](assets/LICENSE)) |
 | [shared/containers/x86_64-cuda/idrobolab/](shared/containers/x86_64-cuda/idrobolab/) | Recipe for the `idrobolab` container image (`ghcr.io/idrobolab/idrobolab`) |
 | [core/](core/) | Vendored copy of [hpcenv-core](https://github.com/pzeiger/hpcenv-core) (shared shell helpers for the `setup-user.sh` scripts, the `sbatch`/`salloc` account functions, the personal-data check, the LAMMPS GPU self-test). Never edited here, see [Shared code: `core/`](#shared-code-core) |
-| [shared/verification/multigpu_abtem/](shared/verification/multigpu_abtem/) | Payloads for the abTEM multi-GPU verification launched from `perlmutter/verification/` and `delta/verification/` |
+| [shared/verification/multigpu_abtem/](shared/verification/multigpu_abtem/) | Payload for the abTEM multi-GPU verification launched from `perlmutter/verification/` and `delta/verification/` |
 
 ## Shared code: `core/`
 

@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
 Submit it with `gpu_2gpu_shared.sbatch` (2 GPUs) or `gpu_4gpu_node.sbatch` (4 GPUs). On
 4 GPUs a frozen-phonon HAADF benchmark ran faster than on 1
-([`verification/multigpu_abtem/`](../../perlmutter/verification/multigpu_abtem/)).
+([measurements](../../shared/containers/x86_64-cuda/idrobolab/README.md#status)).
 
 **Your own abTEM branch** replaces the image's copy when you mount a checkout over
 `/opt/src/abTEM` ([page 6](06-containers.md#using-your-own-version-of-a-package)).
