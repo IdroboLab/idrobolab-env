@@ -1,0 +1,17 @@
+# The account kind of each sbatch template here: `cpu` or `gpu`, then the template's path
+# relative to this file. The check in perlmutter/jobs/README.md and
+# .github/workflows/account-kinds.yml runs core/shell/test_accounts.py against it: sbatch must
+# get the account of that kind (on Perlmutter both kinds are -A <project>).
+cpu gpaw_cpu_singlenode.sbatch
+cpu gpaw_cpu_multinode.sbatch
+gpu abtem_uv_gpu_node.sbatch
+gpu abtem_uv_gpu_shared.sbatch
+gpu debug_gpu.sbatch
+gpu gpu_1gpu_shared.sbatch
+gpu gpu_2gpu_shared.sbatch
+gpu gpu_4gpu_hbm80g.sbatch
+gpu gpu_4gpu_node.sbatch
+gpu gpu_multinode_mpi.sbatch
+gpu ptyrad_1gpu_shared.sbatch
+gpu ptyrad_2gpu_shared.sbatch
+gpu ptyrad_4gpu_node.sbatch

@@ -1,11 +1,15 @@
 #!/bin/bash
 # Interactive shell inside the idrobolab container on one A100
 # (gpuA100x4-interactive: max 1 h, charge factor 2.0).
-# Adjust ACCOUNT before use; pass a different partition as $1 if wanted
-# (e.g. ./interactive_gpu.sh gpuA40x4-interactive).
+# ACCOUNT defaults to your -delta-gpu account (from DELTA_PROJECT, see delta/env.sh).
+# Pass a different partition as $1 if wanted (e.g. ./interactive_gpu.sh gpuA40x4-interactive).
 set -euo pipefail
 
-ACCOUNT=${ACCOUNT:-<project>-delta-gpu}   # <- replace; see `accounts` command
+# shellcheck source=../../core/shell/accounts.sh
+. "$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/../../core/shell/accounts.sh"
+# An exported ACCOUNT wins; otherwise the -delta-gpu account env.sh's variables give.
+ACCOUNT=${ACCOUNT:-$(hpcenv_account gpu || true)}
+: "${ACCOUNT:?export ACCOUNT=<project>-delta-gpu (see the accounts command), or DELTA_PROJECT=<project> in ~/.bashrc above the idrobolab-env block}"
 PARTITION=${1:-gpuA100x4-interactive}
 SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/idrobolab.sif}
 

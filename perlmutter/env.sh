@@ -12,6 +12,8 @@
 # Perlmutter, and never sets `set -e` or calls `exit` (either would kill the
 # login shell). Set IDROBOLAB_ENV_VERBOSE=1 before sourcing to see what it did.
 #
+# Bash only: it uses BASH_SOURCE, and core/shell/accounts.sh, which it sources, is bash.
+#
 # Do NOT `chmod +x` this file — it is meant to be sourced, not run.
 
 # Only act on Perlmutter. NERSC_HOST is set site-wide; the directory check is
@@ -27,6 +29,21 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     elif [ -n "${PS1:-}" ]; then
         echo "idrobolab-env/perlmutter: NERSC_PROJECT is not set; run perlmutter/helpers/setup-user.sh once: it writes 'export NERSC_PROJECT=<project>' into the idrobolab-env block of ~/.bashrc, above the line that sources this file" >&2
     fi
+
+    # sbatch and salloc add -A "$NERSC_PROJECT", so that `sbatch template.sbatch` needs no edit
+    # of the template's --account line (core/shell/accounts.sh; its header and core/README.md
+    # describe the variables). One account serves CPU and GPU jobs alike: NERSC takes
+    # `-A <project>` for GPU jobs too (no `_g` suffix since 2022-06-06), so no GPU template
+    # and no GPU partition is given. While NERSC_PROJECT is unset, sbatch and salloc run
+    # unchanged. Exported: the template check and scripts that source accounts.sh read them.
+    export HPCENV_ACCOUNT_PROJECT="${NERSC_PROJECT:-}"
+    export HPCENV_ACCOUNT_CPU='{project}'
+    export HPCENV_ACCOUNT_GPU=''
+    export HPCENV_ACCOUNT_GPU_PARTITIONS=''
+    _idrobolab_env_accounts="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/../core/shell/accounts.sh"
+    # shellcheck source=../core/shell/accounts.sh
+    if [ -r "$_idrobolab_env_accounts" ]; then . "$_idrobolab_env_accounts"; fi
+    unset _idrobolab_env_accounts
 
     # Root of the project's CFS directory. Everything group-shared lives below
     # it (podman-hpc/, projects/). Override by exporting it before sourcing;

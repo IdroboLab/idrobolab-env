@@ -1,0 +1,10 @@
+# The account kind of each sbatch template here: `cpu` or `gpu`, then the template's path
+# relative to this file. The check in docs/delta/README.md and .github/workflows/account-kinds.yml
+# runs core/shell/test_accounts.py against it: sbatch must get the account of that kind.
+cpu gpaw_cpu_singlenode.sbatch
+cpu gpaw_cpu_multinode.sbatch
+gpu gpu_a40_1gpu.sbatch
+gpu gpu_a100_1gpu.sbatch
+gpu gpu_a100x4.sbatch
+gpu gpu_a100x8.sbatch
+gpu gpu_h200x8.sbatch
