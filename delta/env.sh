@@ -75,6 +75,8 @@ if [ -n "${DELTA_PROJECT:-}" ] && [ -d "/scratch/${DELTA_PROJECT}" ]; then
     # (the `accounts` command lists them); a job counts as a GPU job when it asks for a
     # partition `gpu*` or for GPUs. Exported: the template check and the scripts that source
     # accounts.sh (jobs/interactive_gpu.sh, get-image.sh) read them.
+    # They are set from the cluster's rules and the project variable each time this file is
+    # sourced, so a value set beforehand is not kept.
     export HPCENV_ACCOUNT_PROJECT="$DELTA_PROJECT"
     export HPCENV_ACCOUNT_CPU='{project}-delta-cpu'
     export HPCENV_ACCOUNT_GPU='{project}-delta-gpu'

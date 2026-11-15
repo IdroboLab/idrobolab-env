@@ -36,6 +36,8 @@ if [ "${NERSC_HOST:-}" = "perlmutter" ] || [ -d /global/cfs/cdirs ]; then
     # `-A <project>` for GPU jobs too (no `_g` suffix since 2022-06-06), so no GPU template
     # and no GPU partition is given. While NERSC_PROJECT is unset, sbatch and salloc run
     # unchanged. Exported: the template check and scripts that source accounts.sh read them.
+    # They are set from the cluster's rules and the project variable each time this file is
+    # sourced, so a value set beforehand is not kept.
     export HPCENV_ACCOUNT_PROJECT="${NERSC_PROJECT:-}"
     export HPCENV_ACCOUNT_CPU='{project}'
     export HPCENV_ACCOUNT_GPU=''

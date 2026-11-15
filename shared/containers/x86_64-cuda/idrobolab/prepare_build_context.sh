@@ -23,8 +23,6 @@ CODE_DIR=${CODE_DIR:-/workspaces/code}
 
 mkdir -p src
 
-# lammps-gpu-selftest.sh is not kept in this recipe: the Dockerfile COPYs it from this
-# directory, so stage it from the vendored hpcenv-core (git-ignored here).
 cp ../../../../core/lammps/lammps-gpu-selftest.sh lammps-gpu-selftest.sh
 
 # GPAW: staged from its MASTER branch (the committed tree, via git archive),
