@@ -184,6 +184,12 @@ group owns it).
   `models--facebook--UMA/snapshots/<revision>/checkpoints/*.pt`: `uma-m-1p1`, `uma-s-1p2p1` and
   `uma-s-1p2p1-ft-r2scan` when this was written. fairchem-core 2.22.0 (in the image) loads one by its file path:
   `pretrained_mlip.load_predict_unit(<path>, device="cuda")`, then `FAIRChemCalculator(unit, task_name="omat")`.
+- `nep/`: NEP potentials (GPUMD, LAMMPS `pair_style nep`, calorine), one directory per model
+  named `<FirstAuthor><Year>_<system>/`, with the model file `nep.txt`.
+  - Each directory carries a `README.md` with its source, reference DFT and license, and a
+    `SOURCE_COMMIT` pinning the version.
+  - `nep/README.md` lists the models.
+  - A model whose source gives no license is for use inside the group only.
 
 ## Python outside the container
 
