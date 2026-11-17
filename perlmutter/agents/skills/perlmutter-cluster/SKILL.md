@@ -1,6 +1,6 @@
 ---
 name: perlmutter-cluster
-description: Conventions and gotchas for running jobs and GUI/native tools on NERSC Perlmutter — NERSC's command guard for AI agents, podman-hpc container quirks, bind-mount asymmetry, CUDA/CuPy toolchain conflicts, Slurm mail/queue conventions (exclusive vs shared QOS, requesting a partial GPU node), interactive-first testing, Python on a login node, Pacific-time timestamps, HDF5 or uv file-locking errors (errno 524) on CFS or $HOME, where package data files (model checkpoints, potentials, GPAW data sets) are kept. Use when writing or debugging a Perlmutter sbatch/salloc script, running tests or benchmarks inside a Perlmutter container (the pytest, rootdir and package-shadowing traps are in idrobolab-container), diagnosing a CUDA/CuPy version mismatch there, setting up a native (non-container) tool in a shared Perlmutter environment, or when NERSC's filesystem-guard hook blocks a shell command an AI agent runs on a login node.
+description: Conventions and gotchas for running jobs and GUI/native tools on NERSC Perlmutter — NERSC's command guard for AI agents, podman-hpc container quirks, bind-mount asymmetry, CUDA/CuPy toolchain conflicts, Slurm mail/queue conventions (exclusive vs shared QOS, requesting a partial GPU node), interactive-first testing, Python on a login node, Pacific-time timestamps, HDF5 or uv file-locking errors (errno 524) on CFS or $HOME, where package data files (model checkpoints, potentials, GPAW data sets) are kept. Use when writing or debugging a Perlmutter sbatch/salloc script, running tests or benchmarks inside a Perlmutter container (the pytest, rootdir and package-shadowing traps are in idrobolab-container), diagnosing a CUDA/CuPy version mismatch there or a job that dies within seconds (exit 126, pasta error), setting up a native (non-container) tool in a shared Perlmutter environment, or when NERSC's filesystem-guard hook blocks a shell command an AI agent runs on a login node.
 ---
 
 # NERSC Perlmutter conventions
@@ -34,6 +34,17 @@ same pull command works on both clusters).
   inside the container at wherever the image's recipe explicitly mounts it (conventionally
   `/opt/src/<package>`), and nowhere else. Always pass paths into or out of the container
   relative to that in-container mount point, not the host path.
+- **A job that fails within seconds of starting: read the Slurm `.out` file first and look for a
+  container-start failure, before reading any result log.** The signature is
+  `Error: pasta failed with exit code 1: netlink: Unexpected sequence number (0 != <n>)` followed by
+  `srun: error: <node>: task 0: Exited with exit code 126`; `sacct` shows `FAILED`, `ExitCode 126:0` and an
+  elapsed time of a few seconds. `pasta` is podman's rootless networking helper, so `podman-hpc run` failed on
+  that node before the container existed and none of the job's own commands ran. The `.out` then holds only the
+  launcher's lines (image, mounts), the `pasta` error and the `srun` lines. A log the job writes itself
+  (`> run.log`) is then either missing or **left over from an earlier run of the same script**, and its old
+  traceback looks like a fresh failure. Seen once on one compute node (2026-11-17); the identical resubmission
+  ran normally. Not diagnosed: why `pasta` failed there, or whether it recurs on a given node. Resubmit, and report a
+  repeat on the same node to NERSC.
 
 ## CUDA / CuPy toolchain
 
