@@ -22,7 +22,8 @@ Agreements that govern the NVIDIA components:
    These Run-Time Files must not be redistributed separately by users of this
    image, modified or reverse engineered, and their notices must not be removed.
    They may only be accessed by Quantum ESPRESSO. The files are listed in
-   /opt/software/qe/NVIDIA-REDIST-FILES.txt (name, and path in the SDK).
+   /opt/software/qe/NVIDIA-REDIST-FILES.txt (name, path in the SDK, and for a
+   copy the REDIST path it matched).
 
 3. NVIDIA Python wheels in /opt/venv (nvidia-cublas-cu12, nvidia-cudnn-cu12, ...):
    CUDA Toolkit End User License Agreement

@@ -132,6 +132,7 @@ DESTDIR="" cmake --install build           # installs to $PREFIX inside the buil
 # stage-qe-libs.sh copies the transitive .so deps of every QE executable.
 # It fails the build on any NVIDIA HPC SDK file that is not a REDIST* file.
 # Those are the only SDK files the SDK license lets the image redistribute.
+# It also fails on a library with an NVIDIA name found outside the SDK.
 # It also sets the rpath of the QE executables, and of the libs that are not
 # SDK files, to the FINAL install path.
 cp -a "${PREFIX}/." "${DIST}/"

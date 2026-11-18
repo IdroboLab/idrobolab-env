@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copy the runtime shared libs of the QE executables in DIST/bin into DIST/lib,
-# and fail unless every copied NVIDIA HPC SDK file is a Run-Time File.
+# and fail unless every copied NVIDIA HPC SDK file is a Run-Time File and no
+# library with an NVIDIA name comes from outside the SDK.
 # Usage: stage-qe-libs.sh SDKROOT DIST RPATH     (run by install-qe-gpu.sh)
 #
 # The HPC SDK license (docs/THIRD-PARTY.md) lets an application bundle only the
@@ -11,7 +12,8 @@
 # image's Ubuntu libraries) are listed, not checked, except that a library with
 # an NVIDIA CUDA or NCCL name there fails the build too: it is not an SDK file
 # and nothing here has verified its license. The staged SDK files are listed in
-# DIST/NVIDIA-REDIST-FILES.txt.
+# DIST/NVIDIA-REDIST-FILES.txt (name, real path in the SDK, and for a copy the
+# REDIST path it matched).
 # The SDK files are copied unmodified and never patched; the QE executables and
 # the other staged libraries get RPATH, so they find each other without an
 # image-wide LD_LIBRARY_PATH (which would shadow the base image's CUDA libs).
@@ -38,9 +40,10 @@ echo ">> $(wc -l < "$allowed") files under REDIST* directories of ${SDKROOT}"
 # copy of the same content and name there (REDIST may hold copies, not symlinks).
 in_redist() {
     local real="$1" n f
+    matched=""
     grep -qxF "$real" "$allowed" && return 0
     for n in "$(basename "$2")" "$(basename "$real")"; do
-        while read -r f; do cmp -s "$f" "$real" && return 0; done \
+        while read -r f; do cmp -s "$f" "$real" && { matched="$f"; return 0; }; done \
             < <(awk -F/ -v n="$n" '$NF==n' "$redist")
     done
     return 1
@@ -69,15 +72,17 @@ while read -r lib; do
             if in_redist "$real" "$lib"; then
                 echo "SDK REDIST: $lib -> $real"
                 sdk_libs+="$(basename "$lib") "
-                echo "$(basename "$lib")  ${real#"$SDKROOT"/}" >> "${DIST}/NVIDIA-REDIST-FILES.txt"
+                echo "$(basename "$lib")  ${real#"$SDKROOT"/}${matched:+  ${matched#"$SDKROOT"/}}" >> "${DIST}/NVIDIA-REDIST-FILES.txt"
             else
                 echo "SDK NOT REDIST: $lib -> $real"
                 bad+=("not a REDIST file: $lib -> $real")
                 continue
             fi ;;
         *)
+            # a list of NVIDIA library names, not a license check
             case "$(basename "$lib")" in
-                libcudart*|libcublas*|libcufft*|libcusolver*|libcusparse*|libcurand*|libnv*|libnccl*)
+                libcudart*|libcublas*|libcufft*|libcusolver*|libcusparse*|libcurand*|libnv*|libnccl*|\
+                libcudnn*|libcupti*|libnpp*|libcufile*|libcutensor*)
                     echo "NVIDIA outside SDK: $lib"
                     bad+=("NVIDIA library outside the SDK: $lib")
                     continue ;;
