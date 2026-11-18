@@ -1,5 +1,6 @@
 # Exceptions to core/checks/personal_data.py: <path glob> TAB <pattern name> TAB <text>.
-# Each entry names one file and the exact matched text; the reason is the comment above its group.
+# Each entry names one file, or one commit-metadata location (author, committer, message), and the
+# exact matched text; the reason is the comment above its group.
 
 # Ways of writing a github.com SSH remote (user@host), which look like e-mail addresses.
 README.md	email	git@github.com
@@ -35,3 +36,39 @@ perlmutter/jobs/ptyrad_4gpu_node.sbatch	path	/global/cfs/cdirs/}
 # repository owner's GitHub account, as hpcenv-core's own allow list records.
 README.md	extra	github.com/pzeiger/hpcenv-core
 .github/workflows/core-sync.yml	extra	github.com/pzeiger/hpcenv-core
+
+# History only: these entries serve `core/checks/personal_data.py --history`, which also reads
+# commit metadata and every earlier version of a file; the tree check in CI does not need them.
+
+# The maintainer's commit identity, GitHub's noreply address, in author and committer lines.
+author	extra	Paul Zeiger <18260343+pzeiger@users.noreply.github.com>
+committer	extra	Paul Zeiger <18260343+pzeiger@users.noreply.github.com>
+
+# Earlier versions of files, most at paths that no longer exist: github.com and gitlab.com SSH
+# remotes (user@host), placeholder addresses, and the path glob of the old Nion Swift launcher.
+shared/helpers/github-identity.sh	email	git@github.com
+shared/helpers/github-identity.sh	email	git@ssh.github.com
+shared/helpers/github-identity.sh	email	something@host.tld
+shared/helpers/github-identity.sh	email	user@github.com
+perlmutter/nionswift-perlmutter-thinlinc.md	email	git@github.com
+docs/github.md	email	git@github.com
+perlmutter/docs/03-shell-setup.md	email	git@github.com
+perlmutter/docs/02-shell-setup.md	email	git@github.com
+perlmutter/docs/02-github.md	email	git@github.com
+perlmutter/docs/01-login.md	email	git@github.com
+docs/perlmutter/reference/podman-hpc.md	email	git@gitlab.com
+perlmutter/podman-hpc.md	email	git@gitlab.com
+perlmutter/setup-nionswift-launcher.sh	path	/global/homes/*|/home
+
+# Commit messages quoting the same SSH remotes and placeholders, the shell globs and placeholder
+# paths listed above, the placeholder Delta account names, and the hpcenv-core URL.
+message	email	git@github.com
+message	email	git@ssh.github.com
+message	email	x@github.com
+message	path	/global/homes/*\|/home
+message	path	/global/cfs/cdirs/}
+message	path	/home/me
+message	path	/home/share
+message	delta-account	proj-delta-cpu
+message	delta-account	proj-delta-gpu
+message	extra	github.com/pzeiger/hpcenv-core
