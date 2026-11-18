@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 # Copy the runtime shared libs of the QE executables in DIST/bin into DIST/lib,
 # and fail unless every copied NVIDIA HPC SDK file is a Run-Time File.
-# Usage: stage-qe-libs.sh SDKROOT DIST     (run by install-qe-gpu.sh)
+# Usage: stage-qe-libs.sh SDKROOT DIST RPATH     (run by install-qe-gpu.sh)
 #
 # The HPC SDK license (docs/THIRD-PARTY.md) lets an application bundle only the
 # files in the SDK's directories whose names begin with REDIST. A library whose
 # real path is under SDKROOT must therefore also be the real path of a file
 # under such a directory; any other is listed and fails the build. Libraries
 # outside SDKROOT (the builder image's Ubuntu libraries) are listed, not checked.
+# The SDK files are copied unmodified and never patched; the QE executables and
+# the other staged libraries get RPATH, so they find each other without an
+# image-wide LD_LIBRARY_PATH (which would shadow the base image's CUDA libs).
 set -euo pipefail
 
 SDKROOT="$(readlink -f "$1")"
 DIST="$2"
+RPATH="$3"
 allowed="$(mktemp)"
 wanted="$(mktemp)"
 
@@ -30,6 +34,7 @@ done | sort -u > "$wanted"
 
 mkdir -p "${DIST}/lib"
 bad=()
+sdk_libs=" "
 while read -r lib; do
     # core system libs come from the final image's base; libcuda from the driver
     case "$lib" in
@@ -42,6 +47,7 @@ while read -r lib; do
         "$SDKROOT"/*)
             if grep -qxF "$real" "$allowed"; then
                 echo "SDK REDIST: $lib -> $real"
+                sdk_libs+="$(basename "$lib") "
             else
                 echo "SDK NOT REDIST: $lib -> $real"
                 bad+=("$lib -> $real")
@@ -57,3 +63,15 @@ if [ "${#bad[@]}" -gt 0 ]; then
     printf '  %s\n' "${bad[@]}" >&2
     exit 1
 fi
+
+# --force-rpath: DT_RPATH on the executables also serves the lookups of SDK libs
+# that carry no RUNPATH of their own.
+for f in "${DIST}"/bin/*.x; do
+    [ -e "$f" ] || continue
+    patchelf --force-rpath --set-rpath "$RPATH" "$f" || echo "WARN: patchelf failed on $f"
+done
+for f in "${DIST}"/lib/*.so*; do
+    [ -e "$f" ] || continue
+    case "$sdk_libs" in *" $(basename "$f") "*) continue ;; esac
+    patchelf --set-rpath "$RPATH" "$f" || echo "WARN: patchelf failed on $f"
+done

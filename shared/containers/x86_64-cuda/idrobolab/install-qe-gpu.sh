@@ -131,17 +131,11 @@ DESTDIR="" cmake --install build           # installs to $PREFIX inside the buil
 # --- stage QE + its runtime shared libs into $DIST --------------------------
 # stage-qe-libs.sh copies the transitive .so deps of every QE executable and
 # fails the build on any NVIDIA HPC SDK file that is not under a REDIST*
-# directory (the only SDK files the SDK license lets the image redistribute).
+# directory (the only SDK files the SDK license lets the image redistribute),
+# and sets the rpath of the QE executables and of the libs that are not SDK files
+# to the FINAL install path.
 cp -a "${PREFIX}/." "${DIST}/"
-bash "$(dirname "$0")/stage-qe-libs.sh" /opt/nvidia/hpc_sdk "${DIST}"
-
-# rpath the executables and the staged libs to the FINAL install path so they
-# find each other without an image-wide LD_LIBRARY_PATH (which would otherwise
-# shadow the base image's own CUDA libs for GPAW etc.).
-for f in "${DIST}"/bin/*.x "${DIST}"/lib/*.so*; do
-    [ -e "$f" ] || continue
-    patchelf --set-rpath "${PREFIX}/lib" "$f" 2>/dev/null || true
-done
+bash "$(dirname "$0")/stage-qe-libs.sh" /opt/nvidia/hpc_sdk "${DIST}" "${PREFIX}/lib"
 
 echo ">> staged QE runtime under ${DIST} ($(du -sh "${DIST}" 2>/dev/null | cut -f1))"
 ls "${DIST}/bin" | grep -E 'pw\.x|ph\.x|cp\.x' || true
