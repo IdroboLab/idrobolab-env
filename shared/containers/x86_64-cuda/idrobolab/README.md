@@ -80,8 +80,9 @@ podman-hpc pull ghcr.io/idrobolab/idrobolab:latest                          # Pe
 (a release candidate; `:<VERSION>` never moves, and a rebuild after a failed test
 overwrites `-rc`), builds with `LAMMPS_RUN_TESTS=1` (the LAMMPS ctest suite; not for
 `TAG=dev`), and refuses an `-rc` tag when the recipe has uncommitted changes. `release.sh`
-tags the candidate `:<VERSION>` and `:latest` once every record of the release carries the
-build id of the registry's `-rc` image. `:latest` moves only there.
+tags the candidate `:<VERSION>` and `:latest`, and its sources image `<VERSION>-sources` and
+`latest-sources`, once every record of the release carries the build id of the registry's `-rc`
+image; each sources tag is pushed before its image tag. `:latest` moves only there.
 
 The image carries `/opt/idrobolab/manifest.json` (`image`, `version`, `recipe_hash`,
 `build_id`, `sources`: name to commit, `lammps_ctest`), `/opt/idrobolab/pip-freeze.txt` (the
