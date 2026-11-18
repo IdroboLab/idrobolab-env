@@ -7,8 +7,9 @@
 #
 # Backend: OpenACC + CUDA Fortran (nvfortran) — the mature NVIDIA path. FFT on
 # GPU is cuFFT; CPU-side FFT is QE's internal FFTXlib (no external FFTW needed).
-# MPI is MPICH built here with the NVHPC compilers, so pw.x links libmpi.so.12 like the
-# rest of the image; the SDK's bundled Open MPI is not REDIST and is not used. ScaLAPACK is
+# MPI is MPICH: pw.x links libmpi.so.12 like the rest of the image, and the Fortran
+# binding library libmpifort.so.12 comes from an MPICH built here with the NVHPC compilers;
+# the SDK's bundled Open MPI is not REDIST and is not used. ScaLAPACK is
 # off (GPU QE uses its own GPU eigensolvers) — matches QE's own --with-scalapack=no guidance.
 #
 # The GPU-less docker build sandbox drives the two CUDA workarounds below: the
@@ -43,11 +44,9 @@ apt-get install -y --no-install-recommends git cmake ca-certificates patchelf wg
 rm -rf /var/lib/apt/lists/*
 
 # --- MPICH, built with the NVHPC compilers -----------------------------------
-# The Dockerfile's MPICH (same version, device and netmod) built by nvc/nvfortran:
-# libmpifort and the value of Fortran .TRUE. that libmpi writes in MPI_LOGICAL
-# reductions are fixed when MPICH is configured (the configure log has the line
-# "values of Fortran logicals"), so both libraries are the nvfortran ones. They are staged
-# with QE (stage-qe-libs.sh); the image's MPICH, of the same version, launches pw.x.
+# The Dockerfile's MPICH (same version, device and netmod) built by nvc/nvfortran, so
+# that libmpifort matches the nvfortran that compiles QE. Only its libmpifort.so.12 is
+# staged with QE (stage-qe-libs.sh): pw.x takes libmpi.so.12 from the image's MPICH.
 MPICH_VERSION="${MPICH_VERSION:?MPICH_VERSION is not set}"
 MPICH_PREFIX=/opt/mpich-nvhpc
 run_logged() {  # run_logged LOG CMD...: keep the log out of the build output, tail it on failure
@@ -67,7 +66,7 @@ run_logged /tmp/mpich-configure.log ./configure --prefix="${MPICH_PREFIX}" \
     CC=nvc CXX=nvc++ F77=nvfortran FC=nvfortran \
     --with-device=ch4:ofi --with-libfabric=embedded \
     --enable-shared --disable-static
-grep -E 'values of Fortran logicals' /tmp/mpich-configure.log
+grep -E 'values of Fortran logicals' /tmp/mpich-configure.log || true   # informational
 run_logged /tmp/mpich-make.log make -j"$(nproc)"
 run_logged /tmp/mpich-install.log make install
 cp COPYRIGHT "${MPICH_PREFIX}/MPICH-COPYRIGHT"
@@ -78,7 +77,7 @@ export LD_LIBRARY_PATH="${MPICH_PREFIX}/lib:${LD_LIBRARY_PATH:-}"   # for ldd in
 [ "$(command -v mpif90)" = "${MPICH_PREFIX}/bin/mpif90" ] || { echo "ERROR: mpif90 is $(command -v mpif90)"; exit 1; }
 mpichversion | tee /tmp/mpichversion.txt
 grep -q nvfortran /tmp/mpichversion.txt || { echo "ERROR: MPICH was not built with nvfortran"; exit 1; }
-ls -l "${MPICH_PREFIX}"/lib/libmpi.so.12 "${MPICH_PREFIX}"/lib/libmpifort.so.12
+ls -l "${MPICH_PREFIX}"/lib/libmpi.so.12 "${MPICH_PREFIX}"/lib/libmpifort.so.12   # libmpifort ships, libmpi does not
 echo ">> mpif90: $(command -v mpif90)"
 
 rm -rf "$SRC"

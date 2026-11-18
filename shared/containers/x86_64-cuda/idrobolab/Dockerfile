@@ -477,7 +477,9 @@ RUN python /opt/idrobolab/nvidia-license-scan.py
 # --- runtime lib-closure gate for the CUDA binaries (libcuda.so.1 excepted) --
 # Checks every binary before failing, so one build names ALL the gaps rather
 # than only the first — each rebuild here is expensive.
-# pw.x must use the MPICH built with the NVHPC compilers that ships with it, and no Open MPI.
+# pw.x must take libmpi.so.12 from the image's MPICH (cluster MPI injection replaces it) and
+# libmpifort.so.12 from the copy staged with QE, which must find all its MPI symbols in that
+# libmpi; it must not need Open MPI.
 RUN set -eu; rc=0; for so in /opt/software/lammps/lib/liblammps.so /opt/software/qe/bin/pw.x; do \
       [ -e "$so" ] || { echo "missing artifact $so"; rc=1; continue; }; \
       miss="$(ldd "$so" 2>/dev/null | awk '/not found/ && !/libcuda/{print $1}')"; \
@@ -485,10 +487,15 @@ RUN set -eu; rc=0; for so in /opt/software/lammps/lib/liblammps.so /opt/software
       else echo "$so: runtime libs resolved (libcuda.so.1 expected at --nv runtime)"; fi; \
     done; \
     pwldd="$(ldd /opt/software/qe/bin/pw.x 2>/dev/null)"; \
-    mpi="$(echo "$pwldd" | awk '$1=="libmpi.so.12" && $3 ~ /^\//{print $3}')"; \
-    if [ "$mpi" = /opt/software/qe/lib/libmpi.so.12 ]; then echo "pw.x: libmpi.so.12 -> $mpi"; \
-    else echo "pw.x: libmpi.so.12 resolves to '${mpi}', not /opt/software/qe/lib/libmpi.so.12"; rc=1; fi; \
+    for pair in libmpi.so.12:/opt/software/mpich/lib/libmpi.so.12 libmpifort.so.12:/opt/software/qe/lib/libmpifort.so.12; do \
+      n="${pair%%:*}"; want="${pair#*:}"; \
+      got="$(echo "$pwldd" | awk -v n="$n" '$1==n && $3 ~ /^\//{print $3}')"; \
+      if [ "$got" = "$want" ]; then echo "pw.x: $n -> $got"; \
+      else echo "pw.x: $n resolves to '${got}', not $want"; rc=1; fi; \
+    done; \
     if echo "$pwldd" | grep -E 'libmpi\.so\.40|libopen-(pal|rte)'; then echo "pw.x needs Open MPI libraries"; rc=1; fi; \
+    undef="$(ldd -r /opt/software/qe/lib/libmpifort.so.12 2>&1 | grep -iE 'undefined symbol: (p?mpi|mpl_)' || true)"; \
+    if [ -n "$undef" ]; then echo "libmpifort.so.12 needs symbols that libmpi.so.12 lacks:"; echo "$undef"; rc=1; fi; \
     exit $rc
 
 # --- the tag of this image's sources image (set by publish.sh) ---------------

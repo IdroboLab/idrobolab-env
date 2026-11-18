@@ -11,7 +11,8 @@
 # other is listed and fails the build. Libraries outside SDKROOT (the builder
 # image's Ubuntu libraries and the MPICH that install-qe-gpu.sh builds) are listed,
 # not checked, except that a library with an NVIDIA CUDA or NCCL name there fails the
-# build too: it is not an SDK file and nothing here has verified its license. The
+# build too: it is not an SDK file and nothing here has verified its license.
+# libmpi.so.12 of that MPICH is not staged, as the image's own MPICH provides it. The
 # staged SDK files are listed in DIST/NVIDIA-REDIST-FILES.txt (name, real path in the
 # SDK, and for a copy the REDIST path it matched).
 # The SDK files are copied unmodified and never patched; the QE executables and
@@ -87,6 +88,9 @@ while read -r lib; do
                     bad+=("NVIDIA library outside the SDK: $lib")
                     continue ;;
             esac
+            # MPICH's libmpi stays the image's own, which cluster MPI injection replaces;
+            # only libmpifort, built with nvfortran, ships with QE.
+            [ "$(basename "$lib")" = libmpi.so.12 ] && { echo "not staged (the image's MPICH): $lib"; continue; }
             echo "outside SDK: $lib" ;;
     esac
     cp -L "$lib" "${DIST}/lib/"
