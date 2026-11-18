@@ -21,7 +21,8 @@ Agreements that govern the NVIDIA components:
    https://docs.nvidia.com/hpc-sdk/eula/index.html
    These Run-Time Files must not be redistributed separately by users of this
    image, modified or reverse engineered, and their notices must not be removed.
-   They may only be accessed by Quantum ESPRESSO.
+   They may only be accessed by Quantum ESPRESSO. The files are listed in
+   /opt/software/qe/NVIDIA-REDIST-FILES.txt (name, and path in the SDK).
 
 3. NVIDIA Python wheels in /opt/venv (nvidia-cublas-cu12, nvidia-cudnn-cu12, ...):
    CUDA Toolkit End User License Agreement
@@ -29,10 +30,13 @@ Agreements that govern the NVIDIA components:
    cuDNN license and supplement
    https://docs.nvidia.com/deeplearning/cudnn/backend/latest/reference/eula.html
    Each wheel's own license file is in its dist-info directory under
-   /opt/venv/lib/python3.12/site-packages. Some NVIDIA wheels are under open
-   licenses (for example nvidia-nccl-cu12, BSD 3-Clause); the file lists each
-   wheel's license: python /opt/idrobolab/nvidia-license-scan.py
+   /opt/venv/lib/python3.12/site-packages. The wheels' files must not be
+   modified and their notices must not be removed. Some NVIDIA wheels are under
+   open licenses (for example nvidia-nccl-cu12, BSD 3-Clause). To list each
+   wheel's license, run: python /opt/idrobolab/nvidia-license-scan.py
 
 Open-source components in the image (Open MPI, MPICH, GPAW, Quantum ESPRESSO,
 LAMMPS and others) are governed by their own licenses. The image is provided
-without warranty. Licensing questions about NVIDIA software go to NVIDIA.
+without warranty and without liability for any damage from its use. Users must
+comply with the export laws and regulations that apply to the NVIDIA software.
+Licensing questions about NVIDIA software go to NVIDIA.

@@ -420,7 +420,7 @@ print('dask-cuda ok | dask',dask.__version__,'| distributed',distributed.__versi
  && python -c "import nion.data; print('nionswift (headless data) ok')" \
  && mpichversion | head -1
 
-# --- NVIDIA wheel licenses, printed to the build log (never fails the build) --
+# --- NVIDIA wheel licenses, printed to the build log ------------------------
 RUN python /opt/idrobolab/nvidia-license-scan.py
 
 # --- runtime lib-closure gate for the CUDA binaries (libcuda.so.1 excepted) --
