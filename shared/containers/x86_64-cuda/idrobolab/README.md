@@ -87,8 +87,10 @@ The image carries `/opt/idrobolab/manifest.json` (`image`, `version`, `recipe_ha
 `build_id`, `sources`: name to commit, `lammps_ctest`), `/opt/idrobolab/pip-freeze.txt` (the
 venv's resolved packages) and the labels `org.opencontainers.image.version`,
 `org.opencontainers.image.revision` (the recipe hash) and `idrobolab.build-id`. The recipe hash
-(`recipe-hash.sh`) is the sha256 of `git ls-files -s` for this directory without `README.md`,
-or `dirty` with an uncommitted change here. The build id is the UTC time of
+(`recipe-hash.sh`) is the sha256 of the output of `git ls-files -s --full-name -- .` run in
+this directory (paths from the repository root), without the line of this directory's
+`README.md`; it is the string `dirty` when `git status --porcelain -- .` shows any change here,
+`README.md` included. The build id is the UTC time of
 `prepare_build_context.sh`: apt and unpinned wheels float, so two builds of one recipe
 differ in it. `verification/test_harness.py` tests the hash and the staging.
 
