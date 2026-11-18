@@ -33,8 +33,8 @@ VERSION = 3
 STUB_ENGINE = """#!/bin/bash
 echo "$*" >> "$STUB_LOG"
 case "$1 $2" in
-    "manifest inspect") [[ "$3" == *-rc-sources ]] && exit "${STUB_SOURCES_RC:-0}"
-        printf '%s\\n' "${STUB_MANIFEST_OUT:-}"; exit "${STUB_MANIFEST_RC:-1}" ;;
+    "pull -q") [[ "$3" != *-rc-sources ]] || exit "${STUB_SOURCES_RC:-0}" ;;
+    "manifest inspect") printf '%s\\n' "${STUB_MANIFEST_OUT:-}"; exit "${STUB_MANIFEST_RC:-1}" ;;
     "image inspect") case "$*" in *Labels*) echo "${STUB_LABEL:-}" ;; *) echo "${STUB_DIGEST:-sha256:aa}" ;; esac ;;
     "login "*) cat > /dev/null ;;
 esac
@@ -319,7 +319,7 @@ def test_release_tags_and_pushes_n_and_latest_with_their_sources_images(recipe, 
 
 def test_release_refuses_without_the_candidates_sources_image(recipe, tmp_path):
     res = release(recipe, tmp_path, STUB_SOURCES_RC=1)
-    assert res.returncode != 0 and f"{VERSION}-rc-sources does not exist" in res.stderr
+    assert res.returncode != 0 and f"{VERSION}-rc-sources cannot be pulled" in res.stderr
     assert engine_calls(tmp_path, "tag") == [] and engine_calls(tmp_path, "push") == []
 
 

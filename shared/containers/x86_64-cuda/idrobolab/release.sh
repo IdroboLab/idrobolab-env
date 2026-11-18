@@ -8,7 +8,7 @@
 #     (`build_id`) that the idrobolab.build-id label of <IMAGE>:<N>-rc has in the registry,
 #     so the suite passed on this very image and not on an earlier build of the candidate;
 #   - <IMAGE>:<N> does not exist yet (:<N> never moves);
-#   - <IMAGE>:<N>-rc-sources does not exist.
+#   - <IMAGE>:<N>-rc-sources cannot be pulled.
 # It then pushes each sources tag before its image tag (no binary is out without its source) and
 # checks that <N>-rc, <N> and latest, and <N>-rc-sources, <N>-sources and latest-sources, each
 # resolve to one digest.
@@ -74,8 +74,8 @@ elif ! grep -qiE 'manifest unknown|no such manifest' <<<"$out"; then
     exit 1
 fi
 
-if ! "$ENGINE" manifest inspect "${IMAGE}:${N}-rc-sources" >/dev/null 2>&1; then
-    echo "ERROR: ${IMAGE}:${N}-rc-sources does not exist; publish.sh pushes it with the candidate" >&2
+if ! "$ENGINE" pull -q "${IMAGE}:${N}-rc-sources" >/dev/null 2>&1; then
+    echo "ERROR: ${IMAGE}:${N}-rc-sources cannot be pulled; publish.sh pushes it with the candidate" >&2
     exit 1
 fi
 
