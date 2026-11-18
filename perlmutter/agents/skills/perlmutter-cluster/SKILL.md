@@ -96,6 +96,12 @@ same pull command works on both clusters).
 - **Interactive shells here default to `noclobber`** — a plain `>` redirect to a file
   that already exists fails silently-ish (a shell error, not a crash); use `>|` to force
   the overwrite, or `set +o noclobber` if scripting around it repeatedly.
+- **The environment presets `CPU=x86_64`**, in login shells and, through `sbatch`'s default
+  `--export=ALL`, in batch jobs. A script variable named `CPU` with an overridable default
+  (`CPU=${CPU:-20}`) therefore never takes its default, and `taskset -c "$CPU"` fails with
+  `taskset: failed to parse CPU list: x86_64`. Give such variables a specific name
+  (`PIN_CPU`), and before using any name as an overridable default check that the
+  environment leaves it unset: `[ -z "${NAME+x}" ] && echo unset`.
 - **`-q interactive` is an exclusive QOS: it allocates, and charges for, a whole GPU node
   no matter how few GPUs are requested.** `--gpus N` only sets how many of the node's 4
   A100s are *visible* to the job. So `salloc -C gpu -q interactive --gpus 1 ...` bills a
