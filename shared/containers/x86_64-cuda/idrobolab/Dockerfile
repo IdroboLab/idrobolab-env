@@ -494,7 +494,10 @@ RUN set -eu; rc=0; for so in /opt/software/lammps/lib/liblammps.so /opt/software
       else echo "pw.x: $n resolves to '${got}', not $want"; rc=1; fi; \
     done; \
     if echo "$pwldd" | grep -E 'libmpi\.so\.40|libopen-(pal|rte)'; then echo "pw.x needs Open MPI libraries"; rc=1; fi; \
-    undef="$(ldd -r /opt/software/qe/lib/libmpifort.so.12 2>&1 | grep -iE 'undefined symbol: (p?mpi|mpl_)' || true)"; \
+    fortldd="$(ldd -r /opt/software/qe/lib/libmpifort.so.12 2>&1 || true)"; \
+    if ! echo "$fortldd" | grep -qF 'libmpi.so.12 => /opt/software/mpich/lib/libmpi.so.12'; then \
+      echo "ldd -r of libmpifort.so.12 does not show libmpi.so.12 from /opt/software/mpich/lib:"; echo "$fortldd"; rc=1; fi; \
+    undef="$(echo "$fortldd" | grep -iE 'undefined symbol: (p?mpi|mpl_)' || true)"; \
     if [ -n "$undef" ]; then echo "libmpifort.so.12 needs symbols that libmpi.so.12 lacks:"; echo "$undef"; rc=1; fi; \
     exit $rc
 
