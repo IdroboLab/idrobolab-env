@@ -26,6 +26,9 @@ different torch minor means a different fairchem release.
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`), and `lammps-gpu-selftest.sh` from `core/lammps/` |
 | `publish.sh` | Build + push to `ghcr.io/idrobolab/idrobolab`; refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
+| `install-qe-gpu.sh`, `stage-qe-libs.sh` | Build Quantum ESPRESSO in the NVIDIA HPC SDK image; `stage-qe-libs.sh` copies QE's runtime libraries and fails the build when one from the SDK is not under a `REDIST*` directory |
+| `NVIDIA-NOTICE.txt` | Names the NVIDIA agreements that govern the image's NVIDIA components; copied to `/opt/idrobolab/NVIDIA-NOTICE.txt` |
+| `nvidia-license-scan.py` | Prints the license metadata and license files of each `nvidia-*` distribution in `/opt/venv`; run at build time (see the build log), copied to `/opt/idrobolab/` |
 | `lammps-gpu-selftest.sh` | Not tracked: `prepare_build_context.sh` stages it from `core/lammps/` (the vendored hpcenv-core) for the Dockerfile's `COPY` |
 
 ### Multi-GPU abTEM (dask-cuda)

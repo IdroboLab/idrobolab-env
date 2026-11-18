@@ -85,8 +85,10 @@ license texts, not legal advice.
   and with the notices kept. `nvidia-nccl-cu12` is under BSD 3-Clause. The license files of
   the other NVIDIA wheels in the image were not read.
 
-Open work on the image: add a notice file to the image, and check the libraries copied by
-`install-qe-gpu.sh` against the SDK's REDIST directories.
+The image carries `/opt/idrobolab/NVIDIA-NOTICE.txt`, which names these agreements.
+`stage-qe-libs.sh`, run by `install-qe-gpu.sh`, fails the build when a library copied from
+the SDK is not under a REDIST directory. The build log lists the license metadata and
+license files of each `nvidia-*` wheel (`nvidia-license-scan.py`).
 
 ## Open questions
 
