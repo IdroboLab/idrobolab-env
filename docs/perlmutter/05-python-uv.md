@@ -70,6 +70,26 @@ source ~/venvs/analysis/bin/activate    # or call ~/venvs/analysis/bin/python di
 | not `$SCRATCH` | purged after 8 weeks |
 | not CFS | slow for the thousands of small files Python imports |
 
+**Jobs on compute nodes: run Python from an installed environment, not from the uv
+cache.** `uv run --script` keeps the script's environment in the uv cache, on `$SCRATCH`
+(Lustre). Lustre handles the thousands of small files Python reads at import badly. On a busy shared node
+this can stall a job completely. A numpy/scipy job on a `shared` CPU node produced no output in
+30 minutes; the same run with its packages copied to `/dev/shm` finished in 7 (2026-11-18, one
+measurement). For a job, install the script's dependencies into an environment under
+`/global/common/software/<project>/venvs/` (ask first, see the table) on a login node, and call
+that environment's `python` in the job:
+
+```bash
+uv export --script myscript.py --no-hashes > myscript.txt   # the header's dependencies, pinned
+uv venv --python 3.13 /global/common/software/<project>/venvs/myscript
+uv pip install -p /global/common/software/<project>/venvs/myscript -r myscript.txt
+# in the job script:
+/global/common/software/<project>/venvs/myscript/bin/python myscript.py
+```
+
+If an environment cannot be installed there, copy its `site-packages` to `/dev/shm` at the
+start of the job and put that copy on `PYTHONPATH`.
+
 Because the cache (on `$SCRATCH`) and environments in `$HOME` are on different file
 systems, uv prints *"Failed to hardlink files; falling back to full copy"*. This is
 harmless. Silence it with `export UV_LINK_MODE=copy` in `~/.bashrc`.
