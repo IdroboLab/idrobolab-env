@@ -8,8 +8,8 @@
 # needs no torch-geometric wheels.
 #
 # Build (host with docker/podman, after ./prepare_build_context.sh):
-#   podman build -t ghcr.io/idrobolab/idrobolab:latest .        # or ./publish.sh to push to ghcr
-#   -> apptainer build idrobolab.sif docker-daemon://idrobolab:latest   (Delta)
+#   ./publish.sh   # builds and pushes ghcr.io/idrobolab/idrobolab:<VERSION>-rc; :latest by release.sh
+#   -> apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   (Delta)
 #   -> podman-hpc pull …                                                (Perlmutter)
 #
 # Layer-cached: compiled libs + GPU wheels are early; requirements + the three

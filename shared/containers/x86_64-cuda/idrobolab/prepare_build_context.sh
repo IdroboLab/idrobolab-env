@@ -30,8 +30,8 @@ cp ../../../../core/lammps/lammps-gpu-selftest.sh lammps-gpu-selftest.sh
 recipe_hash=$(./recipe-hash.sh)
 build_id=$(date -u +%Y%m%dT%H%M%SZ)
 
-sources_json=
-while read -r name sha; do
+pairs=()
+while read -r name sha || [ -n "$name" ]; do
     [ -n "$name" ] || continue
     repo="${CODE_DIR}/${name}"
     if ! [[ $sha =~ ^[0-9a-f]{40}$ ]]; then
@@ -49,12 +49,15 @@ while read -r name sha; do
     rm -rf "src/${name}"
     mkdir -p "src/${name}"
     git -C "$repo" archive "$sha" | tar -xf - -C "src/${name}"
-    sources_json+="${sources_json:+, }\"${name}\": \"${sha}\""
+    pairs+=("$name" "$sha")
     echo "${name} staged from ${sha} ($(git -C "$repo" log -1 --format='%cs' "$sha"))"
 done < sources.txt
 
-printf '{"image": "idrobolab", "version": %s, "recipe_hash": "%s", "build_id": "%s", "sources": {%s}}\n' \
-    "$(cat VERSION)" "$recipe_hash" "$build_id" "$sources_json" > src/manifest.json
+python3 -c 'import json, sys
+version, recipe_hash, build_id, *pairs = sys.argv[1:]
+print(json.dumps({"image": "idrobolab", "version": int(version), "recipe_hash": recipe_hash,
+                  "build_id": build_id, "sources": dict(zip(pairs[::2], pairs[1::2]))}))' \
+    "$(cat VERSION)" "$recipe_hash" "$build_id" "${pairs[@]}" > src/manifest.json
 echo "manifest: version $(cat VERSION), recipe hash ${recipe_hash}, build id ${build_id}"
 
 echo "Build context staged under ./src ($(du -sh src | cut -f1))"

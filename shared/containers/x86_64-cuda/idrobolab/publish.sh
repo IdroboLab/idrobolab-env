@@ -11,8 +11,8 @@
 #
 # The default tag is <VERSION>-rc, a release candidate: it is refused when the recipe hash is
 # `dirty` (uncommitted change in this directory), and it builds with LAMMPS_RUN_TESTS=1 (the
-# LAMMPS ctest suite). TAG=dev is a development build without the ctest suite. :latest and
-# :<VERSION> are set by release.sh only. The version, recipe hash and build id of the image
+# LAMMPS ctest suite). TAG=dev is a development build without the ctest suite. No other tag
+# is accepted: :latest and :<VERSION> are set by release.sh only. The version, recipe hash and build id of the image
 # come from the manifest that prepare_build_context.sh staged.
 #
 # Prerequisites:
@@ -28,6 +28,10 @@ cd "$(dirname "$0")"
 
 IMAGE=${IMAGE:-ghcr.io/idrobolab/idrobolab}
 TAG=${TAG:-$(cat VERSION)-rc}
+case $TAG in
+    dev | *-rc) ;;
+    *) echo "ERROR: TAG=${TAG}: only <VERSION>-rc and dev are built here; :<VERSION> and :latest are set by release.sh" >&2; exit 1 ;;
+esac
 SOURCES_TAG=$(date -u +%Y%m%d-%H%M%S)-sources
 ENGINE=${ENGINE:-$(command -v podman || command -v docker || true)}
 : "${ENGINE:?need podman or docker on PATH}"

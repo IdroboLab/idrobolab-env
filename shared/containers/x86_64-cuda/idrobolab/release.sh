@@ -51,6 +51,7 @@ if [ -z "$rc_build_id" ]; then
     exit 1
 fi
 for record in "${records[@]}"; do
+    # The records' format is defined by verification/ (a top-level build_id).
     record_build_id=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["build_id"])' "$record")
     if [ "$record_build_id" != "$rc_build_id" ]; then
         echo "ERROR: ${record##*/} has build id ${record_build_id}, ${IMAGE}:${N}-rc has ${rc_build_id}" >&2
@@ -58,11 +59,12 @@ for record in "${records[@]}"; do
     fi
 done
 
-# Only "manifest unknown" means that :N is free; any other failure leaves it undecided.
+# Only "manifest unknown" (podman, registries) or "no such manifest" (docker) means that :N is
+# free; any other failure leaves it undecided.
 if out=$("$ENGINE" manifest inspect "${IMAGE}:${N}" 2>&1); then
     echo "ERROR: ${IMAGE}:${N} exists already; :${N} never moves" >&2
     exit 1
-elif ! grep -qiE 'manifest unknown|not found|404' <<<"$out"; then
+elif ! grep -qiE 'manifest unknown|no such manifest' <<<"$out"; then
     echo "ERROR: cannot tell whether ${IMAGE}:${N} exists: ${out}" >&2
     exit 1
 fi
