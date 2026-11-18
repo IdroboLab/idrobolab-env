@@ -1,6 +1,10 @@
 #!/bin/bash
 # Build the idrobolab image on THIS host and push it to a registry (GHCR by
-# default). Delta and Perlmutter both consume the same image.
+# default). Delta and Perlmutter both consume the same image. Right after the image it
+# pushes the sources image (the Dockerfile's `sources` stage: the source code of the GPL
+# software in the image) as <image>:<tag>-sources, and again as <image>:<date>-sources
+# (the UTC date and time of the publish), so that it stays available when <tag> moves.
+# A sources image is never deleted while its image is available by tag or digest.
 #
 # Prerequisites:
 #   1. ./prepare_build_context.sh first (stages ./src from /workspaces/code and
@@ -15,6 +19,7 @@ cd "$(dirname "$0")"
 
 IMAGE=${IMAGE:-ghcr.io/idrobolab/idrobolab}
 TAG=${TAG:-latest}
+DATED_SOURCES_TAG=$(date -u +%Y%m%d-%H%M%S)-sources
 ENGINE=${ENGINE:-$(command -v podman || command -v docker || true)}
 : "${ENGINE:?need podman or docker on PATH}"
 
@@ -38,11 +43,18 @@ fi
 echo ">> building ${IMAGE}:${TAG}  (engine: ${ENGINE##*/})"
 "$ENGINE" build -t "${IMAGE}:${TAG}" .
 
+echo ">> building ${IMAGE}:${TAG}-sources  (stage sources of the same build)"
+"$ENGINE" build --target sources -t "${IMAGE}:${TAG}-sources" -t "${IMAGE}:${DATED_SOURCES_TAG}" .
+
 echo ">> logging in to ghcr.io  (engine: ${ENGINE##*/})"
 echo "$GITHUB_PACKAGE_TOKEN" | "$ENGINE" login ghcr.io -u "$GHCR_USER" --password-stdin
 
 echo ">> pushing ${IMAGE}:${TAG}"
 "$ENGINE" push "${IMAGE}:${TAG}"
+
+echo ">> pushing ${IMAGE}:${TAG}-sources and ${IMAGE}:${DATED_SOURCES_TAG}"
+"$ENGINE" push "${IMAGE}:${TAG}-sources"
+"$ENGINE" push "${IMAGE}:${DATED_SOURCES_TAG}"
 
 cat <<EOF
 >> done. Consume it:

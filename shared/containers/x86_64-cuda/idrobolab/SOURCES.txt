@@ -1,0 +1,55 @@
+Source code of the open-source software in the idrobolab image
+===============================================================
+
+Some software in this image was compiled in the build, and some carries a license that
+requires its source code to be available. The source code of that software is published
+as a second image in the same package, with the tag of this image plus "-sources"
+(ghcr.io/idrobolab/idrobolab:<tag>-sources for the image ghcr.io/idrobolab/idrobolab:<tag>).
+
+Software built into the image, with the license of its source (read from the source tree):
+
+  GNU General Public License (GPL):
+    Quantum ESPRESSO 7.6 (version 2 or later), LAMMPS stable_22Jul2025_update6 (version 2),
+    FFTW 3.3.10 (version 2 or later), libvdwxc 0.5.0 (version 3 or later),
+    Bader 1.05 (version 3 or later; two files under the LGPL 2.1 or later),
+    QUIP at the commit named in the archive (version 2, with its GAP part under the
+    GAP Academic Software License)
+  GNU Lesser General Public License (LGPL):
+    ELPA 2024.05.001 (version 3)
+  Mozilla Public License 2.0 (MPL):
+    libxc 7.0.0
+  Common Development and Distribution License 1.0 (CDDL):
+    kim-api 2.2.1
+
+The sources image holds, for each of them, the source archive the build used and a file
+SHA256SUMS. LAMMPS, QUIP and Quantum ESPRESSO are the files of the git checkout the build
+used (with the submodules it initialised), without the .git directory.
+
+GPAW, gpaw-weaver and abTEM (GPAW and abTEM under the GPL, version 3 or later) are
+installed from their source in /opt/src, which stays in the image. hyperspy and nionswift
+(GPL) and gpaw-data (GPL, PAW data sets) are pure-Python packages in /opt/venv and carry
+their source.
+
+To get the source code of the image you run, replace <tag> with its tag:
+
+  podman create --name idrobolab-sources ghcr.io/idrobolab/idrobolab:<tag>-sources none
+  mkdir idrobolab-sources
+  podman cp idrobolab-sources:/. idrobolab-sources/
+  podman rm idrobolab-sources
+  cd idrobolab-sources && sha256sum -c SHA256SUMS
+
+(docker works the same way.) /opt/idrobolab/sources/SHA256SUMS in this image is the file
+SHA256SUMS of the sources image that goes with it: compare the two to identify it.
+
+A sources image is not deleted while its image is available by tag or by digest. Every
+publish also tags its sources image with the UTC date and time (<date>-sources), so the
+sources image of an earlier image stays available after <tag> moves; compare SHA256SUMS to
+find it.
+
+The scripts that build the image (the recipe) are in the repository
+https://github.com/IdroboLab/idrobolab-env, directory
+shared/containers/x86_64-cuda/idrobolab.
+
+Ubuntu packages (the base image and the packages installed with apt) are passed on
+unmodified; their source code is in the Ubuntu archive. The NVIDIA software is described in
+/opt/idrobolab/NVIDIA-NOTICE.txt.

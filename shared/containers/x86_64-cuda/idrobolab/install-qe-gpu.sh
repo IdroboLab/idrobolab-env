@@ -17,7 +17,8 @@
 # install, staging). What is still UNVERIFIED is runtime: pw.x has not been
 # executed on a GPU node, so the staged .so set and the rpaths are unproven.
 #
-# Env: QE_VERSION (default qe-7.6), QE_GPU_ARCHS (default sm_80; e.g. "sm_80;sm_90").
+# Env: QE_VERSION (default qe-7.6), QE_GPU_ARCHS (default sm_80; e.g. "sm_80;sm_90"),
+# SOURCES_DIR (set by the Dockerfile: where the source archive of QE is kept).
 set -euo pipefail
 
 QE_VERSION="${QE_VERSION:-qe-7.6}"
@@ -127,6 +128,11 @@ if ! cmake -S . -B build \
 fi
 cmake --build build -j"$(nproc)"
 DESTDIR="" cmake --install build           # installs to $PREFIX inside the builder
+
+# QE is GPL-2.0-or-later: keep the source as built (the submodules cmake initialised
+# included) in $SOURCES_DIR, which the sources image collects. Nothing here reaches the
+# final image.
+bash "$(dirname "$0")/keep-git-source.sh" "$SRC" "$QE_VERSION"
 
 # --- stage QE + its runtime shared libs into $DIST --------------------------
 # stage-qe-libs.sh copies the transitive .so deps of every QE executable.

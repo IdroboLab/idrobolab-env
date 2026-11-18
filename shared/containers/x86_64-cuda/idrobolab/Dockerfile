@@ -15,6 +15,11 @@
 # Layer-cached: compiled libs + GPU wheels are early; requirements + the three
 # editable source trees are copied late so a pin/source change rebuilds only
 # from there.
+#
+# Sources of the GPL, LGPL, MPL and CDDL software compiled or downloaded here are kept in
+# /opt/sources by the stages that fetch them (qe-builder, builder). The `sources` stage
+# collects them with SHA256SUMS and publish.sh pushes it as <image>:<tag>-sources
+# (`podman build --target sources`); the main image carries only SHA256SUMS.
 # ============================================================================
 # ===== Quantum ESPRESSO GPU builder stage (NVIDIA HPC SDK / nvfortran) =======
 # QE's GPU path needs nvfortran, which lives only in the multi-GB NVHPC SDK.
@@ -29,7 +34,8 @@ ARG QE_GPU_ARCHS=sm_80
 FROM ${NVHPC_IMAGE} AS qe-builder
 ARG QE_VERSION
 ARG QE_GPU_ARCHS
-COPY install-qe-gpu.sh stage-qe-libs.sh /tmp/
+ENV SOURCES_DIR=/opt/sources
+COPY install-qe-gpu.sh stage-qe-libs.sh keep-git-source.sh /tmp/
 RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" bash /tmp/install-qe-gpu.sh
 
 # ===== builder stage (full -devel toolchain; discarded after the split) ======
@@ -44,6 +50,7 @@ FROM nvcr.io/nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04 AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 ENV INSTALL_DIR=/opt/software \
+    SOURCES_DIR=/opt/sources \
     VIRTUAL_ENV=/opt/venv \
     PIP_NO_CACHE_DIR=1 \
     PIP_RETRIES=10 \
@@ -60,6 +67,7 @@ ARG LIBXC_VERSION=7.0.0
 ARG LIBVDWXC_VERSION=0.5.0
 ARG ELPA_VERSION=2024.05.001
 ARG MAGMA_VERSION=2.7.2
+ARG BADER_VERSION=1.05
 ARG ARCH_FLAGS="-O3 -march=x86-64-v3"
 
 # --- system packages (build toolchain + Qt6 runtime for the nionswift GUI) ---
@@ -80,8 +88,16 @@ RUN set -eux; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
 # --- Bader charge analysis (Henkelman) — precompiled static binary ----------
-RUN curl -fsSL https://theory.cm.utexas.edu/henkelman/code/bader/download/bader_lnx_64.tar.gz \
-    | tar xz -C /usr/local/bin && chmod +x /usr/local/bin/bader
+# GPL-3.0-or-later, so the source from the same site is kept in /opt/sources. The binary and
+# source tarball both carry the banner "Version ${BADER_VERSION} <date>"; the build fails when
+# either lacks it, so the source matches the binary.
+RUN set -eux; mkdir -p ${SOURCES_DIR}; \
+    BADER_URL=https://theory.cm.utexas.edu/henkelman/code/bader/download; \
+    curl -fsSL ${BADER_URL}/bader_lnx_64.tar.gz | tar xz -C /usr/local/bin; \
+    chmod +x /usr/local/bin/bader; \
+    curl -fsSL -o ${SOURCES_DIR}/bader-${BADER_VERSION}.tar.gz ${BADER_URL}/bader.tar.gz; \
+    grep -aq "Version ${BADER_VERSION} " /usr/local/bin/bader; \
+    tar xzOf ${SOURCES_DIR}/bader-${BADER_VERSION}.tar.gz | grep -aq "Version ${BADER_VERSION} "
 
 # --- MPICH (ch4:ofi; MPICH ABI libmpi.so.12) --------------------------------
 RUN set -eux; cd /tmp; \
@@ -97,6 +113,7 @@ RUN set -eux; cd /tmp; \
 # --- FFTW -------------------------------------------------------------------
 RUN set -eux; cd /tmp; \
     wget -q https://www.fftw.org/fftw-${FFTW_VERSION}.tar.gz; \
+    cp fftw-${FFTW_VERSION}.tar.gz ${SOURCES_DIR}/; \
     tar xzf fftw-${FFTW_VERSION}.tar.gz; cd fftw-${FFTW_VERSION}; \
     ./configure --prefix=${INSTALL_DIR}/fftw-${FFTW_VERSION} \
         CFLAGS="${ARCH_FLAGS}" --enable-shared --disable-static \
@@ -133,6 +150,7 @@ RUN set -eux; \
 # --- libxc (+ pylibxc) ------------------------------------------------------
 RUN set -eux; cd /tmp; \
     wget -q https://gitlab.com/libxc/libxc/-/archive/${LIBXC_VERSION}/libxc-${LIBXC_VERSION}.tar.gz; \
+    cp libxc-${LIBXC_VERSION}.tar.gz ${SOURCES_DIR}/; \
     tar xzf libxc-${LIBXC_VERSION}.tar.gz; cd libxc-${LIBXC_VERSION}; \
     autoreconf -i; \
     ./configure --prefix=${INSTALL_DIR}/libxc-${LIBXC_VERSION} \
@@ -146,6 +164,7 @@ RUN set -eux; cd /tmp; \
 # --- libvdwxc ---------------------------------------------------------------
 RUN set -eux; cd /tmp; \
     wget -q https://gitlab.com/libvdwxc/libvdwxc/-/archive/${LIBVDWXC_VERSION}/libvdwxc-${LIBVDWXC_VERSION}.tar.gz; \
+    cp libvdwxc-${LIBVDWXC_VERSION}.tar.gz ${SOURCES_DIR}/; \
     tar xzf libvdwxc-${LIBVDWXC_VERSION}.tar.gz; cd libvdwxc-${LIBVDWXC_VERSION}; \
     (sh autogen.sh || autoreconf -i); \
     mkdir build && cd build; \
@@ -164,6 +183,7 @@ RUN set -eux; cd /tmp; \
 # install under <prefix>/include/elpa-<version>/; the siteconfig globs for it.
 RUN set -eux; cd /tmp; \
     wget -q https://elpa.mpcdf.mpg.de/software/tarball-archive/Releases/${ELPA_VERSION}/elpa-${ELPA_VERSION}.tar.gz; \
+    cp elpa-${ELPA_VERSION}.tar.gz ${SOURCES_DIR}/; \
     tar xzf elpa-${ELPA_VERSION}.tar.gz; cd elpa-${ELPA_VERSION}; \
     mkdir build && cd build; \
     ../configure \
@@ -300,8 +320,13 @@ RUN pip install -e /opt/src/abTEM
 # would change the release under an unchanged recipe. stable_30Sep2026 fails to link
 # liblammps.so with the Kokkos-CUDA preset (g++: cannot specify '-o' with '-c' ... with
 # multiple files), so do not move the pin without a CUDA build.
+#
+# LAMMPS (GPL-2.0), the QUIP checkout and the kim-api tarball its cmake fetches (QUIP: GPL-2.0
+# with the GAP submodule under the non-commercial ASL; kim-api: CDDL-1.0) are kept in
+# /opt/sources once the build has fetched them; the build fails when one is missing.
 ARG LAMMPS_BRANCH=stable_22Jul2025_update6
 ARG LAMMPS_RUN_TESTS=0
+COPY keep-git-source.sh /tmp/keep-git-source.sh
 RUN set -eux; \
     apt-get update; apt-get install -y --no-install-recommends libhdf5-dev libzstd-dev ffmpeg; \
     rm -rf /var/lib/apt/lists/*; \
@@ -329,6 +354,10 @@ RUN set -eux; \
         ${PKGS}; \
     cmake --build build -j"$(nproc)"; \
     cmake --install build; \
+    QUIP_DIR=build/quip_build-prefix/src/quip_build; \
+    bash /tmp/keep-git-source.sh . "lammps-${LAMMPS_BRANCH}"; \
+    bash /tmp/keep-git-source.sh "$QUIP_DIR" "quip-$(git -C "$QUIP_DIR" rev-parse --short=12 HEAD)"; \
+    cp build/kim_build-prefix/src/kim-api-*.txz ${SOURCES_DIR}/; \
     cp -a build/kim_build-prefix/lib/libkim-api.so* ${INSTALL_DIR}/lammps/lib/ 2>/dev/null || true; \
     mkdir -p ${INSTALL_DIR}/lammps/python; \
     cp -a python/lammps ${INSTALL_DIR}/lammps/python/lammps; \
@@ -344,6 +373,20 @@ RUN set -eux; \
     fi; \
     cd /; rm -rf /tmp/lammps-src
 # (LAMMPS runtime env is set in the final stage below, not here.)
+
+# ===== sources: the source code of the GPL, LGPL, MPL and CDDL software ========
+# sources-collect checks that every component has its archive (the build fails otherwise)
+# and writes SHA256SUMS. `sources` holds the archives and SHA256SUMS and nothing else;
+# publish.sh builds it with --target sources and pushes it as <image>:<tag>-sources.
+FROM builder AS sources-collect
+COPY --from=qe-builder /opt/sources/ ${SOURCES_DIR}/
+COPY finish-sources.sh /tmp/finish-sources.sh
+RUN bash /tmp/finish-sources.sh qe lammps quip kim-api fftw libxc libvdwxc elpa bader
+
+FROM scratch AS sources
+LABEL org.opencontainers.image.source="https://github.com/IdroboLab/idrobolab-env"
+LABEL org.opencontainers.image.description="Source code of the GPL, LGPL, MPL and CDDL software in the idrobolab image"
+COPY --from=sources-collect /opt/sources/ /
 
 # ============================================================================
 # ===== idrobolab final image — slim runtime =================================
@@ -396,7 +439,8 @@ COPY --from=builder /opt/src      /opt/src
 COPY --from=builder /usr/local/bin/bader /usr/local/bin/bader
 COPY --from=qe-builder /opt/qe-dist ${INSTALL_DIR}/qe
 
-COPY NVIDIA-NOTICE.txt nvidia-license-scan.py /opt/idrobolab/
+COPY NVIDIA-NOTICE.txt SOURCES.txt nvidia-license-scan.py /opt/idrobolab/
+COPY --from=sources-collect /opt/sources/SHA256SUMS /opt/idrobolab/sources/SHA256SUMS
 
 COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
 COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
