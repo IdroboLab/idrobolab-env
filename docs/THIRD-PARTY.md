@@ -196,6 +196,8 @@ non-commercial use only.
 - PySide6 (6.12.0 on PyPI, under the LGPL 3, GPL 2 or GPL 3) comes from compiled wheels that
   bundle the Qt libraries; the sources image does not hold the source of Qt.
 - The licenses of the other Python wheels in `/opt/venv`, those not named above, were not
-  read. Whether the image carries the license texts that MPICH, ScaLAPACK and MAGMA require
-  with binaries was not checked either; the MPICH built for Quantum ESPRESSO ships its
-  `COPYRIGHT` as `/opt/software/qe/MPICH-COPYRIGHT`.
+  read.
+- Whether the image carries the license texts that MPICH, ScaLAPACK and MAGMA require with
+  binaries was not checked. Only the `libmpifort.so.12` of the MPICH built for Quantum
+  ESPRESSO comes from that second MPICH, and its `COPYRIGHT` ships next to it as
+  `/opt/software/qe/MPICH-COPYRIGHT`.
