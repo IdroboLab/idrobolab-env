@@ -487,6 +487,22 @@ RUN if [ -n "${SOURCES_TAG}" ]; then \
         >> /opt/idrobolab/SOURCES.txt; \
     fi
 
+# --- version identity (set by publish.sh) -----------------------------------
+# manifest.json comes from prepare_build_context.sh; the build adds whether LAMMPS's ctest suite
+# ran. The labels repeat the manifest's version, recipe hash and build id, which the registry
+# shows without pulling the image. Declared last, like SOURCES_TAG.
+ARG VERSION=
+ARG RECIPE_HASH=
+ARG BUILD_ID=
+ARG LAMMPS_RUN_TESTS=0
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${RECIPE_HASH}" \
+      idrobolab.build-id="${BUILD_ID}"
+COPY src/manifest.json /opt/idrobolab/manifest.json
+RUN python -c 'import json, sys; p = "/opt/idrobolab/manifest.json"; m = json.load(open(p)); \
+m["lammps_ctest"] = sys.argv[1] == "1"; json.dump(m, open(p, "w"), indent=2)' "${LAMMPS_RUN_TESTS}" \
+ && pip freeze > /opt/idrobolab/pip-freeze.txt
+
 # --- runtime environment ----------------------------------------------------
 ENV OMP_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
