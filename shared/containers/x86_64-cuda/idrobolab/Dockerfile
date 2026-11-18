@@ -8,7 +8,8 @@
 # needs no torch-geometric wheels.
 #
 # Build (host with docker/podman, after ./prepare_build_context.sh):
-#   ./publish.sh   # builds and pushes ghcr.io/idrobolab/idrobolab:<VERSION>-rc; :latest by release.sh
+#   ./publish.sh   # builds and pushes ghcr.io/idrobolab/idrobolab:<VERSION>-rc
+#                  # (:latest is set by release.sh)
 #   -> apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   (Delta)
 #   -> podman-hpc pull …                                                (Perlmutter)
 #

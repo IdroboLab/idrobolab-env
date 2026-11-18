@@ -12,8 +12,8 @@
 # The default tag is <VERSION>-rc, a release candidate: it is refused when the recipe hash is
 # `dirty` (uncommitted change in this directory), and it builds with LAMMPS_RUN_TESTS=1 (the
 # LAMMPS ctest suite). TAG=dev is a development build without the ctest suite. No other tag
-# is accepted: :latest and :<VERSION> are set by release.sh only. The version, recipe hash and build id of the image
-# come from the manifest that prepare_build_context.sh staged.
+# is accepted: :latest and :<VERSION> are set by release.sh only. The version, recipe hash and
+# build id of the image come from the manifest that prepare_build_context.sh staged.
 #
 # Prerequisites:
 #   1. ./prepare_build_context.sh first (stages ./src from /workspaces/code and
