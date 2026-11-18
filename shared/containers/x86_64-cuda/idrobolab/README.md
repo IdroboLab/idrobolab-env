@@ -25,9 +25,11 @@ different torch minor means a different fairchem release.
 | `requirements-idrobolab.txt` | Curated Python stack — **hand-maintained** (not scraped from a dev venv) |
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`), and `lammps-gpu-selftest.sh` from `core/lammps/` |
-| `publish.sh` | Build + push to `ghcr.io/idrobolab/idrobolab`; refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
+| `publish.sh` | Build, push `<date>-sources`, the image to `ghcr.io/idrobolab/idrobolab`, then `<tag>-sources` (see [Sources image](#sources-image)); refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
 | `install-qe-gpu.sh`, `stage-qe-libs.sh` | Build Quantum ESPRESSO in the NVIDIA HPC SDK image; `stage-qe-libs.sh` copies QE's runtime libraries and fails the build when a library from the SDK is not a `REDIST*` file or an NVIDIA CUDA/NCCL library comes from outside the SDK, copies SDK files unmodified and lists them in `NVIDIA-REDIST-FILES.txt`, and sets the rpath of the QE executables and of the non-SDK libraries |
 | `NVIDIA-NOTICE.txt` | Names the NVIDIA agreements that govern the image's NVIDIA components and points to the file list; copied to `/opt/idrobolab/NVIDIA-NOTICE.txt` |
+| `SOURCES.txt` | Names the GPL, LGPL, MPL and CDDL software in the image, where its source is (the sources image) and how to extract it, and where the recipe is; copied to `/opt/idrobolab/SOURCES.txt` |
+| `keep-git-source.sh`, `finish-sources.sh` | Keep and check the source archives of the sources image (see [Sources image](#sources-image)) |
 | `nvidia-license-scan.py` | Prints the license metadata and license files of each `nvidia-*` distribution in `/opt/venv`; run at build time (see the build log), copied to `/opt/idrobolab/` |
 | `lammps-gpu-selftest.sh` | Not tracked: `prepare_build_context.sh` stages it from `core/lammps/` (the vendored hpcenv-core) for the Dockerfile's `COPY` |
 
@@ -69,6 +71,35 @@ package.
 apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   # Delta
 podman-hpc pull ghcr.io/idrobolab/idrobolab:latest                          # Perlmutter
 ```
+
+### Sources image
+
+The licenses of some software in the image (Quantum ESPRESSO, LAMMPS, FFTW, libvdwxc, Bader,
+QUIP, kim-api, ELPA, libxc; the audit is in
+[`docs/THIRD-PARTY.md`](../../../../docs/THIRD-PARTY.md)) require its source code to be
+available. The stages that download or clone it keep the archive in `/opt/sources`: a
+downloaded tarball as it came, a git tree (with the submodules the build initialised, without
+`.git`) as `<name>-<version>.tar.gz` through `keep-git-source.sh`. The stage `sources-collect`
+runs `finish-sources.sh`, which fails the build when a listed component has no archive and
+writes `SHA256SUMS`; the last stage before the image, `FROM scratch AS sources`, holds only
+the archives and `SHA256SUMS`. Add a component to the list in `sources-collect` when it gets a
+source duty.
+
+The main image carries only `SHA256SUMS` (`/opt/idrobolab/sources/SHA256SUMS`) and
+`/opt/idrobolab/SOURCES.txt`, not the archives. `publish.sh` builds the stage with
+`--target sources` (cached from the build of the image) and pushes
+`ghcr.io/idrobolab/idrobolab:<date>-sources` (the UTC date and time the script started), then
+the image, then `<tag>-sources`: no binary is out without its source, and when the push of the
+image fails, `<tag>-sources` still matches the old `<tag>`. It passes the dated tag to
+the build of the image as `SOURCES_TAG`, and the image's last layer appends it to
+`/opt/idrobolab/SOURCES.txt`, so an image names exactly its sources image. The
+versions that `SOURCES.txt` and `docs/THIRD-PARTY.md` name are the Dockerfile's version ARGs:
+change them together.
+
+**Retention.** Never delete a sources image while its image is still available by tag or
+digest, and never move or delete a `<date>-sources` tag: it is how the sources of an image
+that `:latest` no longer points to stay available. To pull and check a sources image, use
+the commands in `SOURCES.txt`.
 
 ### Registry access
 
