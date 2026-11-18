@@ -9,11 +9,11 @@
 # real path is under SDKROOT must therefore also be the real path of a file
 # under such a directory, or a byte-identical copy of one of the same name; any
 # other is listed and fails the build. Libraries outside SDKROOT (the builder
-# image's Ubuntu libraries) are listed, not checked, except that a library with
-# an NVIDIA CUDA or NCCL name there fails the build too: it is not an SDK file
-# and nothing here has verified its license. The staged SDK files are listed in
-# DIST/NVIDIA-REDIST-FILES.txt (name, real path in the SDK, and for a copy the
-# REDIST path it matched).
+# image's Ubuntu libraries and the MPICH that install-qe-gpu.sh builds) are listed,
+# not checked, except that a library with an NVIDIA CUDA or NCCL name there fails the
+# build too: it is not an SDK file and nothing here has verified its license. The
+# staged SDK files are listed in DIST/NVIDIA-REDIST-FILES.txt (name, real path in the
+# SDK, and for a copy the REDIST path it matched).
 # The SDK files are copied unmodified and never patched; the QE executables and
 # the other staged libraries get RPATH, so they find each other without an
 # image-wide LD_LIBRARY_PATH (which would shadow the base image's CUDA libs).

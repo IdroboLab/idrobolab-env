@@ -36,7 +36,7 @@ Agreements that govern the NVIDIA components:
    open licenses (for example nvidia-nccl-cu12, BSD 3-Clause). To list each
    wheel's license, run: python /opt/idrobolab/nvidia-license-scan.py
 
-Open-source components in the image (Open MPI, MPICH, GPAW, Quantum ESPRESSO,
+Open-source components in the image (MPICH, GPAW, Quantum ESPRESSO,
 LAMMPS and others) are governed by their own licenses. The image is provided
 without warranty and without liability for any damage from its use. Users must
 comply with the export laws and regulations that apply to the NVIDIA software.

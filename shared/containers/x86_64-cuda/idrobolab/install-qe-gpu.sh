@@ -7,17 +7,19 @@
 #
 # Backend: OpenACC + CUDA Fortran (nvfortran) — the mature NVIDIA path. FFT on
 # GPU is cuFFT; CPU-side FFT is QE's internal FFTXlib (no external FFTW needed).
-# MPI is the SDK's bundled OpenMPI (nvfortran-consistent). ScaLAPACK is off (GPU
-# QE uses its own GPU eigensolvers) — matches QE's own --with-scalapack=no guidance.
+# MPI is MPICH built here with the NVHPC compilers, so pw.x links libmpi.so.12 like the
+# rest of the image; the SDK's bundled Open MPI is not REDIST and is not used. ScaLAPACK is
+# off (GPU QE uses its own GPU eigensolvers) — matches QE's own --with-scalapack=no guidance.
 #
 # The GPU-less docker build sandbox drives the two CUDA workarounds below: the
 # bundled CUDA toolkit has to be pinned explicitly (nvfortran otherwise resolves
 # it from the absent driver) and the libcuda stub has to go on the link path.
-# This script now runs to completion on the build host (configure, build,
-# install, staging). What is still UNVERIFIED is runtime: pw.x has not been
-# executed on a GPU node, so the staged .so set and the rpaths are unproven.
+# UNVERIFIED: the MPICH build with the NVHPC compilers and the QE build against it have
+# not run on a build host, and pw.x has not been executed on a GPU node, so the staged
+# .so set and the rpaths are unproven.
 #
 # Env: QE_VERSION (default qe-7.6), QE_GPU_ARCHS (default sm_80; e.g. "sm_80;sm_90"),
+# MPICH_VERSION (required: the Dockerfile passes its MPICH_VERSION),
 # SOURCES_DIR (set by the Dockerfile: where the source archive of QE is kept).
 set -euo pipefail
 
@@ -42,10 +44,10 @@ rm -rf /var/lib/apt/lists/*
 
 # --- MPICH, built with the NVHPC compilers -----------------------------------
 # The Dockerfile's MPICH (same version, device and netmod) built by nvc/nvfortran:
-# libmpifort and the Fortran logical TRUE that libmpi writes back in logical
-# reductions (nvfortran: -1; gfortran: 1) are fixed when MPICH is configured.
-# Its libraries are staged with QE; pw.x runs under the image's MPICH launcher
-# (same version, same PMI).
+# libmpifort and the value of Fortran .TRUE. that libmpi writes in MPI_LOGICAL
+# reductions are fixed when MPICH is configured (the configure log has the line
+# "values of Fortran logicals"), so both libraries are the nvfortran ones. They are staged
+# with QE (stage-qe-libs.sh); the image's MPICH, of the same version, launches pw.x.
 MPICH_VERSION="${MPICH_VERSION:?MPICH_VERSION is not set}"
 MPICH_PREFIX=/opt/mpich-nvhpc
 run_logged() {  # run_logged LOG CMD...: keep the log out of the build output, tail it on failure

@@ -26,12 +26,24 @@ different torch minor means a different fairchem release.
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`), and `lammps-gpu-selftest.sh` from `core/lammps/` |
 | `publish.sh` | Build, push `<date>-sources`, the image to `ghcr.io/idrobolab/idrobolab`, then `<tag>-sources` (see [Sources image](#sources-image)); refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
-| `install-qe-gpu.sh`, `stage-qe-libs.sh` | Build Quantum ESPRESSO in the NVIDIA HPC SDK image; `stage-qe-libs.sh` copies QE's runtime libraries and fails the build when a library from the SDK is not a `REDIST*` file or an NVIDIA CUDA/NCCL library comes from outside the SDK, copies SDK files unmodified and lists them in `NVIDIA-REDIST-FILES.txt`, and sets the rpath of the QE executables and of the non-SDK libraries |
+| `install-qe-gpu.sh`, `stage-qe-libs.sh` | Build Quantum ESPRESSO in the NVIDIA HPC SDK image against an MPICH (same version and device as the image's) that `install-qe-gpu.sh` builds with the NVHPC compilers; `stage-qe-libs.sh` copies QE's runtime libraries and fails the build when a library from the SDK is not a `REDIST*` file or an NVIDIA CUDA/NCCL library comes from outside the SDK, copies SDK files unmodified and lists them in `NVIDIA-REDIST-FILES.txt`, and sets the rpath of the QE executables and of the non-SDK libraries |
 | `NVIDIA-NOTICE.txt` | Names the NVIDIA agreements that govern the image's NVIDIA components and points to the file list; copied to `/opt/idrobolab/NVIDIA-NOTICE.txt` |
 | `SOURCES.txt` | Names the GPL, LGPL, MPL and CDDL software in the image, where its source is (the sources image) and how to extract it, and where the recipe is; copied to `/opt/idrobolab/SOURCES.txt` |
 | `keep-git-source.sh`, `finish-sources.sh` | Keep and check the source archives of the sources image (see [Sources image](#sources-image)) |
 | `nvidia-license-scan.py` | Prints the license metadata and license files of each `nvidia-*` distribution in `/opt/venv`; run at build time (see the build log), copied to `/opt/idrobolab/` |
 | `lammps-gpu-selftest.sh` | Not tracked: `prepare_build_context.sh` stages it from `core/lammps/` (the vendored hpcenv-core) for the Dockerfile's `COPY` |
+
+**Quantum ESPRESSO's MPI.** `pw.x` links `libmpi.so.12` and `libmpifort.so.12` from an MPICH
+that the `qe-builder` stage builds with `nvc`/`nvfortran` (`MPICH_VERSION` and the `ch4:ofi`
+device as in the main stage). Both libraries ship in `/opt/software/qe/lib`, with MPICH's
+`COPYRIGHT` as `MPICH-COPYRIGHT`; the SDK's Open MPI libraries (`libmpi.so.40`, `libopen-*`)
+are not `REDIST*` files and are not used. The C library is the NVHPC build too, because
+MPICH fixes the value of Fortran `.TRUE.` in `libmpi` when it is configured (reductions of
+`MPI_LOGICAL` write it) and `nvfortran`'s differs from `gfortran`'s, which the main stage's
+MPICH is configured with. The rpath of `pw.x` makes it load this copy before
+`/opt/software/mpich/lib`; the image's `mpirun` and `mpiexec` (the same MPICH version) launch
+it. The last gate of the `Dockerfile` fails the build unless `pw.x` resolves `libmpi.so.12`
+to `/opt/software/qe/lib` and needs no `libmpi.so.40` or `libopen-*`.
 
 ### Multi-GPU abTEM (dask-cuda)
 
