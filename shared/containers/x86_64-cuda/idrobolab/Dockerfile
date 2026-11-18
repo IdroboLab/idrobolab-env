@@ -446,8 +446,7 @@ COPY NVIDIA-NOTICE.txt SOURCES.txt nvidia-license-scan.py /opt/idrobolab/
 COPY --from=sources-collect /opt/sources/SHA256SUMS /opt/idrobolab/sources/SHA256SUMS
 
 COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
-COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
-RUN chmod +x /usr/local/bin/lammps-gpu-selftest /usr/local/bin/lammps-gpu-ctest
+RUN chmod +x /usr/local/bin/lammps-gpu-selftest
 
 # --- build-time sanity: the slim image must still import the full stack ------
 # pymatgen 2026.x is an umbrella namespace dist (Requires-Dist: pymatgen-core)
