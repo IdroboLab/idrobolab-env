@@ -6,9 +6,11 @@
 # (its packages — nionswift, ptyrad, hiphive, pymatgen, fairchem, … — are not
 # in the maintainer's ROCm dev venv, so no pins are scraped from it). This script only stages
 # the three editable source trees the image installs from /opt/src, each from
-# committed files via git archive, never from the working tree:
-#   gpaw (its MASTER branch; GPAW_REF=<ref> overrides), and gpaw-weaver and
-#   abTEM (the commit each dev checkout has checked out).
+# committed files via git archive, never from the working tree. The only input is
+# sources.txt (`<name> <full commit SHA>` per tree): a commit that is missing from the
+# checkout, or on no remote-tracking branch, fails the staging, so every tree of the image
+# is public and reproducible. A development build edits sources.txt, which makes the recipe
+# `dirty` (recipe-hash.sh) and so never a release candidate.
 # The image is public, so nothing untracked may reach it: a working tree holds
 # agent session data (.claude/), other branches' worktrees (.worktrees/),
 # caches and local scratch files.
@@ -25,27 +27,35 @@ mkdir -p src
 
 cp ../../../../core/lammps/lammps-gpu-selftest.sh lammps-gpu-selftest.sh
 
-# GPAW: staged from its MASTER branch (the committed tree, via git archive),
-# NOT the working tree — the image always carries vanilla gpaw/master no
-# matter which branch the dev checkout is on. Branches run via a bind mount
-# over /opt/src/gpaw. Deliberate branch build: GPAW_REF=<ref> ./prepare_build_context.sh
-# Refresh master first when needed:
-#   git -C "$CODE_DIR/gpaw" fetch upstream master:master
-GPAW_REF=${GPAW_REF:-master}
-rm -rf src/gpaw
-mkdir -p src/gpaw
-git -C "${CODE_DIR}/gpaw" archive "${GPAW_REF}" | tar -xf - -C src/gpaw
-echo "gpaw staged from ${GPAW_REF} ($(git -C "${CODE_DIR}/gpaw" log -1 --format='%h %cs' "${GPAW_REF}"))"
+recipe_hash=$(./recipe-hash.sh)
+build_id=$(date -u +%Y%m%dT%H%M%SZ)
 
-for repo in gpaw-weaver abTEM; do
-    rm -rf "src/${repo}"
-    mkdir -p "src/${repo}"
-    git -C "${CODE_DIR}/${repo}" archive HEAD | tar -xf - -C "src/${repo}"
-    branch=$(git -C "${CODE_DIR}/${repo}" branch --show-current)
-    dirty=$(git -C "${CODE_DIR}/${repo}" status --porcelain)
-    echo "${repo} staged from HEAD of branch '${branch:-<detached HEAD>}'" \
-        "($(git -C "${CODE_DIR}/${repo}" log -1 --format='%h %cs'))${dirty:+ — note: uncommitted changes and untracked files in the checkout are NOT included}"
-done
+sources_json=
+while read -r name sha; do
+    [ -n "$name" ] || continue
+    repo="${CODE_DIR}/${name}"
+    if ! [[ $sha =~ ^[0-9a-f]{40}$ ]]; then
+        echo "ERROR: sources.txt: '${sha}' for ${name} is not a full commit SHA" >&2
+        exit 1
+    fi
+    if ! git -C "$repo" cat-file -e "${sha}^{commit}" 2>/dev/null; then
+        echo "ERROR: ${name}: commit ${sha} is not in ${repo}" >&2
+        exit 1
+    fi
+    if [ -z "$(git -C "$repo" branch -r --contains "$sha")" ]; then
+        echo "ERROR: ${name}: commit ${sha} is on no remote-tracking branch (push it first)" >&2
+        exit 1
+    fi
+    rm -rf "src/${name}"
+    mkdir -p "src/${name}"
+    git -C "$repo" archive "$sha" | tar -xf - -C "src/${name}"
+    sources_json+="${sources_json:+, }\"${name}\": \"${sha}\""
+    echo "${name} staged from ${sha} ($(git -C "$repo" log -1 --format='%cs' "$sha"))"
+done < sources.txt
+
+printf '{"image": "idrobolab", "version": %s, "recipe_hash": "%s", "build_id": "%s", "sources": {%s}}\n' \
+    "$(cat VERSION)" "$recipe_hash" "$build_id" "$sources_json" > src/manifest.json
+echo "manifest: version $(cat VERSION), recipe hash ${recipe_hash}, build id ${build_id}"
 
 echo "Build context staged under ./src ($(du -sh src | cut -f1))"
-echo "Next: podman build -t ghcr.io/idrobolab/idrobolab:latest .   (or ./publish.sh)"
+echo "Next: ./publish.sh"
