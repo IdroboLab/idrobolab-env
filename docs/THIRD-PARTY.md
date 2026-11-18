@@ -182,13 +182,17 @@ a library that "accompanies the executable", as the CUDA libraries do here.
 out of scope of the sources image. They are passed on unmodified, and their source code is in
 the Ubuntu archive.
 
+**GAP in LAMMPS.** The GAP part of QUIP is under the GAP Academic Software License, which
+allows non-commercial use only and whose text says it is incompatible with the GPL. The image
+builds LAMMPS with it (`HAVE_GAP=1`, `HAVE_DESCRIPTORS_NONCOMMERCIAL=1` in LAMMPS's
+`ML-QUIP.cmake`), inside GPL-licensed `liblammps.so`. The maintainers keep it in the image
+and accept that risk. `SOURCES.txt` in the image tells users that the GAP part is for
+non-commercial use only.
+
 ## Open questions
 
-- The GAP part of QUIP is under the GAP Academic Software License, which allows
-  non-commercial use only and whose text says it is incompatible with the GPL; the image
-  builds LAMMPS with it (`HAVE_GAP=1`, `HAVE_DESCRIPTORS_NONCOMMERCIAL=1` in LAMMPS's
-  `ML-QUIP.cmake`) inside GPL-licensed `liblammps.so`. kim-api (CDDL 1.0) is also linked
-  into it. The maintainers decide whether either needs a step.
+- kim-api (CDDL 1.0) is linked into GPL-licensed `liblammps.so`. The maintainers decide
+  whether it needs a step.
 - PySide6 (6.12.0 on PyPI, under the LGPL 3, GPL 2 or GPL 3) comes from compiled wheels that
   bundle the Qt libraries; the sources image does not hold the source of Qt.
 - The licenses of the other Python wheels in `/opt/venv`, those not named above, were not
