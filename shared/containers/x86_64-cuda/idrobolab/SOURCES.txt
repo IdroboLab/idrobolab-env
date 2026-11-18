@@ -16,7 +16,8 @@ Software built into the image, with the license of its source (read from the sou
     FFTW 3.3.10 (version 2 or later), libvdwxc 0.5.0 (version 3 or later),
     Bader 1.05 (version 3 or later; two files under the LGPL),
     QUIP at the commit named in the archive (version 2, with its GAP part under the
-    GAP Academic Software License)
+    GAP Academic Software License, which allows non-commercial use only; its text is
+    src/GAP/LICENSE.md in the QUIP archive)
   GNU Lesser General Public License (LGPL):
     ELPA 2024.05.001 (version 3)
   Mozilla Public License 2.0 (MPL):
