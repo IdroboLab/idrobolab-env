@@ -10,7 +10,9 @@ sources image of the image with the tag <tag> as published last.
 Software built into the image, with the license of its source (read from the source tree):
 
   GNU General Public License (GPL):
-    Quantum ESPRESSO 7.6 (version 2 or later), LAMMPS stable_22Jul2025_update6 (version 2),
+    Quantum ESPRESSO 7.6 (version 2 or later), with Wannier90 (version 2) and DeviceXlib
+    (GPL, version not stated), which are part of its archive; LAMMPS stable_22Jul2025_update6
+    (version 2),
     FFTW 3.3.10 (version 2 or later), libvdwxc 0.5.0 (version 3 or later),
     Bader 1.05 (version 3 or later; two files under the LGPL),
     QUIP at the commit named in the archive (version 2, with its GAP part under the
@@ -18,7 +20,7 @@ Software built into the image, with the license of its source (read from the sou
   GNU Lesser General Public License (LGPL):
     ELPA 2024.05.001 (version 3)
   Mozilla Public License 2.0 (MPL):
-    libxc 7.0.0
+    libxc 7.0.0, and libMBD, which is part of the Quantum ESPRESSO archive
   Common Development and Distribution License 1.0 (CDDL):
     kim-api 2.2.1
 

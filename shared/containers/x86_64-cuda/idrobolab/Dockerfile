@@ -61,8 +61,8 @@ ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/usr/local/bin:${PATH} \
     LD_LIBRARY_PATH=/opt/software/mpich/lib:/opt/software/libxc/lib:/opt/software/libvdwxc/lib:/opt/software/fftw/lib:/opt/software/scalapack/lib:/opt/software/elpa/lib:/opt/software/magma/lib
 
 # SOURCES.txt and docs/THIRD-PARTY.md name the versions of the software with a source duty
-# (these ARGs, QE_VERSION and LAMMPS_BRANCH above and below, kim-api and QUIP in LAMMPS's
-# cmake files): update them together.
+# (these ARGs; QE_VERSION before the qe-builder stage; LAMMPS_BRANCH in the LAMMPS block at
+# the end of this stage; kim-api and QUIP in LAMMPS's cmake files): update them together.
 ARG MPICH_VERSION=4.3.2
 ARG FFTW_VERSION=3.3.10
 ARG SCALAPACK_VERSION=2.2.0

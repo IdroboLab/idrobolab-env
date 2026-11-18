@@ -18,10 +18,13 @@ git -C "$dir" ls-files -z --recurse-submodules \
     | tar --null -C "$dir" -T - --transform "s,^,${name}/," -czf "$archive"
 
 members=$(tar tzf "$archive")
+# Assigned first: a failing git here must stop the script, which a process substitution would not.
+initialised=$(git -C "$dir" submodule foreach --quiet --recursive 'echo "$displaypath"')
 while IFS= read -r path; do
+    [ -n "$path" ] || continue
     prefix="${name}/${path}/"
     if ! awk -v p="$prefix" 'index($0, p) == 1 && length($0) > length(p) { found = 1; exit } END { exit !found }' <<< "$members"; then
         echo "ERROR: submodule ${path} of ${dir} is initialised but ${archive} holds no file of it" >&2
         exit 1
     fi
-done < <(git -C "$dir" submodule foreach --quiet --recursive 'echo "$displaypath"')
+done <<< "$initialised"
