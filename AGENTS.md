@@ -14,9 +14,10 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
 
 - **Never push to `main`, and never commit on it.** Every change (feature, addition, fix,
   docs) goes on a branch and reaches `main` through a pull request that an admin merges.
-  GitHub does not enforce this (the organisation's free plan has no branch protection),
-  so this rule is the only guard: an unreviewed push to `main` reaches every member's
-  shell on their next pull. The member-facing workflow is `docs/CONTRIBUTING.md`.
+  A ruleset on `main` enforces the pull request: it needs an approval from the
+  `env-reviewers` team and passing `personal-data`, `drift`, `perlmutter` and `delta`
+  checks, because whatever reaches `main` reaches every member's shell on their next pull.
+  The member-facing workflow is `docs/CONTRIBUTING.md`.
 - All documentation lives in `docs/`: the general pages (`01-github.md`, `02-cloning.md`,
   `03-globus.md`), `CONTRIBUTING.md`, `THIRD-PARTY.md`, the Perlmutter section `docs/perlmutter/`, with
   its reference notes in `docs/perlmutter/reference/`, and the Delta page
@@ -75,7 +76,9 @@ through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CL
   `github-identity.sh` and nothing else of the common part (its undo covers two startup files and
   older marker names).
 - No personal data in this repository: `python3 core/checks/personal_data.py` runs in CI and an
-  exception goes into `personal-data-allow.txt` with a reason.
+  exception goes into `personal-data-allow.txt` with a reason. The repository is public and a
+  pushed branch is visible at once, before any review: run the check on the committed state
+  before every push.
 
 ## Delta (delta/)
 

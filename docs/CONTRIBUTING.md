@@ -3,9 +3,10 @@
 Everyone in the group can improve this environment: a clearer page, a fixed job
 template, a new helper script, a setting that should change for everyone. **Every change
 reaches `main` through a pull request (PR).** Nobody pushes to `main` directly, admins
-included; admins merge the PRs. GitHub cannot enforce this on our plan, so it is a rule we
-keep ourselves: everything in `main` reaches every member's shell and jobs on their next
-`git pull`, so each change is read by someone else first.
+included; admins merge the PRs. GitHub enforces this: a PR can be merged only once a member
+of the `env-reviewers` team has approved it and its checks have passed. Everything in `main`
+reaches every member's shell and jobs on their next `git pull`, so each change is read by
+someone else first.
 
 ## How to propose a change
 
@@ -40,8 +41,10 @@ clone (`cd` into it) and leave out `-C ~/idrobolab-env`, or write the clone's fo
    ```
 
 4. GitHub prints a link: open it and create the **pull request**. Describe what you
-   changed, why, and how you tried it. An admin reviews it, may ask for changes (push
-   more commits to the same branch), and merges it.
+   changed, why, and how you tried it. A member of the `env-reviewers` team reviews it and
+   may ask for changes (push more commits to the same branch); once it is approved and its
+   checks pass, an admin merges it. A push after an approval needs a new approval, and the
+   branch must be up to date with `main` before it can be merged.
 
 5. Afterwards, go back to `main` and update:
 
@@ -74,6 +77,18 @@ Not sure how to change something, or only want to point out a problem? Open an
 - Data, simulation output, job logs, images and other large files: they belong on CFS
   ([Perlmutter page 3](perlmutter/03-storage-and-transfer.md)).
 - Passwords, tokens, private keys, the `sshproxy` key, anything from `~/.ssh`.
+- Personal data: names, e-mail addresses, user names, project or allocation IDs, paths with
+  your user name in them. The repository is public, and a pushed branch is visible to
+  everyone at once, before any review. Commit first, then check before every push: the
+  check reads every tracked file of your last commit and does not see uncommitted changes.
+  It prints `personal_data: 0 hit(s)` when it finds nothing:
+
+  ```bash
+  python3 ~/idrobolab-env/core/checks/personal_data.py --repo ~/idrobolab-env
+  ```
+
+  On Windows, run `python3 core/checks/personal_data.py` from inside the clone instead.
+  The `personal-data` check on the pull request only keeps such data out of `main`.
 - Personal settings that only make sense for you. Put those in your own `~/.bashrc`.
 
 ## Rules for members' coding agents
@@ -82,8 +97,10 @@ Not sure how to change something, or only want to point out a problem? Open an
 it by pull request like anything else. NERSC's own baseline is vendored in
 `perlmutter/agents/nersc/` and is never edited by hand: a weekly workflow
 (`nersc-agents-sync`) opens one pull request when NERSC's
-[coding-agents](https://github.com/NERSC/coding-agents) repository changes, and an
-admin reads the diff before merging it, because every member's agents follow that text.
+[coding-agents](https://github.com/NERSC/coding-agents) repository changes, and a member
+of `env-reviewers` reads the diff and approves it before an admin merges it, because every
+member's agents follow that text. A pull request opened by a workflow does not start the
+required checks: close and reopen it to start them.
 For an admin: the workflow needs "Allow GitHub Actions to create and approve pull
 requests" switched on (repository or organisation *Settings → Actions → General →
 Workflow permissions*). It can also be started from the Actions tab. GitHub disables a

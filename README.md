@@ -54,7 +54,8 @@ git clone git@github.com:IdroboLab/idrobolab-env.git ~/idrobolab-env
 
 ## Contributing
 
-Every change reaches `main` through a pull request, which an admin reviews and merges.
+Every change reaches `main` through a pull request, which a member of the `env-reviewers` team
+approves and an admin merges.
 Fixes to the docs are as welcome as fixes to the scripts: see
 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
