@@ -105,7 +105,9 @@ workflow, never by hand.
 
 - The image is built and pushed (`publish.sh` → `ghcr.io/idrobolab/idrobolab`) only from the
   maintainer's devcontainer, where `prepare_build_context.sh` stages the editable trees
-  from `CODE_DIR=/workspaces/code`. Nobody builds on Perlmutter.
+  from `CODE_DIR=/workspaces/code`. Nobody builds on Perlmutter. `publish.sh` and
+  `release.sh` stop unless `GHCR_USER` and `GITHUB_PACKAGE_TOKEN` are set in the shell that
+  runs them: a build or release command handed to the maintainer sets `GHCR_USER` too.
 - `:latest` and `:<N>` (N = `VERSION`) move only at a release, by `release.sh`, after the
   verification suite passed on `:<N>-rc`; never retag or move them otherwise. `publish.sh`
   pushes `<VERSION>-rc` (or `TAG=dev`).
