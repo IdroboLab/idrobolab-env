@@ -63,11 +63,15 @@ else comes from the pinned requirements. PAW datasets come from the `gpaw-data` 
 ```bash
 # 1. stage (in the devcontainer):
 ./prepare_build_context.sh
-# 2. build on a host with docker/podman (layer-cached), then push; needs GHCR_USER
-#    (your GitHub username) and GITHUB_PACKAGE_TOKEN (a PAT with write:packages):
+# 2. build on a host with docker/podman (layer-cached), then push. publish.sh and release.sh
+#    stop before the build unless both variables are set in the shell that runs them
+#    (fish: set -x GHCR_USER <github-user>; the same for the token):
+export GHCR_USER=<github-user>            # your GitHub username
+export GITHUB_PACKAGE_TOKEN=<token>       # a PAT with write:packages; keep it out of shell history
 ./publish.sh                              # -> ghcr.io/idrobolab/idrobolab:<VERSION>-rc
 TAG=dev ./publish.sh                      # development build, without the LAMMPS ctest suite
-# 3. after the verification suite passed on :<VERSION>-rc, the release moves :latest:
+# 3. after the verification suite passed on :<VERSION>-rc, the release moves :latest
+#    (same two variables):
 ./release.sh                              # :<VERSION>-rc -> :<VERSION> and :latest
 # 4. consume:
 apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   # Delta
