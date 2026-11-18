@@ -82,12 +82,23 @@ license texts, not legal advice.
 - **NVIDIA wheels from PyPI.** The license files of `nvidia-cublas-cu12`,
   `nvidia-cuda-runtime-cu12`, `nvidia-cufft-cu12` and `nvidia-cudnn-cu12` name the CUDA
   EULA or the cuDNN license, which allow redistribution with an application, unmodified
-  and with the notices kept. `nvidia-nccl-cu12` is under BSD 3-Clause. The license files of
-  the other NVIDIA wheels in the image were not read.
+  and with the notices kept. The `License.txt` of `nvidia-nccl-cu12` is BSD 3-Clause, while
+  its package metadata names `LicenseRef-NVIDIA-Proprietary`. The license files of the other
+  NVIDIA wheels in the image were not read.
 
-Open work on the image: add a notice file to the image, and check the libraries copied by
-`install-qe-gpu.sh` against the SDK's REDIST directories.
+The repository's licenses cover the group's own files only; NVIDIA's components keep their
+own terms. The image carries `/opt/idrobolab/NVIDIA-NOTICE.txt`, which names these
+agreements. `stage-qe-libs.sh`, run by `install-qe-gpu.sh`, fails the build when a library
+copied from the SDK is not a REDIST file (the real path of a file under a `REDIST*`
+directory, or a byte-identical copy of one of the same name), and when a library with an
+NVIDIA CUDA or NCCL name comes from outside the SDK. It lists the staged SDK files in
+`/opt/software/qe/NVIDIA-REDIST-FILES.txt` and never modifies them. The build log lists the
+license metadata and license files of each `nvidia-*` wheel (`nvidia-license-scan.py`).
 
 ## Open questions
 
-There are none.
+- GPL software in the image (Quantum ESPRESSO, GPAW) is linked against proprietary CUDA
+  libraries. This was not examined; the maintainers decide whether it needs a further step.
+- The licenses of the Open MPI, UCX and HPC-X libraries bundled with the SDK are to be kept
+  in the image. This is open until the first build log shows which `comm_libs` files are
+  staged.

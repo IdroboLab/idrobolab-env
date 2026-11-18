@@ -129,31 +129,14 @@ cmake --build build -j"$(nproc)"
 DESTDIR="" cmake --install build           # installs to $PREFIX inside the builder
 
 # --- stage QE + its runtime shared libs into $DIST --------------------------
-# Collect the transitive .so deps of every QE executable (ldd is recursive),
-# excluding the core system libs (the final nvcr.io/nvidia/cuda image provides
-# glibc/libgcc/libstdc++) and libcuda (the driver, injected at runtime by --nv).
-mkdir -p "${DIST}/lib"
+# stage-qe-libs.sh copies the transitive .so deps of every QE executable.
+# It fails the build on any NVIDIA HPC SDK file that is not a REDIST* file.
+# Those are the only SDK files the SDK license lets the image redistribute.
+# It also fails on a library with an NVIDIA name found outside the SDK.
+# It also sets the rpath of the QE executables, and of the libs that are not
+# SDK files, to the FINAL install path.
 cp -a "${PREFIX}/." "${DIST}/"
-
-for exe in "${DIST}"/bin/*.x; do
-    [ -e "$exe" ] || continue
-    ldd "$exe" 2>/dev/null | awk '/=> \//{print $3}'
-done | sort -u | while read -r lib; do
-    case "$lib" in
-        */libc.so*|*/libm.so*|*/libmvec.so*|*/libpthread.so*|*/libdl.so*|*/librt.so*|\
-        */libgcc_s.so*|*/libstdc++.so*|*/ld-linux*|*/libresolv*|*/libutil*|*/librt.so*) continue ;;
-        */libcuda.so*) continue ;;
-    esac
-    cp -Lv "$lib" "${DIST}/lib/" 2>/dev/null || true
-done
-
-# rpath the executables and the staged libs to the FINAL install path so they
-# find each other without an image-wide LD_LIBRARY_PATH (which would otherwise
-# shadow the base image's own CUDA libs for GPAW etc.).
-for f in "${DIST}"/bin/*.x "${DIST}"/lib/*.so*; do
-    [ -e "$f" ] || continue
-    patchelf --set-rpath "${PREFIX}/lib" "$f" 2>/dev/null || true
-done
+bash "$(dirname "$0")/stage-qe-libs.sh" /opt/nvidia/hpc_sdk "${DIST}" "${PREFIX}/lib"
 
 echo ">> staged QE runtime under ${DIST} ($(du -sh "${DIST}" 2>/dev/null | cut -f1))"
 ls "${DIST}/bin" | grep -E 'pw\.x|ph\.x|cp\.x' || true

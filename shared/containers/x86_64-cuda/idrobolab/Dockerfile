@@ -29,7 +29,7 @@ ARG QE_GPU_ARCHS=sm_80
 FROM ${NVHPC_IMAGE} AS qe-builder
 ARG QE_VERSION
 ARG QE_GPU_ARCHS
-COPY install-qe-gpu.sh /tmp/install-qe-gpu.sh
+COPY install-qe-gpu.sh stage-qe-libs.sh /tmp/
 RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" bash /tmp/install-qe-gpu.sh
 
 # ===== builder stage (full -devel toolchain; discarded after the split) ======
@@ -396,6 +396,8 @@ COPY --from=builder /opt/src      /opt/src
 COPY --from=builder /usr/local/bin/bader /usr/local/bin/bader
 COPY --from=qe-builder /opt/qe-dist ${INSTALL_DIR}/qe
 
+COPY NVIDIA-NOTICE.txt nvidia-license-scan.py /opt/idrobolab/
+
 COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
 COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
 RUN chmod +x /usr/local/bin/lammps-gpu-selftest /usr/local/bin/lammps-gpu-ctest
@@ -417,6 +419,9 @@ print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version_
 print('dask-cuda ok | dask',dask.__version__,'| distributed',distributed.__version__)" \
  && python -c "import nion.data; print('nionswift (headless data) ok')" \
  && mpichversion | head -1
+
+# --- NVIDIA wheel licenses, printed to the build log ------------------------
+RUN python /opt/idrobolab/nvidia-license-scan.py
 
 # --- runtime lib-closure gate for the CUDA binaries (libcuda.so.1 excepted) --
 # Checks every binary before failing, so one build names ALL the gaps rather
