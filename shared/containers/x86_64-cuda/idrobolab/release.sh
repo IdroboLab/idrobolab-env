@@ -1,13 +1,17 @@
 #!/bin/bash
 # Release the tested release candidate: tag <IMAGE>:<N>-rc as <IMAGE>:<N> and <IMAGE>:latest, where
-# N is VERSION. The only way :<N> and :latest move.
+# N is VERSION, and its sources image <IMAGE>:<N>-rc-sources as <N>-sources and latest-sources.
+# The only way :<N>, :latest and their -sources tags move.
 #
 # It refuses unless
 #   - every record in verification/idrobolab/releases/<N>/*.json carries the build id
 #     (`build_id`) that the idrobolab.build-id label of <IMAGE>:<N>-rc has in the registry,
 #     so the suite passed on this very image and not on an earlier build of the candidate;
-#   - <IMAGE>:<N> does not exist yet (:<N> never moves).
-# It then pushes both tags and checks that <N>-rc, <N> and latest resolve to one digest.
+#   - <IMAGE>:<N> does not exist yet (:<N> never moves);
+#   - <IMAGE>:<N>-rc-sources does not exist.
+# It then pushes each sources tag before its image tag (no binary is out without its source) and
+# checks that <N>-rc, <N> and latest, and <N>-rc-sources, <N>-sources and latest-sources, each
+# resolve to one digest.
 #
 # Needs GHCR_USER (your GitHub username) and GITHUB_PACKAGE_TOKEN (a PAT with write:packages)
 # in the environment; the token goes to the engine's stdin, and nothing here prints it.
@@ -51,7 +55,8 @@ if [ -z "$rc_build_id" ]; then
     exit 1
 fi
 for record in "${records[@]}"; do
-    # The records' format is defined by verification/ (a top-level build_id).
+    # The record format comes with the verification harness; until then a top-level build_id
+    # field is assumed.
     record_build_id=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["build_id"])' "$record")
     if [ "$record_build_id" != "$rc_build_id" ]; then
         echo "ERROR: ${record##*/} has build id ${record_build_id}, ${IMAGE}:${N}-rc has ${rc_build_id}" >&2
@@ -69,18 +74,27 @@ elif ! grep -qiE 'manifest unknown|no such manifest' <<<"$out"; then
     exit 1
 fi
 
-"$ENGINE" tag "${IMAGE}:${N}-rc" "${IMAGE}:${N}"
-"$ENGINE" tag "${IMAGE}:${N}-rc" "${IMAGE}:latest"
-echo ">> pushing ${IMAGE}:${N}"
-"$ENGINE" push "${IMAGE}:${N}"
-echo ">> pushing ${IMAGE}:latest"
-"$ENGINE" push "${IMAGE}:latest"
+if ! "$ENGINE" manifest inspect "${IMAGE}:${N}-rc-sources" >/dev/null 2>&1; then
+    echo "ERROR: ${IMAGE}:${N}-rc-sources does not exist; publish.sh pushes it with the candidate" >&2
+    exit 1
+fi
 
-rc_digest=$(digest "${N}-rc")
-for tag in "$N" latest; do
-    if [ "$(digest "$tag")" != "$rc_digest" ]; then
-        echo "ERROR: ${IMAGE}:${tag} does not resolve to ${rc_digest}" >&2
-        exit 1
-    fi
+for suffix in "" -sources; do
+    "$ENGINE" tag "${IMAGE}:${N}-rc${suffix}" "${IMAGE}:${N}${suffix}"
+    "$ENGINE" tag "${IMAGE}:${N}-rc${suffix}" "${IMAGE}:latest${suffix}"
 done
-echo ">> released ${IMAGE}:${N} and :latest = ${rc_digest}"
+for tag in "${N}-sources" "$N" latest-sources latest; do
+    echo ">> pushing ${IMAGE}:${tag}"
+    "$ENGINE" push "${IMAGE}:${tag}"
+done
+
+for suffix in "" -sources; do
+    rc_digest=$(digest "${N}-rc${suffix}")
+    for tag in "${N}${suffix}" "latest${suffix}"; do
+        if [ "$(digest "$tag")" != "$rc_digest" ]; then
+            echo "ERROR: ${IMAGE}:${tag} does not resolve to ${rc_digest}" >&2
+            exit 1
+        fi
+    done
+done
+echo ">> released ${IMAGE}:${N} and :latest, with their -sources tags"

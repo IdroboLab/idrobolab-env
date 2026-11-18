@@ -52,6 +52,10 @@ while read -r name sha || [ -n "$name" ]; do
     pairs+=("$name" "$sha")
     echo "${name} staged from ${sha} ($(git -C "$repo" log -1 --format='%cs' "$sha"))"
 done < sources.txt
+if [ ${#pairs[@]} -eq 0 ]; then
+    echo "ERROR: sources.txt names no source tree" >&2
+    exit 1
+fi
 
 python3 -c 'import json, sys
 version, recipe_hash, build_id, *pairs = sys.argv[1:]

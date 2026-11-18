@@ -33,7 +33,8 @@ VERSION = 3
 STUB_ENGINE = """#!/bin/bash
 echo "$*" >> "$STUB_LOG"
 case "$1 $2" in
-    "manifest inspect") printf '%s\\n' "${STUB_MANIFEST_OUT:-}"; exit "${STUB_MANIFEST_RC:-1}" ;;
+    "manifest inspect") [[ "$3" == *-rc-sources ]] && exit "${STUB_SOURCES_RC:-0}"
+        printf '%s\\n' "${STUB_MANIFEST_OUT:-}"; exit "${STUB_MANIFEST_RC:-1}" ;;
     "image inspect") case "$*" in *Labels*) echo "${STUB_LABEL:-}" ;; *) echo "${STUB_DIGEST:-sha256:aa}" ;; esac ;;
     "login "*) cat > /dev/null ;;
 esac
@@ -201,6 +202,12 @@ def test_prepare_reads_a_last_line_without_a_newline(recipe, code_dir, tmp_path)
     assert json.loads((recipe / "src/manifest.json").read_text())["sources"] == pin
 
 
+def test_prepare_fails_on_a_sources_file_without_entries(recipe, code_dir, tmp_path):
+    res = prepare(recipe, code_dir, {}, tmp_path)
+    assert res.returncode != 0 and "names no source tree" in res.stderr
+    assert not (recipe / "src/manifest.json").exists()
+
+
 def test_prepare_fails_on_an_unknown_commit(recipe, code_dir, tmp_path):
     pin = pins(code_dir)
     pin[TREES[-1]] = "0123456789abcdef0123456789abcdef01234567"
@@ -246,6 +253,7 @@ def test_publish_builds_a_release_candidate_with_the_identity_and_ctest(staged, 
     assert f"--build-arg BUILD_ID={m['build_id']}" in builds[0]
     assert f"-t {REGISTRY_IMAGE}:{VERSION}-rc-sources" in builds[1]
     assert any(f"push {REGISTRY_IMAGE}:{VERSION}-rc" == p for p in engine_calls(tmp_path, "push"))
+    assert "dummy-token" not in res.stdout + res.stderr
 
 
 def test_publish_dev_builds_without_ctest_and_allows_a_dirty_recipe(staged, code_dir, tmp_path):
@@ -255,6 +263,7 @@ def test_publish_dev_builds_without_ctest_and_allows_a_dirty_recipe(staged, code
     assert res.returncode == 0, res.stderr
     builds = engine_calls(tmp_path, "build")
     assert len(builds) == 2 and all("LAMMPS_RUN_TESTS=0" in b for b in builds)
+    assert "dummy-token" not in res.stdout + res.stderr
 
 
 def test_publish_refuses_a_release_candidate_of_a_dirty_recipe(staged, code_dir, tmp_path):
@@ -293,14 +302,25 @@ def release(recipe, tmp_path, records=(BUILD_ID,), label=BUILD_ID, manifest_rc=1
                       STUB_MANIFEST_RC=manifest_rc, STUB_MANIFEST_OUT=manifest_out, **env)
 
 
-def test_release_tags_and_pushes_n_and_latest(recipe, tmp_path):
+def test_release_tags_and_pushes_n_and_latest_with_their_sources_images(recipe, tmp_path):
     res = release(recipe, tmp_path)
     assert res.returncode == 0, res.stderr
     image = REGISTRY_IMAGE
-    assert engine_calls(tmp_path, "tag") == [f"tag {image}:{VERSION}-rc {image}:{VERSION}",
-                                             f"tag {image}:{VERSION}-rc {image}:latest"]
-    assert engine_calls(tmp_path, "push") == [f"push {image}:{VERSION}", f"push {image}:latest"]
+    rc, n = f"{image}:{VERSION}-rc", VERSION
+    assert engine_calls(tmp_path, "tag") == [
+        f"tag {rc} {image}:{n}", f"tag {rc} {image}:latest",
+        f"tag {rc}-sources {image}:{n}-sources", f"tag {rc}-sources {image}:latest-sources"]
+    # each sources tag is pushed before its image tag
+    assert engine_calls(tmp_path, "push") == [
+        f"push {image}:{n}-sources", f"push {image}:{n}",
+        f"push {image}:latest-sources", f"push {image}:latest"]
     assert "dummy-token" not in res.stdout + res.stderr
+
+
+def test_release_refuses_without_the_candidates_sources_image(recipe, tmp_path):
+    res = release(recipe, tmp_path, STUB_SOURCES_RC=1)
+    assert res.returncode != 0 and f"{VERSION}-rc-sources does not exist" in res.stderr
+    assert engine_calls(tmp_path, "tag") == [] and engine_calls(tmp_path, "push") == []
 
 
 def test_release_accepts_docker_wording_for_a_free_tag(recipe, tmp_path):
