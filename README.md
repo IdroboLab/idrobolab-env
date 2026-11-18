@@ -78,6 +78,9 @@ Copyright (c) 2026, University of Washington, except `perlmutter/agents/nersc/` 
 - The IdroboLab logo and the icons made from it, in `assets/`, are copyright (c) 2026,
   IdroboLab, and under [Creative Commons Attribution 4.0 International](assets/LICENSE)
   (CC BY 4.0).
+- The licenses above cover the group's own files only. The NVIDIA components of the
+  `idrobolab` container image keep their own terms, recorded in
+  [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md).
 
 The third-party material in the repository, with its sources and licenses, is listed in
 [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md).
