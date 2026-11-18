@@ -115,7 +115,7 @@ generated from the LAMMPS source, which is.
 
 | Component | Version | License | File read | Duty |
 |---|---|---|---|---|
-| Quantum ESPRESSO | `qe-7.6` | GPL 2 or later | `README.md` (section LICENSE: "version 2 ... or (at your option) any later version"); `License` is the GPL 2 text | source. The submodules cmake initialises with the options of `install-qe-gpu.sh` are the next three rows; their source is in the same archive. d3q, pw2qmcpack, qe-gipaw (plugins off), fox (`QE_ENABLE_FOX` off) and lapack (internal LAPACK off) are not initialised, by the `qe-7.6` cmake files |
+| Quantum ESPRESSO | `qe-7.6` | GPL 2 or later | `README.md` (section LICENSE: "version 2 ... or (at your option) any later version"); `License` is the GPL 2 text | source. The submodules cmake initialises with the options of `install-qe-gpu.sh` are expected to be the next three rows (from the `qe-7.6` cmake files; only the first real build log confirms which are initialised, and the build's check covers whatever is); their source is in the same archive. d3q, pw2qmcpack, qe-gipaw (plugins off), fox (`QE_ENABLE_FOX` off) and lapack (internal LAPACK off) are expected not to be |
 | Wannier90, a QE submodule | commit `1d6b187` | GPL 2 | `README.rst` ("licensed under GPLv2"), `LICENSE` (GPL 2 text) | source |
 | libMBD, a QE submodule | commit `89a3cc1` | MPL 2.0 | `LICENSE`, `pyproject.toml` | source |
 | DeviceXlib, a QE submodule | commit `a6b89ef` | GPL, version not stated | file headers of `src/deviceXlib_mod.f90` ("GNU General Public License. See the file `License'"); the tree has no license file | source |
@@ -157,9 +157,10 @@ marked "source" keep its source archive, as the build fetched it, in `/opt/sourc
 initialised), the kim-api tarball as downloaded, and Bader's. The Dockerfile's last
 stage before the image, `FROM scratch AS sources`, collects them with a `SHA256SUMS`.
 `publish.sh` builds it with `--target sources` from the same build and pushes it before the
-image, so that a public binary never sits without its source, as
+image, so that no binary is out without its source: first
 `ghcr.io/idrobolab/idrobolab:<date>-sources` (the UTC date and time the script started, never
-moved) and as `<tag>-sources`, with the same `<tag>` as the image. The build fails when a
+moved), then the image, then `<tag>-sources` with the same `<tag>` as the image; when the
+push of the image fails, `<tag>-sources` still matches the old `<tag>`. The build fails when a
 component has no archive. The image itself holds `/opt/idrobolab/SOURCES.txt`, which names
 the licenses, the command that extracts the sources image, the recipe and, on its last line,
 the exact `<date>-sources` tag of the image's own sources image (`publish.sh` passes it to the

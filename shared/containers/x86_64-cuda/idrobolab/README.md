@@ -25,7 +25,7 @@ different torch minor means a different fairchem release.
 | `requirements-idrobolab.txt` | Curated Python stack — **hand-maintained** (not scraped from a dev venv) |
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`), and `lammps-gpu-selftest.sh` from `core/lammps/` |
-| `publish.sh` | Build, push the `sources` stage as `<date>-sources` and `<tag>-sources`, then push the image to `ghcr.io/idrobolab/idrobolab` (see [Sources image](#sources-image)); refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
+| `publish.sh` | Build, push `<date>-sources`, the image to `ghcr.io/idrobolab/idrobolab`, then `<tag>-sources` (see [Sources image](#sources-image)); refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
 | `install-qe-gpu.sh`, `stage-qe-libs.sh` | Build Quantum ESPRESSO in the NVIDIA HPC SDK image; `stage-qe-libs.sh` copies QE's runtime libraries and fails the build when a library from the SDK is not a `REDIST*` file or an NVIDIA CUDA/NCCL library comes from outside the SDK, copies SDK files unmodified and lists them in `NVIDIA-REDIST-FILES.txt`, and sets the rpath of the QE executables and of the non-SDK libraries |
 | `NVIDIA-NOTICE.txt` | Names the NVIDIA agreements that govern the image's NVIDIA components and points to the file list; copied to `/opt/idrobolab/NVIDIA-NOTICE.txt` |
 | `SOURCES.txt` | Names the GPL, LGPL, MPL and CDDL software in the image, where its source is (the sources image) and how to extract it, and where the recipe is; copied to `/opt/idrobolab/SOURCES.txt` |
@@ -87,9 +87,10 @@ source duty.
 
 The main image carries only `SHA256SUMS` (`/opt/idrobolab/sources/SHA256SUMS`) and
 `/opt/idrobolab/SOURCES.txt`, not the archives. `publish.sh` builds the stage with
-`--target sources` (cached from the build of the image) and pushes it before the image, so a
-public binary never sits without its source, as `ghcr.io/idrobolab/idrobolab:<date>-sources`
-(the UTC date and time the script started) and as `<tag>-sources`. It passes the dated tag to
+`--target sources` (cached from the build of the image) and pushes
+`ghcr.io/idrobolab/idrobolab:<date>-sources` (the UTC date and time the script started), then
+the image, then `<tag>-sources`: no binary is out without its source, and when the push of the
+image fails, `<tag>-sources` still matches the old `<tag>`. It passes the dated tag to
 the build of the image as `SOURCES_TAG`, and the image's last layer appends it to
 `/opt/idrobolab/SOURCES.txt`, so an image names exactly its sources image. The
 versions that `SOURCES.txt` and `docs/THIRD-PARTY.md` name are the Dockerfile's version ARGs:
