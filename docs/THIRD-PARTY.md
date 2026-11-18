@@ -82,12 +82,13 @@ license texts, not legal advice.
 - **NVIDIA wheels from PyPI.** The license files of `nvidia-cublas-cu12`,
   `nvidia-cuda-runtime-cu12`, `nvidia-cufft-cu12` and `nvidia-cudnn-cu12` name the CUDA
   EULA or the cuDNN license, which allow redistribution with an application, unmodified
-  and with the notices kept. `nvidia-nccl-cu12` is under BSD 3-Clause. The license files of
-  the other NVIDIA wheels in the image were not read.
+  and with the notices kept. The `License.txt` of `nvidia-nccl-cu12` is BSD 3-Clause, while
+  its package metadata names `LicenseRef-NVIDIA-Proprietary`. The license files of the other
+  NVIDIA wheels in the image were not read.
 
 The image carries `/opt/idrobolab/NVIDIA-NOTICE.txt`, which names these agreements.
 `stage-qe-libs.sh`, run by `install-qe-gpu.sh`, fails the build when a library copied from
-the SDK is not under a REDIST directory. The build log lists the license metadata and
+the SDK is not under a REDIST directory, and never modifies the SDK files it copies. The build log lists the license metadata and
 license files of each `nvidia-*` wheel (`nvidia-license-scan.py`).
 
 ## Open questions
