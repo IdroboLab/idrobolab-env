@@ -29,9 +29,9 @@ Status).
 | `siteconfig.py` | GPAW build configuration (MPI, ScaLAPACK, FFTW, libxc, libvdwxc) |
 | `prepare_build_context.sh` | Stages the three source trees into `./src/` |
 
-The three dev packages (**gpaw** — vanilla `master`, staged from the committed
-tree by `prepare_build_context.sh` (`GPAW_REF=<ref>` overrides) —
-**gpaw-weaver**, **abTEM**) are installed **editable** at `/opt/src/<name>`;
+The three dev packages (**gpaw**, **gpaw-weaver**, **abTEM**, each staged from
+the committed tree of the commit that `sources.txt` names, by `prepare_build_context.sh`)
+are installed **editable** at `/opt/src/<name>`;
 mount a cluster checkout over that path to run any branch. PAW datasets come
 from the `gpaw-data` pip package inside the image.
 

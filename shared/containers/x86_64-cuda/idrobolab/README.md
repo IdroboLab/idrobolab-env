@@ -51,13 +51,12 @@ The Dockerfile block lists which package supplies each skipped dependency; the
 build fails loudly if the install moves `torch` off the 2.13 version fairchem pins.
 
 **Editable** installs from `/opt/src` (bind a cluster checkout over
-`/opt/src/<name>` to run any branch): **gpaw** (vanilla
-`master`; `GPAW_REF=<ref>` overrides), **gpaw-weaver** and **abTEM** (the commit
-each dev checkout has checked out), all three staged from committed files by
-`prepare_build_context.sh` (its header says why): commit a change, and `git add`
-a new file, before building if it should be in the image. Everything else comes
-from the pinned requirements. PAW datasets come from the `gpaw-data` pip
-package.
+`/opt/src/<name>` to run any branch): **gpaw**, **gpaw-weaver** and **abTEM**, each at
+the commit that `sources.txt` names (`<name> <full SHA>`, no URL). `prepare_build_context.sh`
+stages them from those commits with `git archive` (its header says why) and fails on a commit
+that is missing from the checkout or on no remote-tracking branch. A development build edits
+`sources.txt`; the recipe is then `dirty` and cannot become a release candidate. Everything
+else comes from the pinned requirements. PAW datasets come from the `gpaw-data` pip package.
 
 ## Build & run
 
@@ -66,11 +65,35 @@ package.
 ./prepare_build_context.sh
 # 2. build on a host with docker/podman (layer-cached), then push; needs GHCR_USER
 #    (your GitHub username) and GITHUB_PACKAGE_TOKEN (a PAT with write:packages):
-./publish.sh                              # -> ghcr.io/idrobolab/idrobolab
-# 3. consume:
+./publish.sh                              # -> ghcr.io/idrobolab/idrobolab:<VERSION>-rc
+TAG=dev ./publish.sh                      # development build, without the LAMMPS ctest suite
+# 3. after the verification suite passed on :<VERSION>-rc, the release moves :latest:
+./release.sh                              # :<VERSION>-rc -> :<VERSION> and :latest
+# 4. consume:
 apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   # Delta
 podman-hpc pull ghcr.io/idrobolab/idrobolab:latest                          # Perlmutter
 ```
+
+### Version identity
+
+`VERSION` holds the release number, `0` while there is none. `publish.sh` tags `<VERSION>-rc`
+(a release candidate; `:<VERSION>` never moves, and a rebuild after a failed test
+overwrites `-rc`), builds with `LAMMPS_RUN_TESTS=1` (the LAMMPS ctest suite; not for
+`TAG=dev`), and refuses an `-rc` tag when the recipe has uncommitted changes. `release.sh`
+tags the candidate `:<VERSION>` and `:latest`, and its sources image `<VERSION>-sources` and
+`latest-sources`, once every record of the release carries the build id of the registry's `-rc`
+image; each sources tag is pushed before its image tag. `:latest` moves only there.
+
+The image carries `/opt/idrobolab/manifest.json` (`image`, `version`, `recipe_hash`,
+`build_id`, `sources`: name to commit, `lammps_ctest`), `/opt/idrobolab/pip-freeze.txt` (the
+venv's resolved packages) and the labels `org.opencontainers.image.version`,
+`org.opencontainers.image.revision` (the recipe hash) and `idrobolab.build-id`. The recipe hash
+(`recipe-hash.sh`) is the sha256 of the output of `git ls-files -s --full-name -- .` run in
+this directory (paths from the repository root), without the line of this directory's
+`README.md`; it is the string `dirty` when `git status --porcelain -- .` shows any change here,
+`README.md` included. The build id is the UTC time of
+`prepare_build_context.sh`: apt and unpinned wheels float, so two builds of one recipe
+differ in it. `verification/test_harness.py` tests the hash and the staging.
 
 ### Sources image
 

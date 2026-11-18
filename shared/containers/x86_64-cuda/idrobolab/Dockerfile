@@ -8,8 +8,9 @@
 # needs no torch-geometric wheels.
 #
 # Build (host with docker/podman, after ./prepare_build_context.sh):
-#   podman build -t ghcr.io/idrobolab/idrobolab:latest .        # or ./publish.sh to push to ghcr
-#   -> apptainer build idrobolab.sif docker-daemon://idrobolab:latest   (Delta)
+#   ./publish.sh   # builds and pushes ghcr.io/idrobolab/idrobolab:<VERSION>-rc
+#                  # (:latest is set by release.sh)
+#   -> apptainer build idrobolab.sif docker://ghcr.io/idrobolab/idrobolab:latest   (Delta)
 #   -> podman-hpc pull …                                                (Perlmutter)
 #
 # Layer-cached: compiled libs + GPU wheels are early; requirements + the three
@@ -446,8 +447,7 @@ COPY NVIDIA-NOTICE.txt SOURCES.txt nvidia-license-scan.py /opt/idrobolab/
 COPY --from=sources-collect /opt/sources/SHA256SUMS /opt/idrobolab/sources/SHA256SUMS
 
 COPY lammps-gpu-selftest.sh /usr/local/bin/lammps-gpu-selftest
-COPY lammps-gpu-ctest.sh    /usr/local/bin/lammps-gpu-ctest
-RUN chmod +x /usr/local/bin/lammps-gpu-selftest /usr/local/bin/lammps-gpu-ctest
+RUN chmod +x /usr/local/bin/lammps-gpu-selftest
 
 # --- build-time sanity: the slim image must still import the full stack ------
 # pymatgen 2026.x is an umbrella namespace dist (Requires-Dist: pymatgen-core)
@@ -487,6 +487,22 @@ RUN if [ -n "${SOURCES_TAG}" ]; then \
       printf '\nThe sources image of this image: ghcr.io/idrobolab/idrobolab:%s\n' "${SOURCES_TAG}" \
         >> /opt/idrobolab/SOURCES.txt; \
     fi
+
+# --- version identity (set by publish.sh) -----------------------------------
+# manifest.json comes from prepare_build_context.sh; the build adds whether LAMMPS's ctest suite
+# ran. The labels repeat the manifest's version, recipe hash and build id, which the registry
+# shows without pulling the image. Declared last, like SOURCES_TAG.
+ARG VERSION=
+ARG RECIPE_HASH=
+ARG BUILD_ID=
+ARG LAMMPS_RUN_TESTS=0
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${RECIPE_HASH}" \
+      idrobolab.build-id="${BUILD_ID}"
+COPY src/manifest.json /opt/idrobolab/manifest.json
+RUN python -c 'import json, sys; p = "/opt/idrobolab/manifest.json"; m = json.load(open(p)); \
+m["lammps_ctest"] = sys.argv[1] == "1"; json.dump(m, open(p, "w"), indent=2)' "${LAMMPS_RUN_TESTS}" \
+ && pip freeze > /opt/idrobolab/pip-freeze.txt
 
 # --- runtime environment ----------------------------------------------------
 ENV OMP_NUM_THREADS=1 \
