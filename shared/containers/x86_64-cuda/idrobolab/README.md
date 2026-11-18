@@ -26,12 +26,35 @@ different torch minor means a different fairchem release.
 | `siteconfig.py` | GPAW build config (MPICH/ScaLAPACK/FFTW/libxc/libvdwxc) |
 | `prepare_build_context.sh` | Stages the three editable trees (gpaw, gpaw-weaver, abTEM) into `./src/`, committed files only (`git archive`), and `lammps-gpu-selftest.sh` from `core/lammps/` |
 | `publish.sh` | Build, push `<date>-sources`, the image to `ghcr.io/idrobolab/idrobolab`, then `<tag>-sources` (see [Sources image](#sources-image)); refuses to build when the staged `lammps-gpu-selftest.sh` is missing or differs from `core/lammps/` |
-| `install-qe-gpu.sh`, `stage-qe-libs.sh` | Build Quantum ESPRESSO in the NVIDIA HPC SDK image; `stage-qe-libs.sh` copies QE's runtime libraries and fails the build when a library from the SDK is not a `REDIST*` file or an NVIDIA CUDA/NCCL library comes from outside the SDK, copies SDK files unmodified and lists them in `NVIDIA-REDIST-FILES.txt`, and sets the rpath of the QE executables and of the non-SDK libraries |
+| `install-qe-gpu.sh`, `stage-qe-libs.sh` | Build Quantum ESPRESSO in the NVIDIA HPC SDK image with the Fortran bindings (`libmpifort.so.12`) of an MPICH, same version and device as the image's, that `install-qe-gpu.sh` builds with the NVHPC compilers; `stage-qe-libs.sh` copies QE's runtime libraries and fails the build when a library from the SDK is not a `REDIST*` file or an NVIDIA CUDA/NCCL library comes from outside the SDK, copies SDK files unmodified and lists them in `NVIDIA-REDIST-FILES.txt`, and sets the rpath of the QE executables and of the non-SDK libraries |
 | `NVIDIA-NOTICE.txt` | Names the NVIDIA agreements that govern the image's NVIDIA components and points to the file list; copied to `/opt/idrobolab/NVIDIA-NOTICE.txt` |
 | `SOURCES.txt` | Names the GPL, LGPL, MPL and CDDL software in the image, where its source is (the sources image) and how to extract it, and where the recipe is; copied to `/opt/idrobolab/SOURCES.txt` |
 | `keep-git-source.sh`, `finish-sources.sh` | Keep and check the source archives of the sources image (see [Sources image](#sources-image)) |
 | `nvidia-license-scan.py` | Prints the license metadata and license files of each `nvidia-*` distribution in `/opt/venv`; run at build time (see the build log), copied to `/opt/idrobolab/` |
 | `lammps-gpu-selftest.sh` | Not tracked: `prepare_build_context.sh` stages it from `core/lammps/` (the vendored hpcenv-core) for the Dockerfile's `COPY` |
+
+**Quantum ESPRESSO's MPI.** `pw.x` links `libmpi.so.12` and `libmpifort.so.12`. `libmpi.so.12`
+is the image's own MPICH in `/opt/software/mpich/lib`, which cluster MPI injection replaces.
+`libmpifort.so.12` comes from a second MPICH (`MPICH_VERSION` and the `ch4:ofi` device as in
+the main stage) that the `qe-builder` stage builds with `nvc`/`nvfortran`, because the Fortran
+bindings must match the compiler that builds QE; it ships in `/opt/software/qe/lib`, with
+MPICH's `COPYRIGHT` as `MPICH-COPYRIGHT`. The SDK's Open MPI libraries (`libmpi.so.40`,
+`libopen-*`) are not `REDIST*` files and are not used.
+
+Sharing `libmpi.so.12` between a gfortran-configured MPICH and nvfortran code relies on
+`libmpi` holding nothing that depends on the Fortran compiler. Its one such value, the Fortran
+`.TRUE.` that configure probes (`F77_TRUE_VALUE`), is used by `libmpi` only to write the result
+of `MPI_LOGICAL` reductions (`MPI_LAND`, `MPI_LOR`, `MPI_LXOR`); the conversion of `flag`
+arguments such as `MPI_Test`'s happens in `libmpifort`, and reading a logical treats any
+nonzero value as true. Quantum ESPRESSO 7.6 has no such reduction: it uses `MPI_LOGICAL` only
+in `MPI_BCAST` (`UtilXlib/mp_base.f90`, `UtilXlib/mp_base_gpu.f90`, `XClib/xclib_test.f90`),
+which copies bytes. If a QE release starts to reduce logicals, `libmpi.so.12` has to come from
+the NVHPC build, with the effect that cluster MPI injection no longer reaches `pw.x`.
+
+The last gate of the `Dockerfile` fails the build unless `pw.x` resolves `libmpi.so.12` to
+`/opt/software/mpich/lib` and `libmpifort.so.12` to `/opt/software/qe/lib`, needs no
+`libmpi.so.40` or `libopen-*`, and `libmpifort.so.12` has no MPI symbol unresolved against
+that `libmpi.so.12`.
 
 ### Multi-GPU abTEM (dask-cuda)
 

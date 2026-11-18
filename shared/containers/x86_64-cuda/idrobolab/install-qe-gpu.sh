@@ -7,17 +7,20 @@
 #
 # Backend: OpenACC + CUDA Fortran (nvfortran) — the mature NVIDIA path. FFT on
 # GPU is cuFFT; CPU-side FFT is QE's internal FFTXlib (no external FFTW needed).
-# MPI is the SDK's bundled OpenMPI (nvfortran-consistent). ScaLAPACK is off (GPU
-# QE uses its own GPU eigensolvers) — matches QE's own --with-scalapack=no guidance.
+# MPI is MPICH: pw.x links libmpi.so.12 like the rest of the image, and the Fortran
+# binding library libmpifort.so.12 comes from an MPICH built here with the NVHPC compilers;
+# the SDK's bundled Open MPI is not REDIST and is not used. ScaLAPACK is
+# off (GPU QE uses its own GPU eigensolvers) — matches QE's own --with-scalapack=no guidance.
 #
 # The GPU-less docker build sandbox drives the two CUDA workarounds below: the
 # bundled CUDA toolkit has to be pinned explicitly (nvfortran otherwise resolves
 # it from the absent driver) and the libcuda stub has to go on the link path.
-# This script now runs to completion on the build host (configure, build,
-# install, staging). What is still UNVERIFIED is runtime: pw.x has not been
-# executed on a GPU node, so the staged .so set and the rpaths are unproven.
+# UNVERIFIED: the MPICH build with the NVHPC compilers and the QE build against it have
+# not run on a build host, and pw.x has not been executed on a GPU node, so the staged
+# .so set and the rpaths are unproven.
 #
 # Env: QE_VERSION (default qe-7.6), QE_GPU_ARCHS (default sm_80; e.g. "sm_80;sm_90"),
+# MPICH_VERSION (required: the Dockerfile passes its MPICH_VERSION),
 # SOURCES_DIR (set by the Dockerfile: where the source archive of QE is kept).
 set -euo pipefail
 
@@ -27,19 +30,55 @@ SRC=/tmp/qe-src
 DIST=/opt/qe-dist              # staged output the final image copies
 PREFIX=/opt/software/qe        # the path QE will live at in the FINAL image
 
-# --- locate the NVHPC compilers + bundled OpenMPI (layout varies by version) --
+# --- locate the NVHPC compilers ----------------------------------------------
 NVROOT="$(ls -d /opt/nvidia/hpc_sdk/Linux_x86_64/*/ 2>/dev/null | sort -V | tail -1)"
 [ -n "$NVROOT" ] || { echo "ERROR: NVHPC SDK not found under /opt/nvidia/hpc_sdk"; exit 1; }
 export PATH="${NVROOT}compilers/bin:${PATH}"
-MPIBIN="$(dirname "$(find "${NVROOT}comm_libs" -name mpif90 -type f 2>/dev/null | sort -V | tail -1)")"
-[ -n "$MPIBIN" ] && export PATH="${MPIBIN}:${PATH}"
-command -v nvfortran >/dev/null || { echo "ERROR: nvfortran not on PATH"; exit 1; }
-command -v mpif90    >/dev/null || { echo "ERROR: NVHPC mpif90 not on PATH"; exit 1; }
-echo ">> nvfortran: $(command -v nvfortran) | mpif90: $(command -v mpif90)"
+for c in nvc nvc++ nvfortran; do
+    command -v "$c" >/dev/null || { echo "ERROR: $c not on PATH"; exit 1; }
+done
+echo ">> nvfortran: $(command -v nvfortran)"
 
 apt-get update
-apt-get install -y --no-install-recommends git cmake ca-certificates patchelf
+apt-get install -y --no-install-recommends git cmake ca-certificates patchelf wget make
 rm -rf /var/lib/apt/lists/*
+
+# --- MPICH, built with the NVHPC compilers -----------------------------------
+# The Dockerfile's MPICH (same version, device and netmod) built by nvc/nvfortran, so
+# that libmpifort matches the nvfortran that compiles QE. Only its libmpifort.so.12 is
+# staged with QE (stage-qe-libs.sh): pw.x takes libmpi.so.12 from the image's MPICH.
+MPICH_VERSION="${MPICH_VERSION:?MPICH_VERSION is not set}"
+MPICH_PREFIX=/opt/mpich-nvhpc
+run_logged() {  # run_logged LOG CMD...: keep the log out of the build output, tail it on failure
+    local log="$1"; shift
+    "$@" > "$log" 2>&1 || {
+        echo "!! failed: $*"; tail -n 100 "$log"
+        [ -f config.log ] && { echo "===== config.log ====="; tail -n 100 config.log; }
+        return 1
+    }
+}
+mkdir -p /tmp/mpich-build
+cd /tmp/mpich-build
+wget -q "https://github.com/pmodels/mpich/releases/download/v${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz"
+tar xzf "mpich-${MPICH_VERSION}.tar.gz"
+cd "mpich-${MPICH_VERSION}"
+run_logged /tmp/mpich-configure.log ./configure --prefix="${MPICH_PREFIX}" \
+    CC=nvc CXX=nvc++ F77=nvfortran FC=nvfortran \
+    --with-device=ch4:ofi --with-libfabric=embedded \
+    --enable-shared --disable-static
+grep -E 'values of Fortran logicals' /tmp/mpich-configure.log || true   # informational
+run_logged /tmp/mpich-make.log make -j"$(nproc)"
+run_logged /tmp/mpich-install.log make install
+cp COPYRIGHT "${MPICH_PREFIX}/MPICH-COPYRIGHT"
+cd /
+rm -rf /tmp/mpich-build
+export PATH="${MPICH_PREFIX}/bin:${PATH}"
+export LD_LIBRARY_PATH="${MPICH_PREFIX}/lib:${LD_LIBRARY_PATH:-}"   # for ldd in stage-qe-libs.sh
+[ "$(command -v mpif90)" = "${MPICH_PREFIX}/bin/mpif90" ] || { echo "ERROR: mpif90 is $(command -v mpif90)"; exit 1; }
+mpichversion | tee /tmp/mpichversion.txt
+grep -q nvfortran /tmp/mpichversion.txt || { echo "ERROR: MPICH was not built with nvfortran"; exit 1; }
+ls -l "${MPICH_PREFIX}"/lib/libmpi.so.12 "${MPICH_PREFIX}"/lib/libmpifort.so.12   # libmpifort ships, libmpi does not
+echo ">> mpif90: $(command -v mpif90)"
 
 rm -rf "$SRC"
 git clone --depth 1 -b "$QE_VERSION" https://gitlab.com/QEF/q-e.git "$SRC"
@@ -142,6 +181,7 @@ bash "$(dirname "$0")/keep-git-source.sh" "$SRC" "$QE_VERSION"
 # It also sets the rpath of the QE executables, and of the libs that are not
 # SDK files, to the FINAL install path.
 cp -a "${PREFIX}/." "${DIST}/"
+cp "${MPICH_PREFIX}/MPICH-COPYRIGHT" "${DIST}/MPICH-COPYRIGHT"
 bash "$(dirname "$0")/stage-qe-libs.sh" /opt/nvidia/hpc_sdk "${DIST}" "${PREFIX}/lib"
 
 echo ">> staged QE runtime under ${DIST} ($(du -sh "${DIST}" 2>/dev/null | cut -f1))"

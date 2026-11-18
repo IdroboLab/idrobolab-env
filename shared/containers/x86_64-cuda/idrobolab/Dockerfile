@@ -32,12 +32,15 @@
 ARG NVHPC_IMAGE=nvcr.io/nvidia/nvhpc:25.1-devel-cuda12.6-ubuntu24.04
 ARG QE_VERSION=qe-7.6
 ARG QE_GPU_ARCHS=sm_80
+ARG MPICH_VERSION=4.3.2
 FROM ${NVHPC_IMAGE} AS qe-builder
 ARG QE_VERSION
 ARG QE_GPU_ARCHS
+ARG MPICH_VERSION
 ENV SOURCES_DIR=/opt/sources
 COPY install-qe-gpu.sh stage-qe-libs.sh keep-git-source.sh /tmp/
-RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" bash /tmp/install-qe-gpu.sh
+RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" MPICH_VERSION="${MPICH_VERSION}" \
+    bash /tmp/install-qe-gpu.sh
 
 # ===== builder stage (full -devel toolchain; discarded after the split) ======
 # Compiles the whole stack; nothing here ships — the slim -runtime final stage
@@ -64,7 +67,8 @@ ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/usr/local/bin:${PATH} \
 # SOURCES.txt and docs/THIRD-PARTY.md name the versions of the software with a source duty
 # (these ARGs; QE_VERSION before the qe-builder stage; LAMMPS_BRANCH in the LAMMPS block at
 # the end of this stage; kim-api and QUIP in LAMMPS's cmake files): update them together.
-ARG MPICH_VERSION=4.3.2
+# MPICH_VERSION has its default before the qe-builder stage, which builds MPICH too.
+ARG MPICH_VERSION
 ARG FFTW_VERSION=3.3.10
 ARG SCALAPACK_VERSION=2.2.0
 ARG LIBXC_VERSION=7.0.0
@@ -473,12 +477,29 @@ RUN python /opt/idrobolab/nvidia-license-scan.py
 # --- runtime lib-closure gate for the CUDA binaries (libcuda.so.1 excepted) --
 # Checks every binary before failing, so one build names ALL the gaps rather
 # than only the first — each rebuild here is expensive.
+# pw.x must take libmpi.so.12 from the image's MPICH (cluster MPI injection replaces it) and
+# libmpifort.so.12 from the copy staged with QE, which must find all its MPI symbols in that
+# libmpi; it must not need Open MPI.
 RUN set -eu; rc=0; for so in /opt/software/lammps/lib/liblammps.so /opt/software/qe/bin/pw.x; do \
       [ -e "$so" ] || { echo "missing artifact $so"; rc=1; continue; }; \
       miss="$(ldd "$so" 2>/dev/null | awk '/not found/ && !/libcuda/{print $1}')"; \
       if [ -n "$miss" ]; then echo "UNRESOLVED runtime libs for $so:"; echo "$miss"; rc=1; \
       else echo "$so: runtime libs resolved (libcuda.so.1 expected at --nv runtime)"; fi; \
-    done; exit $rc
+    done; \
+    pwldd="$(ldd /opt/software/qe/bin/pw.x 2>/dev/null)"; \
+    for pair in libmpi.so.12:/opt/software/mpich/lib/libmpi.so.12 libmpifort.so.12:/opt/software/qe/lib/libmpifort.so.12; do \
+      n="${pair%%:*}"; want="${pair#*:}"; \
+      got="$(echo "$pwldd" | awk -v n="$n" '$1==n && $3 ~ /^\//{print $3}')"; \
+      if [ "$got" = "$want" ]; then echo "pw.x: $n -> $got"; \
+      else echo "pw.x: $n resolves to '${got}', not $want"; rc=1; fi; \
+    done; \
+    if echo "$pwldd" | grep -E 'libmpi\.so\.40|libopen-(pal|rte)'; then echo "pw.x needs Open MPI libraries"; rc=1; fi; \
+    fortldd="$(ldd -r /opt/software/qe/lib/libmpifort.so.12 2>&1 || true)"; \
+    if ! echo "$fortldd" | grep -qF 'libmpi.so.12 => /opt/software/mpich/lib/libmpi.so.12'; then \
+      echo "ldd -r of libmpifort.so.12 does not show libmpi.so.12 from /opt/software/mpich/lib:"; echo "$fortldd"; rc=1; fi; \
+    undef="$(echo "$fortldd" | grep -iE 'undefined symbol: (p?mpi|mpl_)' || true)"; \
+    if [ -n "$undef" ]; then echo "libmpifort.so.12 needs symbols that libmpi.so.12 lacks:"; echo "$undef"; rc=1; fi; \
+    exit $rc
 
 # --- the tag of this image's sources image (set by publish.sh) ---------------
 # Declared last, so a new value rebuilds only this layer.
