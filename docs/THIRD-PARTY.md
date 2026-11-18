@@ -108,16 +108,23 @@ version the recipe fetches (the tarball or git tag it names; the Bader source fr
 download page of its site). Rows: one component each. Columns: the version in the recipe;
 the license the source states; the file read for it; and the duty it puts on the image
 (**source**: the sources image holds the source; **notice**: the license text must go with
-the binary). No patch is applied to any of these sources in the recipe.
+the binary). No patch is applied to any of these sources in the recipe. The one change to a
+source tree is made by LAMMPS's own `ML-QUIP.cmake`: its `PATCH_COMMAND` copies a generated
+`arch/Makefile.lammps` into the QUIP tree. That file is not in the QUIP archive, but it is
+generated from the LAMMPS source, which is.
 
 | Component | Version | License | File read | Duty |
 |---|---|---|---|---|
-| Quantum ESPRESSO | `qe-7.6` | GPL 2 or later | `README.md` (section LICENSE: "version 2 ... or (at your option) any later version"); `License` is the GPL 2 text | source. The submodules cmake initialises (for example Wannier90, devxlib, fox) carry their own licenses, which were not read; they travel in the same archive |
+| Quantum ESPRESSO | `qe-7.6` | GPL 2 or later | `README.md` (section LICENSE: "version 2 ... or (at your option) any later version"); `License` is the GPL 2 text | source. The submodules cmake initialises with the options of `install-qe-gpu.sh` are the next three rows; their source is in the same archive. d3q, pw2qmcpack, qe-gipaw (plugins off), fox (`QE_ENABLE_FOX` off) and lapack (internal LAPACK off) are not initialised, by the `qe-7.6` cmake files |
+| Wannier90, a QE submodule | commit `1d6b187` | GPL 2 | `README.rst` ("licensed under GPLv2"), `LICENSE` (GPL 2 text) | source |
+| libMBD, a QE submodule | commit `89a3cc1` | MPL 2.0 | `LICENSE`, `pyproject.toml` | source |
+| DeviceXlib, a QE submodule | commit `a6b89ef` | GPL, version not stated | file headers of `src/deviceXlib_mod.f90` ("GNU General Public License. See the file `License'"); the tree has no license file | source |
 | LAMMPS | `stable_22Jul2025_update6` | GPL 2 | `LICENSE` (GPL 2 text); `README` ("GNU Public License (GPL) version 2") | source |
 | FFTW | 3.3.10 | GPL 2 or later | `COPYRIGHT` (file header), `COPYING` (GPL 2 text) | source |
 | libvdwxc | 0.5.0 | GPL 3 or later | `LICENSE` (notice: "version 3 ... or (at your option) any later version"), `COPYING` (GPL 3 text) | source |
-| Bader | 1.05 | GPL 3 or later; `jacobi_mod.f90` and `dsyevj3_mod.f` under the LGPL | `main.f90` (file header), `jacobi_mod.f90`, `dsyevj3_mod.f`; neither the source nor the binary tarball has a license file | source (see below for the version match) |
-| QUIP, as `ML-QUIP` downloads it (commit in LAMMPS's `cmake/Modules/Packages/ML-QUIP.cmake`) | `1e2f84ba94bc` | GPL 2, parts public domain; its GAP submodule under the GAP Academic Software License | `README.md` (QUIP has no license file at its top level); `src/GAP/LICENSE.md` | source. `fox`, the other submodule, has a `LICENSE` that was not read |
+| Bader | 1.05 | GPL 3 or later; `jacobi_mod.f90` under the LGPL (its header says "GNU LGPL", no version), `dsyevj3_mod.f` under the LGPL 2.1 or later | `main.f90`, `jacobi_mod.f90` and `dsyevj3_mod.f` (file headers); neither the source nor the binary tarball has a license file | source (see below for the version match) |
+| QUIP, as `ML-QUIP` downloads it (commit in LAMMPS's `cmake/Modules/Packages/ML-QUIP.cmake`) | `1e2f84ba94bc` | GPL 2, parts public domain; its GAP submodule under the GAP Academic Software License | `README.md` (QUIP has no license file at its top level); `src/GAP/LICENSE.md` | source. The submodules `GAP` (above) and `fox` (next row) are in the archive |
+| FoX, a QUIP submodule | commit `5ad1c47` | BSD-style | `src/fox/LICENSE` | notice |
 | kim-api | 2.2.1 | CDDL 1.0 | `LICENSE.CDDL` | source |
 | ELPA | 2024.05.001 | LGPL 3 | `LICENSE` | source |
 | libxc | 7.0.0 | MPL 2.0 | `COPYING` | source |
@@ -149,12 +156,15 @@ marked "source" keep its source archive, as the build fetched it, in `/opt/sourc
 `<name>-<version>.tar.gz` (git trees without `.git`, with the submodules the build
 initialised), the kim-api tarball as downloaded, and Bader's. The Dockerfile's last
 stage before the image, `FROM scratch AS sources`, collects them with a `SHA256SUMS`.
-`publish.sh` builds it with `--target sources` from the same build and pushes it right
-after the image as `ghcr.io/idrobolab/idrobolab:<tag>-sources`, with the same `<tag>`, and
-as `<date>-sources`. The build fails when a component has no archive. The image itself
-holds only `SHA256SUMS`, as `/opt/idrobolab/sources/SHA256SUMS`, so the sources image of
-any image can be identified, and `/opt/idrobolab/SOURCES.txt`, which names the licenses, the
-sources image, the command that extracts it and the recipe. A sources image is never
+`publish.sh` builds it with `--target sources` from the same build and pushes it before the
+image, so that a public binary never sits without its source, as
+`ghcr.io/idrobolab/idrobolab:<date>-sources` (the UTC date and time the script started, never
+moved) and as `<tag>-sources`, with the same `<tag>` as the image. The build fails when a
+component has no archive. The image itself holds `/opt/idrobolab/SOURCES.txt`, which names
+the licenses, the command that extracts the sources image, the recipe and, on its last line,
+the exact `<date>-sources` tag of the image's own sources image (`publish.sh` passes it to the
+build), and `SHA256SUMS`, as `/opt/idrobolab/sources/SHA256SUMS`, which identifies the sources
+image of an image built another way. A sources image is never
 deleted while its image is available by tag or digest. GPLv2 counts "equivalent access to
 copy the source code from the same place" as distributing the source, and the sources image
 is in the same package as the image.
