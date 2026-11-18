@@ -60,6 +60,9 @@ ENV INSTALL_DIR=/opt/software \
 ENV PATH=/opt/venv/bin:/opt/software/mpich/bin:/usr/local/bin:${PATH} \
     LD_LIBRARY_PATH=/opt/software/mpich/lib:/opt/software/libxc/lib:/opt/software/libvdwxc/lib:/opt/software/fftw/lib:/opt/software/scalapack/lib:/opt/software/elpa/lib:/opt/software/magma/lib
 
+# SOURCES.txt and docs/THIRD-PARTY.md name the versions of the software with a source duty
+# (these ARGs, QE_VERSION and LAMMPS_BRANCH above and below, kim-api and QUIP in LAMMPS's
+# cmake files): update them together.
 ARG MPICH_VERSION=4.3.2
 ARG FFTW_VERSION=3.3.10
 ARG SCALAPACK_VERSION=2.2.0
@@ -97,7 +100,7 @@ RUN set -eux; mkdir -p ${SOURCES_DIR}; \
     chmod +x /usr/local/bin/bader; \
     curl -fsSL -o ${SOURCES_DIR}/bader-${BADER_VERSION}.tar.gz ${BADER_URL}/bader.tar.gz; \
     grep -aq "Version ${BADER_VERSION} " /usr/local/bin/bader; \
-    tar xzOf ${SOURCES_DIR}/bader-${BADER_VERSION}.tar.gz | grep -aq "Version ${BADER_VERSION} "
+    tar xzOf ${SOURCES_DIR}/bader-${BADER_VERSION}.tar.gz | grep -a "Version ${BADER_VERSION} " >/dev/null
 
 # --- MPICH (ch4:ofi; MPICH ABI libmpi.so.12) --------------------------------
 RUN set -eux; cd /tmp; \
@@ -476,6 +479,14 @@ RUN set -eu; rc=0; for so in /opt/software/lammps/lib/liblammps.so /opt/software
       if [ -n "$miss" ]; then echo "UNRESOLVED runtime libs for $so:"; echo "$miss"; rc=1; \
       else echo "$so: runtime libs resolved (libcuda.so.1 expected at --nv runtime)"; fi; \
     done; exit $rc
+
+# --- the tag of this image's sources image (set by publish.sh) ---------------
+# Declared last, so a new value rebuilds only this layer.
+ARG SOURCES_TAG=
+RUN if [ -n "${SOURCES_TAG}" ]; then \
+      printf '\nThe sources image of this image: ghcr.io/idrobolab/idrobolab:%s\n' "${SOURCES_TAG}" \
+        >> /opt/idrobolab/SOURCES.txt; \
+    fi
 
 # --- runtime environment ----------------------------------------------------
 ENV OMP_NUM_THREADS=1 \
