@@ -100,6 +100,20 @@ with `uv run --script` on the same, quiet node.
 - An environment used by many jobs can also go under `/global/common/software/<project>/venvs/`,
   which is fast for imports, but its 10 GB quota is shared by the whole group: ask first.
 
+**Set `PYTHONSAFEPATH=1` in jobs whose working directory is in `$HOME` or on CFS.** Python
+puts the script's directory (or the working directory) first on its import path, so every
+import looks there first. Compute nodes reach `$HOME` and CFS through DVS, which serves each
+file from a single gateway node: with many processes, nodes or concurrent jobs, these lookups
+become the bottleneck (NERSC's *DVS* page). `export PYTHONSAFEPATH=1` in the job script (or
+`python -P`, Python ≥ 3.11) removes that entry and nothing else; `PYTHONPATH` still works. This
+holds inside the group container too when the job's working directory is a bind of `$HOME` or
+CFS. Two cautions:
+- A script that imports a module lying next to it then fails with `ModuleNotFoundError`: put
+  that directory on `PYTHONPATH`, or install it as a package.
+- Don't use `python -I` for this. It also ignores `PYTHONPATH` and the other `PYTHON*`
+  variables, so a checkout put first on `PYTHONPATH` (one way to run a branch in the container)
+  would silently not be used.
+
 Because the cache (on `$SCRATCH`) and environments in `$HOME` are on different file
 systems, uv prints *"Failed to hardlink files; falling back to full copy"*. This is
 harmless. Silence it with `export UV_LINK_MODE=copy` in `~/.bashrc`.
