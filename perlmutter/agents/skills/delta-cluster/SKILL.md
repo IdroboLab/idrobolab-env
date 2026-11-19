@@ -74,13 +74,6 @@ launch pattern goes with which job shape, and which of them has been run, is in
   example) also needs `module load aws-ofi-nccl` (the Slingshot-11 plugin) and
   `NCCL_SOCKET_IFNAME=hsn`. Neither has been tested from inside the group image.
 
-- **A `.sif` is read-only.** A write into the image (a `pip install` into `/opt/venv`)
-  fails with `[Errno 30] Read-only file system`. `apptainer exec --writable-tmpfs` adds a
-  temporary in-memory overlay, discarded when the process ends. That overlay is small: a cache
-  written there (Numba's, under the installed packages) fills it with `[Errno 28] No space
-  left on device`, so point caches at a directory under `$SCRATCH_BASE/$USER`
-  (`NUMBA_CACHE_DIR`).
-
 **MPICH ch4 POSIX shared-memory collective truncation at scale.** Observed with an earlier
 image of the same MPICH build; symptom around 32–64 ranks on one node:
 ```
@@ -179,3 +172,10 @@ confirmed. `get-image.sh` therefore queues itself on a compute node, puts
 the same for any other image.
 
 The layer cache survives a failed build, so a retry skips the download.
+
+**A `.sif` is read-only at run time.** A write into the image (a `pip install` into
+`/opt/venv`) fails with `[Errno 30] Read-only file system`. `apptainer exec --writable-tmpfs`
+adds a temporary in-memory overlay, discarded when the process ends. That overlay is small: a
+cache written there (Numba's, under the installed packages) fills it with `[Errno 28] No space
+left on device`, so point caches at a directory under `$SCRATCH_BASE/$USER`
+(`NUMBA_CACHE_DIR`).

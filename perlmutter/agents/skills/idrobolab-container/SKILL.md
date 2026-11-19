@@ -65,12 +65,13 @@ with `-p no:cacheprovider` (a read-only checkout cannot take the cache write). N
 between `podman-hpc run --rm` calls, so every run reinstalls; never install into the image or a
 shared venv, and never `pip install -e <checkout>[test]` (a read-only checkout cannot take the
 egg-info write). On Delta the install needs `apptainer exec --writable-tmpfs` and a
-`NUMBA_CACHE_DIR` outside the image (`delta-cluster`, *MPI and container launch*).
+`NUMBA_CACHE_DIR` outside the image (`delta-cluster`, *Building and shipping a container image*).
 
-**Leave `OMP_NUM_THREADS` and `OPENBLAS_NUM_THREADS` at the image's 1** in every command and
-launcher that runs a suite. With more, GPAW warns `Using OMP_NUM_THREADS>1 in PW-mode is not
-useful!`, and abTEM's suite, which turns warnings into errors, fails its GPAW plane-wave tests. The Perlmutter job templates set 16 or more threads for
-production runs; a suite run through one sets both back to 1.
+**Leave `OMP_NUM_THREADS` at the image's 1** in every command and launcher that runs abTEM's
+suite. With more, GPAW warns `Using OMP_NUM_THREADS>1 in PW-mode is not useful!`, and the
+suite, which turns warnings into errors, fails its GPAW plane-wave tests (abTEM at the image's
+pin `6391566e`; abTEM PR #705 filters the warning). Several Perlmutter job templates set 8 to
+32 threads for production runs; a suite run through one sets it back to 1.
 
 pytest's `rootdir` comes from the test path argument, not from the shell's working directory:
 pass the absolute, in-container test path (`$WT/test/`, `/opt/src/<package>/test/...`). A
