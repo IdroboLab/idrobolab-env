@@ -61,11 +61,16 @@ trap 'rm -rf "$WORK"' EXIT
 # What only the host knows. VERIFY_SCRUB: strings verify.py removes from everything it writes.
 real() { (cd "$1" 2>/dev/null && pwd -P) || true; }
 export VERIFY_CLUSTER=perlmutter VERIFY_JOB_ID=$SLURM_JOB_ID VERIFY_WORK=$WORK
-VERIFY_IMAGE_DIGEST=$(podman-hpc image inspect --format '{{index .RepoDigests 0}}' "$IMAGE")
-export VERIFY_IMAGE_DIGEST=${VERIFY_IMAGE_DIGEST##*@}
+echo "IMAGE=$IMAGE  repo=$REPO"
+# `podman-hpc images` lists the images of the shared read-only store; `image inspect` does not.
+VERIFY_IMAGE_DIGEST=$(podman-hpc images --digests --format '{{.Digest}}' "$IMAGE")
+if [ -z "$VERIFY_IMAGE_DIGEST" ]; then
+    echo "ERROR: $IMAGE is not in podman-hpc images; pull it first (header of this script)" >&2
+    exit 1
+fi
+export VERIFY_IMAGE_DIGEST
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH:$(real "$SCRATCH"):${CFS:-}:${SLURM_JOB_ACCOUNT:-}:${NERSC_PROJECT:-}:$REPO:$WORK"
 
-echo "IMAGE=$IMAGE  repo=$REPO"
 # One process: leave room for worker threads rather than pinning to one thread (see
 # jobs/gpu_4gpu_node.sbatch). HDF5 file locking fails on CFS and $HOME from a compute node
 # (errno 524).

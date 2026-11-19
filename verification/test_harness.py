@@ -913,9 +913,12 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
     stubs.mkdir(exist_ok=True)
     for tool, body in {
             "srun": 'while [ "${1#--}" != "$1" ]; do shift; done; exec "$@"',
-            "podman-hpc": 'if [ "$1 $2" = "image inspect" ]; then echo "ghcr.io/o/i@sha256:abc"; '
-                          'exit 0; fi\necho "$*" >> "$STUB_LOG"; echo "$VERIFY_IMAGE_DIGEST '
-                          '$VERIFY_SCRUB" >> "$STUB_LOG"',
+            # As on Perlmutter: an image in the shared read-only store is listed by `images`
+            # but unknown to `image inspect`.
+            "podman-hpc": 'case "$1" in images) printf "%s" "${STUB_PM_DIGEST-sha256:abc}"; '
+                          '[ -z "${STUB_PM_DIGEST-x}" ] || echo; exit 0 ;; image) echo "Error: $3: '
+                          'image not known" >&2; exit 125 ;; esac\necho "$*" >> "$STUB_LOG"; '
+                          'echo "$VERIFY_IMAGE_DIGEST $VERIFY_SCRUB" >> "$STUB_LOG"',
             "apptainer": 'echo "$*" >> "$STUB_LOG"; echo "$VERIFY_SCRUB" >> "$STUB_LOG"'}.items():
         (stubs / tool).write_text(f"#!/bin/sh\n{body}\n")
         (stubs / tool).chmod(0o755)
@@ -934,6 +937,14 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
 
 def perlmutter(name, tmp_path, *args, **env):
     return run_launcher(name, tmp_path, *args, SCRATCH=tmp_path / "scratch/u1", **env)
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_perlmutter_launcher_stops_when_podman_hpc_lists_no_such_image(tmp_path, part):
+    res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE, STUB_PM_DIGEST="")
+    assert res.returncode != 0 and not log  # the container never starts
+    assert f"IMAGE=ghcr.io/idrobolab/{IMAGE}:" in res.stdout
+    assert "not in podman-hpc images" in res.stderr
 
 
 @pytest.mark.parametrize("part", ["cpu", "gpu"])
