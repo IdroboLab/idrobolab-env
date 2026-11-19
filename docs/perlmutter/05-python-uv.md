@@ -70,25 +70,35 @@ source ~/venvs/analysis/bin/activate    # or call ~/venvs/analysis/bin/python di
 | not `$SCRATCH` | purged after 8 weeks |
 | not CFS | slow for the thousands of small files Python imports |
 
-**Jobs on compute nodes: run Python from an installed environment, not from the uv
-cache.** `uv run --script` keeps the script's environment in the uv cache, on `$SCRATCH`
-(Lustre). Lustre handles the thousands of small files Python reads at import badly. On a busy shared node
-this can stall a job completely. A numpy/scipy job on a `shared` CPU node produced no output in
-30 minutes; the same run with its packages copied to `/dev/shm` finished in 7 (2026-11-18, one
-measurement). For a job, install the script's dependencies into an environment under
-`/global/common/software/<project>/venvs/` (ask first, see the table) on a login node, and call
-that environment's `python` in the job:
+**Jobs on compute nodes: build the environment in memory at the start of the job.**
+`uv run --script` keeps the script's environment in the uv cache, on `$SCRATCH` (Lustre), which
+handles the thousands of small files Python reads at import badly. On a busy shared node a
+numpy/scipy job importing from there produced no output in 30 minutes; with its packages copied
+to `/dev/shm` the same run finished in 7 (2026-11-18, one measurement). Instead, fill the cache
+once on a login node, then install from it into `/dev/shm` in the job, without network:
 
 ```bash
+# on a login node, once:
 uv export --script myscript.py --no-hashes > myscript.txt   # the header's dependencies, pinned
-uv venv --python 3.13 /global/common/software/<project>/venvs/myscript
-uv pip install -p /global/common/software/<project>/venvs/myscript -r myscript.txt
+uv sync --script myscript.py                                # fills the uv cache, runs nothing
 # in the job script:
-/global/common/software/<project>/venvs/myscript/bin/python myscript.py
+export UV_OFFLINE=1 UV_LINK_MODE=copy
+V=/dev/shm/$SLURM_JOB_ID/venv
+uv venv -q --python 3.13 "$V" && uv pip install -q -p "$V" -r myscript.txt
+"$V/bin/python" myscript.py
 ```
 
-If an environment cannot be installed there, copy its `site-packages` to `/dev/shm` at the
-start of the job and put that copy on `PYTHONPATH`.
+Measured on a `shared` CPU node (`-c 2`, 2026-11-19): a numpy + scipy + ase environment
+installs in 7 s and takes 254 MB (6,200 files); the script then started in 2.9 s, against 17 s
+with `uv run --script` on the same, quiet node.
+
+- `/dev/shm` (and `/tmp`, also memory on compute nodes) uses the job's memory: a `shared`
+  job gets about 1.9 GB per CPU (3.8 GB with `-c 2`). Large stacks (torch, CuPy, GPAW) run in
+  the group container instead.
+- It is local to each node and emptied after the job: a multi-node job installs on every node
+  (`srun --ntasks-per-node=1 ...`).
+- An environment used by many jobs can also go under `/global/common/software/<project>/venvs/`,
+  which is fast for imports, but its 10 GB quota is shared by the whole group: ask first.
 
 Because the cache (on `$SCRATCH`) and environments in `$HOME` are on different file
 systems, uv prints *"Failed to hardlink files; falling back to full copy"*. This is

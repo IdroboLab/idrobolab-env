@@ -216,12 +216,13 @@ doing anything. `perlmutter/env.sh` in the idrobolab-env clone sets it (`$SCRATC
 guarded, pre-set value respected); a shell that has not sourced that file needs
 `export UV_CACHE_DIR=$PSCRATCH/uv-cache` by hand.
 
-**A job on a compute node runs Python from an installed environment, not from `uv run
---script`.** That command runs from the uv cache on `$SCRATCH` (Lustre), and on a busy shared
-node a numpy/scipy job importing from there stalled with no output for 30 minutes, page-fault
-bound. Install the dependencies (`uv export --script`) into a venv under
-`/global/common/software/<project>/venvs/` from a login node, or copy `site-packages` to
-`/dev/shm` in the job. Commands: `docs/perlmutter/05-python-uv.md`, *Where environments live*.
+**A job on a compute node runs Python from an environment built in `/dev/shm`, not from `uv run
+--script`.** That command runs from the uv cache on `$SCRATCH` (Lustre); on a busy shared node a
+numpy/scipy job importing from there stalled with no output for 30 minutes, page-fault bound.
+Fill the cache on a login node, then in the job `uv pip install` offline into
+`/dev/shm/$SLURM_JOB_ID` (7 s, 254 MB for numpy + scipy + ase; it counts against the job's
+memory). `/global/common/software` is fast too, but its 10 GB quota is the whole group's.
+Commands and measurements: `docs/perlmutter/05-python-uv.md`, *Where environments live*.
 Also, `/tmp` on a login node is node-local: a compute node cannot see files written there.
 
 **HDF5 files on CFS or `$HOME` fail to open from a compute node with `unable to lock file,
