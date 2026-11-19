@@ -6,7 +6,8 @@
 #   sbatch ~/idrobolab-env/verification/clusters/perlmutter-gpu.sbatch <image> [--only <component>]
 #
 # The image is ghcr.io/idrobolab/<image>:<VERSION>-rc, VERSION from the image's recipe
-# directory; IMAGE (a full reference) or TAG override it. Pull it on a login node first:
+# directory. IMAGE overrides it: a bare name takes IMAGE_OWNER and TAG (default <VERSION>-rc),
+# a value containing "/" is used verbatim. Pull it on a login node first:
 #   TAG=<VERSION>-rc ~/idrobolab-env/perlmutter/helpers/update-image.sh <image>
 # Records and logs are written into this clone, under verification/<image>/releases/<N>/.
 #
@@ -36,8 +37,17 @@ if [ ! -f "$REPO/verification/verify.py" ]; then
     SCRIPT=$(scontrol show job "$SLURM_JOB_ID" | sed -n 's/^ *Command=\([^ ]*\).*/\1/p')
     REPO=$(cd "$(dirname "$SCRIPT")/../.." && pwd -P)
 fi
-VERSION=$(cat "$REPO"/shared/containers/*/"$NAME"/VERSION)
-IMAGE=${IMAGE:-ghcr.io/${IMAGE_OWNER:-idrobolab}/${NAME}:${TAG:-${VERSION}-rc}}
+VERSION_FILES=("$REPO"/shared/containers/*/"$NAME"/VERSION)
+if [ "${#VERSION_FILES[@]}" -ne 1 ] || [ ! -f "${VERSION_FILES[0]}" ]; then
+    echo "ERROR: exactly one recipe directory shared/containers/*/$NAME is expected" >&2
+    exit 1
+fi
+VERSION=$(cat "${VERSION_FILES[0]}")
+IMAGE=${IMAGE:-$NAME}
+case "$IMAGE" in
+    */*) : ;;
+    *)   IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-${VERSION}-rc}" ;;
+esac
 
 # Supplementary groups give access to project directories; see jobs/README.md.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
@@ -56,9 +66,12 @@ export VERIFY_IMAGE_DIGEST=${VERIFY_IMAGE_DIGEST##*@}
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH:$(real "$SCRATCH"):${CFS:-}:${SLURM_JOB_ACCOUNT:-}:${NERSC_PROJECT:-}:$REPO:$WORK"
 
 echo "IMAGE=$IMAGE  repo=$REPO"
-# HDF5 file locking fails on CFS and $HOME from a compute node (errno 524).
+# One process: leave room for worker threads rather than pinning to one thread (see
+# jobs/gpu_4gpu_node.sbatch). HDF5 file locking fails on CFS and $HOME from a compute node
+# (errno 524).
+THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
 time srun --ntasks=1 --cpu-bind=none \
     podman-hpc run --rm $GROUP_FLAGS --gpu -v "$REPO:$REPO" -v "$WORK:$WORK" --workdir "$REPO" \
         -e VERIFY_CLUSTER -e VERIFY_IMAGE_DIGEST -e VERIFY_JOB_ID -e VERIFY_SCRUB -e VERIFY_WORK \
-        -e HDF5_USE_FILE_LOCKING=FALSE \
+        $THREAD_ENV -e HDF5_USE_FILE_LOCKING=FALSE \
         "$IMAGE" python verification/verify.py "$NAME" --part gpu "$@"

@@ -22,7 +22,7 @@
 #SBATCH --constraint="scratch&projects" # filesystem dependency (NCSA-requested)
 #SBATCH --output=%x_%j.out
 
-module reset   # loads defaults; $SCRATCH_BASE comes from delta/env.sh; before set -u (Lmod)
+module reset   # loads defaults, $SCRATCH_BASE comes from delta/env.sh (Delta sets $SCRATCH only inside jobs); before set -u (Lmod quirk)
 set -euo pipefail
 
 NAME=${1:?usage: sbatch delta-gpu.sbatch <image> [--only <component>]}
@@ -37,7 +37,7 @@ fi
 SIF=${SIF:-${PROJECTS_BASE:?set SIF, or export PROJECTS_BASE}/software/containers/${NAME}.sif}
 
 # A writable work directory for the tests, removed at the end.
-WORK=${SCRATCH:?}/verify-$SLURM_JOB_ID
+WORK=${SCRATCH_BASE:?}/$USER/verify-$SLURM_JOB_ID
 mkdir -p "$WORK"
 WORK=$(cd "$WORK" && pwd -P)
 trap 'rm -rf "$WORK"' EXIT
@@ -51,7 +51,7 @@ real() { (cd "$1" 2>/dev/null && pwd -P) || true; }
 export VERIFY_CLUSTER=delta VERIFY_JOB_ID=$SLURM_JOB_ID VERIFY_WORK=$WORK
 VERIFY_IMAGE_DIGEST=$(sha256sum "$SIF")
 export VERIFY_IMAGE_DIGEST=sha256:${VERIFY_IMAGE_DIGEST%% *}
-export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH:$(real "$SCRATCH"):${PROJECTS_BASE:-}:${SLURM_JOB_ACCOUNT:-}:$REPO:$WORK"
+export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH_BASE/$USER:$(real "$SCRATCH_BASE/$USER"):${PROJECTS_BASE:-}:${SLURM_JOB_ACCOUNT:-}:$REPO:$WORK"
 
 echo "SIF=$SIF  repo=$REPO  binds=$BINDS"
 time apptainer exec --nv --bind "$BINDS" --pwd "$REPO" "$SIF" \

@@ -446,7 +446,8 @@ class Suite:
                 records[f"{cluster}-{part}"] = {
                     "image": IMAGE, "version": version, "build_id": BUILD,
                     "recipe_hash": recipe_hash(self.recipe), "sources": dict(SOURCES),
-                    "tests_hash": self.tests_hash(), "lammps_ctest": True, "complete": True, "cluster": cluster, "part": part,
+                    "tests_hash": self.tests_hash(), "lammps_ctest": True, "complete": True,
+                    "cluster": cluster, "part": part,
                     "components": {c: {"status": "pass", "passed": 2, "failed": 0, "skipped": 0,
                                        "known_failed": 0, "unexpected": [], "stale_known": [],
                                        "seconds": 1} for c in comps}}
@@ -897,3 +898,85 @@ def test_launcher_is_valid_bash_and_names_no_account(name):
                      if not line.startswith("#") or line.startswith("#SBATCH"))
     gpu_flags = re.findall(r"--gpu\b|--nv\b|--gpus-per-node", code)
     assert bool(gpu_flags) == name.endswith("-gpu.sbatch"), (name, gpu_flags)
+
+
+def run_launcher(name, tmp_path, *args, launcher=None, **env):
+    """Run a launcher with stub srun, podman-hpc and apptainer that log their arguments (and
+    the VERIFY_ variables) to tmp_path/engine.log; return the process and the log lines."""
+    stubs = tmp_path / "stubs"
+    stubs.mkdir(exist_ok=True)
+    for tool, body in {
+            "srun": 'while [ "${1#--}" != "$1" ]; do shift; done; exec "$@"',
+            "podman-hpc": 'if [ "$1 $2" = "image inspect" ]; then echo "ghcr.io/o/i@sha256:abc"; '
+                          'exit 0; fi\necho "$*" >> "$STUB_LOG"; echo "$VERIFY_IMAGE_DIGEST '
+                          '$VERIFY_SCRUB" >> "$STUB_LOG"',
+            "apptainer": 'echo "$*" >> "$STUB_LOG"; echo "$VERIFY_SCRUB" >> "$STUB_LOG"'}.items():
+        (stubs / tool).write_text(f"#!/bin/sh\n{body}\n")
+        (stubs / tool).chmod(0o755)
+    for dirname in ("home", "scratch/u1", "proj/software/containers"):
+        (tmp_path / dirname).mkdir(parents=True, exist_ok=True)
+    (tmp_path / "proj/software/containers" / f"{IMAGE}.sif").write_text("sif")
+    full = {"PATH": f"{stubs}:{os.environ['PATH']}", "USER": "u1", "HOME": str(tmp_path / "home"),
+            "SLURM_JOB_ID": "5", "STUB_LOG": str(tmp_path / "engine.log"),
+            "PROJECTS_BASE": str(tmp_path / "proj")}
+    full.update({k: str(v) for k, v in env.items()})
+    res = subprocess.run(["bash", launcher or VERIFICATION / "clusters" / name, *args], env=full,
+                         capture_output=True, text=True)
+    log = tmp_path / "engine.log"
+    return res, (log.read_text().splitlines() if log.exists() else [])
+
+
+def perlmutter(name, tmp_path, *args, **env):
+    return run_launcher(name, tmp_path, *args, SCRATCH=tmp_path / "scratch/u1", **env)
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_perlmutter_launcher_runs_the_release_candidate_with_the_verify_variables(tmp_path, part):
+    res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE, "--only", ABTEM)
+    assert res.returncode == 0, res.stderr
+    call = log[0]
+    assert f"ghcr.io/idrobolab/{IMAGE}:0-rc python verification/verify.py {IMAGE} --part {part} " \
+           f"--only {ABTEM}" in call
+    assert ("--gpu " in call) == (part == "gpu")
+    assert "-e OMP_NUM_THREADS=16" in call
+    digest, scrub = log[1].split(" ", 1)
+    assert digest == "sha256:abc" and "u1" in scrub.split(":")
+    assert not list((tmp_path / "scratch/u1").glob("verify-*"))  # the work directory is removed
+
+
+@pytest.mark.parametrize("env, image", [
+    ({"IMAGE": IMAGE, "TAG": "7-rc"}, f"ghcr.io/idrobolab/{IMAGE}:7-rc"),
+    ({"IMAGE": "other", "IMAGE_OWNER": "o"}, "ghcr.io/o/other:0-rc"),
+    ({"IMAGE": "reg.example.com/x/y:z"}, "reg.example.com/x/y:z")])
+def test_perlmutter_launcher_qualifies_a_bare_image_name_and_keeps_a_reference(
+        tmp_path, env, image):
+    res, log = perlmutter("perlmutter-cpu.sbatch", tmp_path, IMAGE, **env)
+    assert res.returncode == 0, res.stderr
+    assert f" {image} python " in log[0]
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "perlmutter-gpu.sbatch"])
+def test_perlmutter_launcher_fails_where_the_image_has_several_recipe_directories(tmp_path, name):
+    repo = tmp_path / "repo"
+    (repo / "verification/clusters").mkdir(parents=True)
+    shutil.copy(VERIFICATION / "clusters" / name, repo / "verification/clusters" / name)
+    (repo / "verification/verify.py").write_text("")
+    for platform in ("a", "b"):
+        (repo / "shared/containers" / platform / IMAGE).mkdir(parents=True)
+        (repo / "shared/containers" / platform / IMAGE / "VERSION").write_text("0\n")
+    res, log = perlmutter(name, tmp_path, IMAGE, launcher=repo / "verification/clusters" / name)
+    assert res.returncode != 0 and "exactly one recipe directory" in res.stderr and not log
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_delta_launcher_uses_the_personal_scratch_area_and_no_scratch_variable(tmp_path, part):
+    res, log = run_launcher(f"delta-{part}.sbatch", tmp_path, IMAGE,
+                            SCRATCH_BASE=tmp_path / "scratch")
+    assert res.returncode == 0, res.stderr
+    assert ("--nv " in log[0]) == (part == "gpu")
+    assert f"python verification/verify.py {IMAGE} --part {part}" in log[0]
+    assert f"{tmp_path}/scratch/u1" in log[1].split(":")
+    assert not list((tmp_path / "scratch/u1").glob("verify-*"))  # removed at the end
+    text = (VERIFICATION / "clusters" / f"delta-{part}.sbatch").read_text()
+    code = re.sub(r"(?m)^(?!#SBATCH).*?#.*$", lambda m: m.group().split("#")[0], text)
+    assert not re.search(r"\$\{?SCRATCH(?![_A-Za-z])", code)
