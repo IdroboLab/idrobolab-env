@@ -634,6 +634,12 @@ def test_gate_fails_tests_changed_after_the_records(suite):
     gate_fails(suite.gate(), "has another tests hash")
 
 
+def test_gate_fails_dirty_tests_even_when_the_record_says_dirty(suite):
+    suite.release(mutate=lambda recs: [r.update(tests_hash="dirty") for r in recs.values()])
+    (suite.vdir / "tests" / "alpha").write_text(OK + "# uncommitted\n")
+    gate_fails(suite.gate(), "verification/tests has uncommitted changes")
+
+
 @pytest.mark.parametrize("row", [("beta", "beta", "cpu", ""), ("beta", "beta", "", "c1")])
 def test_gate_fails_a_row_without_clusters_or_parts(suite, row):
     suite.components(ALPHA, row)

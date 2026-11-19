@@ -13,9 +13,10 @@ tests/<test> with VERIFY_PART, VERIFY_WORK (a directory of its own) and VERIFY_J
 reports through the junit file it writes, else through the `PASS <id>` and `FAIL <id>` lines
 it prints. A junit test id is `<classname>::<name>`. A failing id that is not in
 known-failures.tsv (for this component, cluster and part, `*` matching any) is unexpected; a
-listed id that passed is stale. A test that exits non-zero for no failing id, or has no passing test
-(all skipped, or nothing reported), fails with the id `exit status N` or `no test results`; a
-test file that cannot be run fails with exit status 127. Nothing is skipped silently.
+listed id that passed is stale. A test that exits non-zero for no failing id, or has no
+passing test (all skipped, or nothing reported), fails with the id `exit status N` or
+`no test results`; a test file that cannot be run fails with exit status 127. Nothing is
+skipped silently.
 
 Writes <image>/releases/<version>/<cluster>-<part>.json (the record), the logs under
 <cluster>-<part>/, and the generated README.md of that release. Every VERIFY_SCRUB string is

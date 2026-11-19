@@ -99,6 +99,8 @@ def check_release(image, base):
 
 def check_records(image, version, head_hash, recipe, rows, errors, notes):
     tests_hash = recipe_hash(image, HERE / "tests")
+    if tests_hash == "dirty":
+        errors.append("verification/tests has uncommitted changes")
     release_dir = HERE / image / "releases" / str(version)
     sources = dict(line.split() for line in (recipe / "sources.txt").read_text().splitlines()
                    if line.strip())
