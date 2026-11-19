@@ -216,6 +216,21 @@ doing anything. `perlmutter/env.sh` in the idrobolab-env clone sets it (`$SCRATC
 guarded, pre-set value respected); a shell that has not sourced that file needs
 `export UV_CACHE_DIR=$PSCRATCH/uv-cache` by hand.
 
+**A job on a compute node runs Python from an environment built in `/dev/shm`, not from `uv run
+--script`.** That command runs from the uv cache on `$SCRATCH` (Lustre); on a busy shared node a
+numpy/scipy job importing from there stalled with no output for 30 minutes, page-fault bound.
+Fill the cache on a login node, then in the job `uv pip install` offline into
+`/dev/shm/$SLURM_JOB_ID` (7 s, 254 MB for numpy + scipy + ase; it counts against the job's
+memory). `/global/common/software` is fast too, but its 10 GB quota is the whole group's.
+Commands and measurements: `docs/perlmutter/05-python-uv.md`, *Where environments live*.
+Also, `/tmp` on a login node is node-local: a compute node cannot see files written there.
+
+**A job whose working directory is in `$HOME` or on CFS sets `PYTHONSAFEPATH=1`** (or runs
+`python -P`), in the container too: otherwise every import first looks in that directory,
+through DVS's single gateway node per file. Never `python -I` for this: it also drops
+`PYTHONPATH`, so a branch put on `PYTHONPATH` in the container would silently not be imported.
+A script importing a module next to it then needs that directory on `PYTHONPATH`.
+
 **HDF5 files on CFS or `$HOME` fail to open from a compute node with `unable to lock file,
 errno = 524`.** HDF5 (h5py included) takes a `flock` on every open, which those mounts do not
 support. Set `HDF5_USE_FILE_LOCKING=FALSE` in the process that opens them (for a command run
