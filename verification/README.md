@@ -14,9 +14,14 @@ clusters/<cluster>-<part>.sbatch   launchers: Perlmutter and Delta, cpu and gpu
 <image>/releases/<N>/   the records, logs and results table of release N
 ```
 
-`verify.py`, `check_release.py`, `test_harness.py` and `tests/` hold no value specific to one
-image or cluster; the image, its clusters and its components come from `<image>/components.tsv`
-and the launchers.
+`verify.py`, `check_release.py` and `tests/` take the image, its clusters and its components
+from `<image>/components.tsv` and the launchers. What still names this image family and is
+settled at the move to hpcenv-core: the manifest fields (`lammps_ctest` in the gate and the
+record), the manifest path `/opt/<image>/manifest.json`, the recipe layout
+`shared/containers/<platform>/<image>/` with `VERSION`, `sources.txt`, `recipe-hash.sh` and
+`requirements-<image>.txt`, and `tests/abtem`. `test_harness.py` holds the constants of the
+`idrobolab` recipe at its top and also tests the recipe scripts (`recipe-hash.sh`,
+`prepare_build_context.sh`, `publish.sh`, `release.sh`) and the launchers.
 
 ## The release rule
 
@@ -30,8 +35,13 @@ and the launchers.
   `pass` with no unexpected failure;
 - anything else fails.
 
-It also fails when a `test` file of `components.tsv` is missing and, from release 1 on, when a
-package of `requirements-<image>.txt` has no row there. The check trusts the committed
+It also fails, always, when a row of `components.tsv` lists no clusters or no parts, its `test`
+file is missing, or it is `covered-by:<component>` of a row without a test of its own, and,
+from release 1 on, when a package of `requirements-<image>.txt` has no row there. Two checks go
+beyond the verification spec: every record names its own image, cluster and part, and its
+`tests_hash` equals the hash of `tests/` at this commit, so tests changed after the cluster
+runs invalidate the records. The image's recipe directory must be the only match of
+`shared/containers/*/<image>`. The check trusts the committed
 records: no CI runner has the cluster GPUs. The personal-data check over `verification/` is
 the repository's `personal-data` workflow, which scans the whole tree. Run the gate locally
 on the committed state:
@@ -55,8 +65,9 @@ sbatch ~/idrobolab-env/verification/clusters/delta-gpu.sbatch idrobolab
 git -C ~/idrobolab-env add verification/idrobolab/releases/<N>
 ```
 
-The launchers carry the account as `<project>`. Their header comments say how to get the image
-onto the cluster (Perlmutter: `update-image.sh` with `TAG=<N>-rc`; Delta: `get-image.sh`
+The launchers carry the account as `<project>`. On Perlmutter `IMAGE` overrides the image: a
+bare name is qualified with `IMAGE_OWNER` and `TAG` (default `<N>-rc`), a value with a `/` is
+used as given. Their header comments say how to get the image onto the cluster (Perlmutter: `update-image.sh` with `TAG=<N>-rc`; Delta: `get-image.sh`
 into the `.sif`). A launcher passes everything only the host knows to `verify.py`, which runs
 inside the image: `VERIFY_CLUSTER`, `VERIFY_IMAGE_DIGEST` (registry digest on Perlmutter,
 `.sif` sha256 on Delta), `VERIFY_JOB_ID`, `VERIFY_WORK` (a writable directory) and
