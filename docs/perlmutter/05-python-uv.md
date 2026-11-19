@@ -88,9 +88,18 @@ uv venv -q --python 3.13 "$V" && uv pip install -q -p "$V" -r myscript.txt
 "$V/bin/python" myscript.py
 ```
 
-Measured on a `shared` CPU node (`-c 2`, 2026-11-19): a numpy + scipy + ase environment
-installs in 7 s and takes 254 MB (6,200 files); the script then started in 2.9 s, against 17 s
-with `uv run --script` on the same, quiet node.
+Measured on `shared` CPU nodes (`-c 2`, 2026-11-19), for a script that imports numpy, scipy and
+ase and does a few milliseconds of work. Seconds per run:
+
+| Node | `/dev/shm` install | from `/dev/shm` | from a venv in `$HOME` | `uv run --script` |
+|---|---|---|---|---|
+| quiet | 6.8 | 2.9 | not measured | 17.2 |
+| busy (load average 74) | 5.7 | 1.2, then 0.8 | 22.7, then 10.6 and 11.6 | 4.7 |
+
+Rows are two test jobs, one run each per cell unless several are listed. The install column is
+building the environment from the cache; the others are the whole run, imports included. The
+environment takes 254 MB (6,200 files) in `/dev/shm`. A venv in `$HOME` is fine on a login node
+and for Jupyter, but a job imports from it through DVS (below), the slowest route measured here.
 
 - `/dev/shm` (and `/tmp`, also memory on compute nodes) uses the job's memory: a `shared`
   job gets about 1.9 GB per CPU (3.8 GB with `-c 2`). Large stacks (torch, CuPy, GPAW) run in
