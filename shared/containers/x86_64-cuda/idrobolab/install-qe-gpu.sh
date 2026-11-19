@@ -8,14 +8,14 @@
 # Backend: OpenACC + CUDA Fortran (nvfortran) — the mature NVIDIA path. FFT on
 # GPU is cuFFT; CPU-side FFT is QE's internal FFTXlib (no external FFTW needed).
 # MPI is MPICH: pw.x links libmpi.so.12 like the rest of the image, and the Fortran
-# binding library libmpifort.so.12 comes from an MPICH built here with the NVHPC compilers;
+# binding library libmpifort.so.12 comes from an MPICH built here with nvfortran;
 # the SDK's bundled Open MPI is not REDIST and is not used. ScaLAPACK is
 # off (GPU QE uses its own GPU eigensolvers) — matches QE's own --with-scalapack=no guidance.
 #
 # The GPU-less docker build sandbox drives the two CUDA workarounds below: the
 # bundled CUDA toolkit has to be pinned explicitly (nvfortran otherwise resolves
 # it from the absent driver) and the libcuda stub has to go on the link path.
-# UNVERIFIED: the MPICH build with the NVHPC compilers and the QE build against it have
+# UNVERIFIED: the MPICH build with gcc/nvfortran and the QE build against it have
 # not run on a build host, and pw.x has not been executed on a GPU node, so the staged
 # .so set and the rpaths are unproven.
 #
@@ -40,13 +40,18 @@ done
 echo ">> nvfortran: $(command -v nvfortran)"
 
 apt-get update
-apt-get install -y --no-install-recommends git cmake ca-certificates patchelf wget make python3
+apt-get install -y --no-install-recommends git cmake ca-certificates patchelf wget make python3 gcc g++
 rm -rf /var/lib/apt/lists/*
 
-# --- MPICH, built with the NVHPC compilers -----------------------------------
-# The Dockerfile's MPICH (same version, device and netmod) built by nvc/nvfortran, so
-# that libmpifort matches the nvfortran that compiles QE. Only its libmpifort.so.12 is
-# staged with QE (stage-qe-libs.sh): pw.x takes libmpi.so.12 from the image's MPICH.
+# --- MPICH, Fortran bindings built with nvfortran ----------------------------
+# The Dockerfile's MPICH (same version, device and netmod) with nvfortran as its Fortran
+# compiler, so that libmpifort matches the nvfortran that compiles QE. Only its
+# libmpifort.so.12 is staged with QE (stage-qe-libs.sh): pw.x takes libmpi.so.12 from the
+# image's MPICH. C and C++ are gcc/g++: nvc cannot build the embedded libfabric (its
+# fi_* symbols end up missing from libfabric.so), and the Fortran-dependent parts of
+# libmpifort (name mangling, string lengths, .TRUE.) come from configure's nvfortran probes.
+# No mpi_f08: its C wrappers would use gcc's view of ISO_Fortran_binding.h, not nvfortran's
+# descriptor layout; QE uses mpif.h / the mpi module.
 MPICH_VERSION="${MPICH_VERSION:?MPICH_VERSION is not set}"
 MPICH_PREFIX=/opt/mpich-nvhpc
 run_logged() {  # run_logged LOG CMD...: keep the log out of the build output, tail it on failure
@@ -63,9 +68,9 @@ wget -q "https://github.com/pmodels/mpich/releases/download/v${MPICH_VERSION}/mp
 tar xzf "mpich-${MPICH_VERSION}.tar.gz"
 cd "mpich-${MPICH_VERSION}"
 run_logged /tmp/mpich-configure.log ./configure --prefix="${MPICH_PREFIX}" \
-    CC=nvc CXX=nvc++ F77=nvfortran FC=nvfortran \
+    CC=gcc CXX=g++ F77=nvfortran FC=nvfortran \
     --with-device=ch4:ofi --with-libfabric=embedded \
-    --enable-shared --disable-static
+    --enable-shared --disable-static --disable-f08
 grep -E 'values of Fortran logicals' /tmp/mpich-configure.log || true   # informational
 run_logged /tmp/mpich-make.log make -j"$(nproc)"
 run_logged /tmp/mpich-install.log make install
@@ -79,6 +84,8 @@ mpichversion | tee /tmp/mpichversion.txt
 grep -q nvfortran /tmp/mpichversion.txt || { echo "ERROR: MPICH was not built with nvfortran"; exit 1; }
 ls -l "${MPICH_PREFIX}"/lib/libmpi.so.12 "${MPICH_PREFIX}"/lib/libmpifort.so.12   # libmpifort ships, libmpi does not
 echo ">> mpif90: $(command -v mpif90)"
+# mpicc compiles QE's C with nvc, so that QE's OpenMP C and Fortran use one compiler's runtime.
+export MPICH_CC=nvc
 
 rm -rf "$SRC"
 git clone --depth 1 -b "$QE_VERSION" https://gitlab.com/QEF/q-e.git "$SRC"
