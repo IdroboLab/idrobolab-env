@@ -6,6 +6,7 @@ credential, and nothing depends on a local checkout of the sources; and of the h
 verify.py and the gate check_release.py, run in a temporary git repository with fake
 components, a fake manifest and hand-written records.
 Run: pytest verification/test_harness.py"""
+import copy
 import importlib.util
 import json
 import os
@@ -418,10 +419,21 @@ class Suite:
             path.write_text(body)
             path.chmod(0o755)
 
+    def tests_hash(self):
+        return subprocess.run([self.recipe / HASH_SCRIPT, self.vdir / "tests"], check=True,
+                              capture_output=True, text=True).stdout.strip()
+
     # -- the gate --
-    def gate(self):
+    def gate(self, **env):
         return subprocess.run([sys.executable, self.vdir / "check_release.py", IMAGE, "--base",
-                               "base"], cwd=self.repo, capture_output=True, text=True)
+                               "base"], cwd=self.repo, capture_output=True, text=True,
+                              env={**os.environ, **{k: str(v) for k, v in env.items()}})
+
+    def base_at(self, version):
+        """Move the gate's base to a commit whose VERSION is `version`."""
+        (self.recipe / "VERSION").write_text(f"{version}\n")
+        self.commit(f"base {version}")
+        git(self.repo, "tag", "-f", "base")
 
     def release(self, version=VERSION + 1, mutate=None):
         """Bump VERSION, then write a complete, passing record for every required pair."""
@@ -434,7 +446,7 @@ class Suite:
                 records[f"{cluster}-{part}"] = {
                     "image": IMAGE, "version": version, "build_id": BUILD,
                     "recipe_hash": recipe_hash(self.recipe), "sources": dict(SOURCES),
-                    "lammps_ctest": True, "complete": True, "cluster": cluster, "part": part,
+                    "tests_hash": self.tests_hash(), "lammps_ctest": True, "complete": True, "cluster": cluster, "part": part,
                     "components": {c: {"status": "pass", "passed": 2, "failed": 0, "skipped": 0,
                                        "known_failed": 0, "unexpected": [], "stale_known": [],
                                        "seconds": 1} for c in comps}}
@@ -580,9 +592,7 @@ def test_gate_fails_a_test_file_that_does_not_exist(suite):
 
 
 def test_gate_bootstraps_at_version_zero_with_a_recipe_change(suite):
-    (suite.recipe / "VERSION").write_text("0\n")
-    suite.commit("zero")
-    git(suite.repo, "tag", "-f", "base")
+    suite.base_at(0)
     (suite.recipe / "Dockerfile").write_text("FROM scratch\nRUN true\n")
     suite.components(ALPHA)  # a requirement without a row is no failure before release 1
     suite.commit()
@@ -593,6 +603,72 @@ def test_gate_bootstraps_at_version_zero_with_a_recipe_change(suite):
 def test_gate_fails_a_recipe_with_uncommitted_changes(suite):
     (suite.recipe / "Dockerfile").write_text("changed\n")
     gate_fails(suite.gate(), "uncommitted")
+
+
+def test_gate_fails_a_record_copied_to_another_cluster_and_part(suite):
+    suite.release(mutate=lambda recs: recs.update({"c1-gpu": copy.deepcopy(recs["c1-cpu"])}))
+    gate_fails(suite.gate(), "c1-gpu.json is a record of c1-cpu")
+
+
+def test_gate_fails_a_record_of_another_image(suite):
+    suite.release(mutate=lambda recs: recs["c2-cpu"].update(image="other"))
+    gate_fails(suite.gate(), "c2-cpu.json is a record of the image other")
+
+
+def test_gate_fails_complete_that_is_not_true(suite):
+    suite.release(mutate=lambda recs: recs["c1-cpu"].update(complete="false"))
+    gate_fails(suite.gate(), "c1-cpu.json is incomplete")
+
+
+def test_gate_fails_a_version_that_is_not_an_integer(suite):
+    suite.base_at(0)
+    suite.release(1, mutate=lambda recs: recs["c1-cpu"].update(version=True))
+    gate_fails(suite.gate(), "c1-cpu.json has version True")
+
+
+def test_gate_fails_tests_changed_after_the_records(suite):
+    suite.release()
+    suite.scripts(alpha=OK + "# weakened\n")
+    suite.commit("weaken")
+    gate_fails(suite.gate(), "has another tests hash")
+
+
+@pytest.mark.parametrize("row", [("beta", "beta", "cpu", ""), ("beta", "beta", "", "c1")])
+def test_gate_fails_a_row_without_clusters_or_parts(suite, row):
+    suite.components(ALPHA, row)
+    suite.release()
+    gate_fails(suite.gate(), "beta lists no clusters or no parts")
+
+
+@pytest.mark.parametrize("target", ["ghost", "gamma"])
+def test_gate_fails_covered_by_a_component_without_a_test_of_its_own(suite, target):
+    suite.components(ALPHA, ("beta", f"covered-by:{target}", "cpu", "c1"),
+                     ("gamma", "covered-by:alpha", "cpu", "c1"))
+    suite.release()
+    gate_fails(suite.gate(), f"covered-by:{target}, which has no row with a test of its own")
+
+
+def test_gate_fails_where_the_image_has_several_recipe_directories(suite):
+    other = suite.repo / "shared/containers/other-arch" / IMAGE
+    other.mkdir(parents=True)
+    (other / "VERSION").write_text("0\n")
+    suite.commit("second platform")
+    res = suite.gate()
+    assert res.returncode != 0 and "exactly one recipe directory" in res.stderr
+
+
+def test_gate_reads_the_base_without_touching_the_worktrees_of_the_checkout(suite, tmp_path):
+    shim = tmp_path / "bin"
+    shim.mkdir()
+    (shim / "git").write_text(f'#!/bin/sh\necho "$*" >> "{tmp_path}/git.log"\n'
+                              f'exec {shutil.which("git")} "$@"\n')
+    (shim / "git").chmod(0o755)
+    (suite.recipe / "README.md").write_text("docs only\n")
+    suite.commit()
+    res = suite.gate(PATH=f"{shim}:{os.environ['PATH']}")
+    assert res.returncode == 0, res.stdout + res.stderr
+    assert (tmp_path / "git.log").exists()  # the shim saw the gate's git calls
+    assert "worktree" not in (tmp_path / "git.log").read_text()
 
 
 # harness
@@ -606,9 +682,7 @@ def test_verify_writes_a_record_per_part_and_the_gate_requires_both(suite):
     assert rec["part"] == "cpu" and rec["cluster"] == "c1" and rec["complete"] is True
     assert set(rec["components"]) == {"alpha", "beta"}
     assert set(suite.record("c1", "gpu")["components"]) == {"alpha"}
-    want = subprocess.run([suite.recipe / HASH_SCRIPT, suite.vdir / "tests"], check=True,
-                          capture_output=True, text=True).stdout.strip()
-    assert rec["tests_hash"] == want  # the recipe-hash construction, applied to tests/
+    assert rec["tests_hash"] == suite.tests_hash()  # the recipe-hash construction on tests/
     assert (rec["build_id"], rec["image_digest"], rec["job_id"]) == (BUILD, "sha256:cc", "7")
     gate_fails(suite.gate(), "c2-gpu.json is missing")
     assert suite.verify("c2", "gpu").returncode == 0
@@ -680,6 +754,42 @@ def test_verify_fails_a_test_that_exits_non_zero_without_junit(suite):
     entry = suite.record("c1", "cpu")["components"]["alpha"]
     assert entry["status"] == "fail" and entry["unexpected"] == ["exit status 3"]
     assert "crashed" in (suite.idir / "releases/4/c1-cpu/alpha.log").read_text()
+
+
+def test_verify_fails_a_run_in_which_every_test_is_skipped(suite):
+    suite.scripts(alpha=junit([("m", "a", "skip"), ("m", "b", "skip")], rc=0))
+    assert suite.verify("c1", "cpu").returncode != 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert entry["status"] == "fail" and entry["skipped"] == 2
+    assert entry["unexpected"] == ["no test results"]
+
+
+@pytest.mark.parametrize("executable", [False, None])
+def test_verify_fails_a_test_file_that_cannot_run_and_still_writes_the_record(suite, executable):
+    path = suite.vdir / "tests" / "alpha"
+    if executable is None:
+        path.unlink()
+    else:
+        path.chmod(0o644)
+    assert suite.verify("c1", "cpu").returncode != 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert entry["status"] == "fail" and entry["unexpected"] == ["exit status 127"]
+    assert suite.record("c1", "cpu")["components"]["beta"]["status"] == "pass"
+    assert "cannot run" in (suite.idir / "releases/4/c1-cpu/alpha.log").read_text()
+
+
+def test_verify_scrubs_the_values_of_the_record_not_its_keys(suite):
+    assert suite.verify("c1", "cpu", scrub="status:pass:version").returncode == 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert entry["status"] == "<scrubbed>" and "passed" in entry
+    assert suite.record("c1", "cpu")["version"] == VERSION + 1
+
+
+def test_verify_fails_where_the_image_has_several_recipe_directories(suite):
+    (suite.repo / "shared/containers/other-arch" / IMAGE).mkdir(parents=True)
+    res = suite.verify("c1", "cpu")
+    assert res.returncode != 0 and "exactly one recipe directory" in res.stderr
+    assert not (suite.idir / "releases").exists()
 
 
 def test_verify_fails_a_test_that_reports_nothing(suite):

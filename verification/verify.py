@@ -13,8 +13,9 @@ tests/<test> with VERIFY_PART, VERIFY_WORK (a directory of its own) and VERIFY_J
 reports through the junit file it writes, else through the `PASS <id>` and `FAIL <id>` lines
 it prints. A junit test id is `<classname>::<name>`. A failing id that is not in
 known-failures.tsv (for this component, cluster and part, `*` matching any) is unexpected; a
-listed id that passed is stale. A test that exits non-zero for no failing id, or reports
-nothing, fails with the id `exit status N` or `no test results`: nothing is skipped silently.
+listed id that passed is stale. A test that exits non-zero for no failing id, or has no passing test
+(all skipped, or nothing reported), fails with the id `exit status N` or `no test results`; a
+test file that cannot be run fails with exit status 127. Nothing is skipped silently.
 
 Writes <image>/releases/<version>/<cluster>-<part>.json (the record), the logs under
 <cluster>-<part>/, and the generated README.md of that release. Every VERIFY_SCRUB string is
@@ -58,11 +59,19 @@ def own_components(image):
     return [r for r in rows if not r["test"].startswith("covered-by:")]
 
 
+def recipe_dir(image):
+    """The image's recipe directory: shared/containers/<platform>/<image>, exactly one."""
+    found = sorted(ROOT.glob(f"shared/containers/*/{image}"))
+    if len(found) != 1:
+        sys.exit(f"{image}: exactly one recipe directory shared/containers/*/{image} is "
+                 f"expected, found {len(found)}")
+    return found[0]
+
+
 def recipe_hash(image, directory):
     """The recipe-hash construction of the image's recipe, applied to `directory`."""
-    script = next(ROOT.glob(f"shared/containers/*/{image}/recipe-hash.sh"))
-    return subprocess.run([script, directory], check=True, capture_output=True,
-                          text=True).stdout.strip()
+    return subprocess.run([recipe_dir(image) / "recipe-hash.sh", directory], check=True,
+                          capture_output=True, text=True).stdout.strip()
 
 
 def parse_junit(path):
@@ -101,8 +110,12 @@ def run_component(row, part, cluster, known, work):
     env = {**os.environ, "VERIFY_PART": part, "VERIFY_WORK": str(cwork),
            "VERIFY_JUNIT": str(junit)}
     start = time.monotonic()
-    proc = subprocess.run([HERE / "tests" / row["test"]], env=env, cwd=cwork, text=True,
-                          errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    command = [HERE / "tests" / row["test"]]
+    try:
+        proc = subprocess.run(command, env=env, cwd=cwork, text=True, errors="replace",
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except OSError as e:  # missing or not executable
+        proc = subprocess.CompletedProcess(command, 127, f"cannot run {command[0]}: {e}\n")
     seconds = round(time.monotonic() - start)
     passed, failures, skipped = (parse_junit(junit) if junit.exists()
                                  else parse_lines(proc.stdout))
@@ -113,7 +126,7 @@ def run_component(row, part, cluster, known, work):
     unexpected = [t for t in failures if t not in listed]
     if not failures and proc.returncode != 0:
         unexpected.append(f"exit status {proc.returncode}")
-    elif not (passed or failures or skipped):
+    if not passed and not unexpected:
         unexpected.append("no test results")
     entry = {"status": "fail" if unexpected else "pass", "passed": len(passed),
              "failed": len(known_failed) + len(unexpected), "skipped": skipped,
@@ -173,12 +186,19 @@ def main(argv=None):
     if missing:
         sys.exit("verify.py: the launcher sets " + ", ".join(missing))
     cluster, part = os.environ["VERIFY_CLUSTER"], args.part
+    recipe_dir(args.image)
     scrub = sorted(filter(None, os.environ["VERIFY_SCRUB"].split(":")), key=len, reverse=True)
 
-    def scrubbed(text):
-        for s in scrub:
-            text = text.replace(s, "<scrubbed>")
-        return text
+    def scrubbed(value):
+        """Text, or the string values of a JSON structure, without the scrub strings."""
+        if isinstance(value, dict):
+            return {k: scrubbed(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [scrubbed(v) for v in value]
+        if isinstance(value, str):
+            for s in scrub:
+                value = value.replace(s, "<scrubbed>")
+        return value
 
     today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
     manifest = json.loads(Path(os.environ.get(
@@ -213,7 +233,8 @@ def main(argv=None):
               "job_id": os.environ["VERIFY_JOB_ID"],
               "gpu": gpu_description() if part == "gpu" else "none",
               "complete": not args.only, "components": results}
-    (release_dir / f"{cluster}-{part}.json").write_text(scrubbed(json.dumps(record, indent=1)) + "\n")
+    (release_dir / f"{cluster}-{part}.json").write_text(
+        json.dumps(scrubbed(record), indent=1) + "\n")
     write_readme(args.image, release_dir)
     bad = [c for c, r in results.items() if r["status"] == "fail"]
     print(f"{cluster}-{part}: {len(results) - len(bad)} of {len(results)} components passed"

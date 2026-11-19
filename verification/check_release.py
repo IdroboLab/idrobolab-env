@@ -11,8 +11,12 @@ Let B and H be the image's VERSION at <ref> and in the working tree.
   required in that part on that cluster passed with no unexpected failure. A `stale_known`
   entry is printed as a request to shorten known-failures.tsv and does not fail.
 - Any other H fails.
-- Always: every `test` file of components.tsv exists. From H = 1 on, every package of the
-  recipe's requirements file has a row in components.tsv.
+- Always: every row of components.tsv lists clusters and parts and has a `test` file that
+  exists, or `covered-by:<component>` of a row that has one. From H = 1 on, every package of
+  the recipe's requirements file has a row in components.tsv.
+- Beyond the spec: each record's `tests_hash` equals the recipe-hash construction applied to
+  verification/tests/ at the head, so tests changed after the cluster runs fail the gate; a
+  record names its own image, cluster and part, as its file name does.
 
 The personal-data check over verification/ is the repository's personal-data workflow, which
 scans the whole tree. The records are trusted as committed: no CI runner has the cluster GPUs.
@@ -24,9 +28,8 @@ import re
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 
-from verify import HERE, ROOT, items, own_components, read_tsv, recipe_hash
+from verify import HERE, ROOT, items, own_components, read_tsv, recipe_dir, recipe_hash
 
 
 def normalized(name):
@@ -43,21 +46,21 @@ def requirement_names(path):
 
 
 def base_recipe_hash(image, base, rel):
-    """The recipe hash of the recipe directory `rel` at the git ref `base`."""
+    """The recipe hash of the recipe directory `rel` at the git ref `base`, from a throwaway
+    clone: the checkout under test is only read."""
     with tempfile.TemporaryDirectory() as tmp:
-        subprocess.run(["git", "-C", ROOT, "worktree", "add", "-q", "--detach", f"{tmp}/base",
-                        base], check=True)
-        try:
-            return recipe_hash(image, Path(tmp) / "base" / rel)
-        finally:
-            subprocess.run(["git", "-C", ROOT, "worktree", "remove", "--force", f"{tmp}/base"],
-                           check=True)
+        commit = subprocess.run(["git", "-C", ROOT, "rev-parse", f"{base}^{{commit}}"],
+                                check=True, capture_output=True, text=True).stdout.strip()
+        subprocess.run(["git", "clone", "-q", "--shared", ROOT, tmp], check=True)
+        subprocess.run(["git", "-C", tmp, "-c", "advice.detachedHead=false", "checkout", "-q",
+                        commit], check=True)
+        return recipe_hash(image, f"{tmp}/{rel}")
 
 
 def check_release(image, base):
     """Return the failures and the notes of the gate."""
     errors, notes = [], []
-    recipe = next(ROOT.glob(f"shared/containers/*/{image}"))
+    recipe = recipe_dir(image)
     version = int(recipe.joinpath("VERSION").read_text())
     rel = recipe.relative_to(ROOT)
     base_version = int(subprocess.run(
@@ -66,9 +69,16 @@ def check_release(image, base):
     head_hash = recipe_hash(image, recipe)
     rows = own_components(image)
 
-    for row in rows:
-        if not (HERE / "tests" / row["test"]).is_file():
-            errors.append(f"{row['component']}: test file tests/{row['test']} does not exist")
+    for row in read_tsv(HERE / image / "components.tsv"):
+        comp, test = row["component"], row["test"]
+        if test.startswith("covered-by:"):
+            if test[len("covered-by:"):] not in [r["component"] for r in rows]:
+                errors.append(f"{comp} is {test}, which has no row with a test of its own")
+            continue
+        if not items(row["clusters"]) or not items(row["parts"]):
+            errors.append(f"{comp} lists no clusters or no parts")
+        if not (HERE / "tests" / test).is_file():
+            errors.append(f"{comp}: test file tests/{test} does not exist")
     if version > 0:
         listed = {normalized(r["component"]) for r in read_tsv(HERE / image / "components.tsv")}
         for name in sorted(requirement_names(recipe / f"requirements-{image}.txt") - listed):
@@ -88,6 +98,7 @@ def check_release(image, base):
 
 
 def check_records(image, version, head_hash, recipe, rows, errors, notes):
+    tests_hash = recipe_hash(image, HERE / "tests")
     release_dir = HERE / image / "releases" / str(version)
     sources = dict(line.split() for line in (recipe / "sources.txt").read_text().splitlines()
                    if line.strip())
@@ -104,8 +115,13 @@ def check_records(image, version, head_hash, recipe, rows, errors, notes):
         errors.append(f"releases/{version} holds records of more than one build id")
     for name, rec in records.items():
         where = f"releases/{version}/{name}.json"
-        for ok, what in ((rec["complete"], "is incomplete"),
-                         (rec["version"] == version, f"has version {rec['version']}"),
+        for ok, what in ((rec["image"] == image, f"is a record of the image {rec['image']}"),
+                         (f"{rec['cluster']}-{rec['part']}" == name,
+                          f"is a record of {rec['cluster']}-{rec['part']}"),
+                         (rec["complete"] is True, "is incomplete"),
+                         (type(rec["version"]) is int and rec["version"] == version,
+                          f"has version {rec['version']}"),
+                         (rec["tests_hash"] == tests_hash, "has another tests hash"),
                          (rec["recipe_hash"] == head_hash, "has another recipe hash"),
                          (rec["sources"] == sources, "has sources that differ from sources.txt"),
                          (rec["lammps_ctest"] is True, "is of an image built without the "
