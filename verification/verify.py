@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""Run the component tests of one part (cpu or gpu) of an image on the current cluster.
+
+    python verification/verify.py <image> --part <cpu|gpu> [--only <component>]
+
+Runs inside the image, started by a launcher in clusters/, which passes what only the host
+knows: VERIFY_CLUSTER, VERIFY_IMAGE_DIGEST, VERIFY_JOB_ID, VERIFY_WORK (a writable directory)
+and VERIFY_SCRUB (strings to remove from everything written, separated by `:`). The image's
+manifest is /opt/<image>/manifest.json (VERIFY_MANIFEST overrides the path).
+
+For every row of <image>/components.tsv that lists this cluster and part, it runs
+tests/<test> with VERIFY_PART, VERIFY_WORK (a directory of its own) and VERIFY_JUNIT. A test
+reports through the junit file it writes, else through the `PASS <id>` and `FAIL <id>` lines
+it prints. A junit test id is `<classname>::<name>`. A failing id that is not in
+known-failures.tsv (for this component, cluster and part, `*` matching any) is unexpected; a
+listed id that passed is stale. A test that exits non-zero for no failing id, or reports
+nothing, fails with the id `exit status N` or `no test results`: nothing is skipped silently.
+
+Writes <image>/releases/<version>/<cluster>-<part>.json (the record), the logs under
+<cluster>-<part>/, and the generated README.md of that release. Every VERIFY_SCRUB string is
+replaced by `<scrubbed>` in all of them. `--only` marks the record incomplete; the other
+components get the status `not-run`. Exit status: 0 when every selected component passed.
+Python standard library only.
+"""
+import argparse
+import csv
+import datetime
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+from collections import Counter
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+LAUNCHER_ENV = ("VERIFY_CLUSTER", "VERIFY_IMAGE_DIGEST", "VERIFY_JOB_ID", "VERIFY_SCRUB",
+                "VERIFY_WORK")
+MAX_FAILURE_TEXT = 2000
+
+
+def read_tsv(path):
+    with open(path, newline="") as f:
+        return list(csv.DictReader((line for line in f if not line.startswith("#")),
+                                   delimiter="\t"))
+
+
+def items(value):
+    return [x.strip() for x in value.split(",") if x.strip()]
+
+
+def own_components(image):
+    """The rows of components.tsv that have a test of their own (not `covered-by:`)."""
+    rows = read_tsv(HERE / image / "components.tsv")
+    return [r for r in rows if not r["test"].startswith("covered-by:")]
+
+
+def recipe_hash(image, directory):
+    """The recipe-hash construction of the image's recipe, applied to `directory`."""
+    script = next(ROOT.glob(f"shared/containers/*/{image}/recipe-hash.sh"))
+    return subprocess.run([script, directory], check=True, capture_output=True,
+                          text=True).stdout.strip()
+
+
+def parse_junit(path):
+    passed, failures, skipped = [], {}, 0
+    for case in ET.parse(path).iter("testcase"):
+        name = case.get("name", "")
+        tid = f"{case.get('classname')}::{name}" if case.get("classname") else name
+        bad = next((e for e in case if e.tag in ("failure", "error")), None)
+        if bad is not None:
+            failures[tid] = f"{bad.get('message') or ''}\n{bad.text or ''}"
+        elif case.find("skipped") is not None:
+            skipped += 1
+        else:
+            passed.append(tid)
+    return passed, failures, skipped
+
+
+def parse_lines(output):
+    passed, failures = [], {}
+    for line in output.splitlines():
+        m = re.fullmatch(r"(PASS|FAIL) (.+)", line)
+        if m and m.group(1) == "PASS":
+            passed.append(m.group(2))
+        elif m:
+            failures[m.group(2)] = line
+    return passed, failures, 0
+
+
+def run_component(row, part, cluster, known, work):
+    """Run one component test; return its record entry and its log text."""
+    comp = row["component"]
+    cwork = work / comp
+    cwork.mkdir(parents=True, exist_ok=True)
+    junit = cwork / "junit.xml"
+    junit.unlink(missing_ok=True)
+    env = {**os.environ, "VERIFY_PART": part, "VERIFY_WORK": str(cwork),
+           "VERIFY_JUNIT": str(junit)}
+    start = time.monotonic()
+    proc = subprocess.run([HERE / "tests" / row["test"]], env=env, cwd=cwork, text=True,
+                          errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    seconds = round(time.monotonic() - start)
+    passed, failures, skipped = (parse_junit(junit) if junit.exists()
+                                 else parse_lines(proc.stdout))
+
+    listed = {k["test id"] for k in known if k["component"] == comp
+              and k["cluster"] in (cluster, "*") and k["part"] in (part, "*")}
+    known_failed = [t for t in failures if t in listed]
+    unexpected = [t for t in failures if t not in listed]
+    if not failures and proc.returncode != 0:
+        unexpected.append(f"exit status {proc.returncode}")
+    elif not (passed or failures or skipped):
+        unexpected.append("no test results")
+    entry = {"status": "fail" if unexpected else "pass", "passed": len(passed),
+             "failed": len(known_failed) + len(unexpected), "skipped": skipped,
+             "known_failed": len(known_failed), "unexpected": unexpected,
+             "stale_known": [t for t in passed if t in listed], "seconds": seconds}
+
+    log = [f"component {comp}, part {part}, cluster {cluster}",
+           f"status {entry['status']}: {entry['passed']} passed, {entry['failed']} failed "
+           f"({entry['known_failed']} known), {skipped} skipped, exit status "
+           f"{proc.returncode}, {seconds} s"]
+    log += [f"unexpected: {t}" for t in unexpected]
+    log += [f"stale known failure: {t}" for t in entry["stale_known"]]
+    for tid, text in failures.items():
+        log += ["", f"--- failing: {tid}", text[:MAX_FAILURE_TEXT]]
+    if unexpected and not failures:
+        log += ["", "--- last lines of output", *proc.stdout.splitlines()[-60:]]
+    return entry, "\n".join(log) + "\n"
+
+
+def gpu_description():
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                             check=True, capture_output=True, text=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return "none"
+    return ", ".join(f"{n}x {name}" for name, n in Counter(out.splitlines()).items()) or "none"
+
+
+def write_readme(image, release_dir):
+    records = {p.stem: json.loads(p.read_text()) for p in sorted(release_dir.glob("*.json"))}
+    components = list(dict.fromkeys(c for r in records.values() for c in r["components"]))
+    heads = [name + ("" if r["complete"] else " (incomplete)") for name, r in records.items()]
+    lines = [f"# {image} {release_dir.name}: verification results", "",
+             "Generated by `verify.py`; do not edit. Rows: components. Columns: cluster and "
+             "part. Cell: the status, then the passed / failed / skipped / known-failed counts "
+             "of the component in that part on that cluster; `-` where the part does not test "
+             "it.", "", "| component | " + " | ".join(heads) + " |",
+             "|---" * (len(heads) + 1) + "|"]
+    for comp in components:
+        cells = []
+        for r in records.values():
+            e = r["components"].get(comp)
+            cells.append("-" if e is None else e["status"] if e["status"] == "not-run" else
+                         f"{e['status']} {e['passed']} / {e['failed']} / {e['skipped']} / "
+                         f"{e['known_failed']}")
+        lines.append(f"| {comp} | " + " | ".join(cells) + " |")
+    (release_dir / "README.md").write_text("\n".join(lines) + "\n")
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("image")
+    ap.add_argument("--part", choices=("cpu", "gpu"), required=True)
+    ap.add_argument("--only", help="run one component and mark the record incomplete")
+    args = ap.parse_args(argv)
+    missing = [v for v in LAUNCHER_ENV if not os.environ.get(v)]
+    if missing:
+        sys.exit("verify.py: the launcher sets " + ", ".join(missing))
+    cluster, part = os.environ["VERIFY_CLUSTER"], args.part
+    scrub = sorted(filter(None, os.environ["VERIFY_SCRUB"].split(":")), key=len, reverse=True)
+
+    def scrubbed(text):
+        for s in scrub:
+            text = text.replace(s, "<scrubbed>")
+        return text
+
+    today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    manifest = json.loads(Path(os.environ.get(
+        "VERIFY_MANIFEST", f"/opt/{args.image}/manifest.json")).read_text())
+    rows = [r for r in own_components(args.image)
+            if cluster in items(r["clusters"]) and part in items(r["parts"])]
+    if args.only and args.only not in [r["component"] for r in rows]:
+        sys.exit(f"verify.py: no component {args.only} in the {cluster} {part} part")
+    known = read_tsv(HERE / args.image / "known-failures.tsv")
+
+    release_dir = HERE / args.image / "releases" / str(manifest["version"])
+    log_dir = release_dir / f"{cluster}-{part}"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    results = {}
+    for row in rows:
+        comp = row["component"]
+        if args.only and comp != args.only:
+            results[comp] = {"status": "not-run", "passed": 0, "failed": 0, "skipped": 0,
+                             "known_failed": 0, "unexpected": [], "stale_known": [],
+                             "seconds": 0}
+            continue
+        results[comp], log = run_component(row, part, cluster, known,
+                                           Path(os.environ["VERIFY_WORK"]))
+        (log_dir / f"{comp}.log").write_text(scrubbed(log))
+
+    record = {"image": args.image, "version": manifest["version"],
+              "build_id": manifest["build_id"], "recipe_hash": manifest["recipe_hash"],
+              "sources": manifest["sources"], "lammps_ctest": manifest["lammps_ctest"],
+              "image_digest": os.environ["VERIFY_IMAGE_DIGEST"],
+              "tests_hash": recipe_hash(args.image, HERE / "tests"), "cluster": cluster,
+              "part": part, "date_utc": today,
+              "job_id": os.environ["VERIFY_JOB_ID"],
+              "gpu": gpu_description() if part == "gpu" else "none",
+              "complete": not args.only, "components": results}
+    (release_dir / f"{cluster}-{part}.json").write_text(scrubbed(json.dumps(record, indent=1)) + "\n")
+    write_readme(args.image, release_dir)
+    bad = [c for c, r in results.items() if r["status"] == "fail"]
+    print(f"{cluster}-{part}: {len(results) - len(bad)} of {len(results)} components passed"
+          + (f"; failed: {', '.join(bad)}" if bad else ""))
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

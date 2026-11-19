@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Release test of abTEM: its own suite, with --runslow, through shared/testing/run_pytest.py.
+
+cpu part: `-m 'not gpu'` with no GPU visible. gpu part: `-m gpu` with a real GPU.
+A preflight fails (it never skips) when abTEM is not imported from /opt/src/abTEM or the
+GPU situation does not match the part. Environment: VERIFY_PART, VERIFY_JUNIT.
+"""
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+SRC = "/opt/src/abTEM"
+RUN_PYTEST = Path(__file__).resolve().parents[2] / "shared" / "testing" / "run_pytest.py"
+
+
+def gpu_count():
+    try:
+        import cupy
+        return cupy.cuda.runtime.getDeviceCount()
+    except Exception:  # no CUDA runtime or no device: nothing is visible
+        return 0
+
+
+def preflight(part):
+    """The failed checks, as messages."""
+    failed = []
+    try:
+        import abtem
+        if not os.path.realpath(abtem.__file__).startswith(SRC + "/"):
+            failed.append(f"abtem is imported from {abtem.__file__}, not from {SRC}")
+    except ImportError as e:
+        failed.append(f"abtem does not import: {e}")
+    if part == "gpu" and gpu_count() == 0:
+        failed.append("no GPU is visible in the gpu part")
+    if part == "cpu" and gpu_count() > 0:
+        failed.append("a GPU is visible in the cpu part")
+    return failed
+
+
+def pytest_command(part, junit):
+    marker = "gpu" if part == "gpu" else "not gpu"
+    return [sys.executable, str(RUN_PYTEST), "--project", SRC, "--runslow", "-m", marker,
+            f"--junitxml={junit}", "-q", "-rfE", "--tb=short", f"{SRC}/test"]
+
+
+if __name__ == "__main__":
+    part = os.environ["VERIFY_PART"]
+    failed = preflight(part)
+    for message in failed:
+        print(f"FAIL preflight: {message}")
+    sys.exit(1 if failed else subprocess.call(pytest_command(part, os.environ["VERIFY_JUNIT"])))

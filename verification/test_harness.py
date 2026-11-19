@@ -1,14 +1,19 @@
-"""Tests of the version identity of the idrobolab recipe: recipe-hash.sh,
-prepare_build_context.sh, publish.sh and release.sh, run in a temporary copy of the recipe's
+"""Tests of the version identity of the idrobolab recipe (recipe-hash.sh,
+prepare_build_context.sh, publish.sh and release.sh), run in a temporary copy of the recipe's
 scripts with temporary source repositories (a bare origin and a clone each) and a stub
 container engine that only logs its calls, so nothing touches the network, a registry or a
-credential, and nothing depends on a local checkout of the sources.
+credential, and nothing depends on a local checkout of the sources; and of the harness
+verify.py and the gate check_release.py, run in a temporary git repository with fake
+components, a fake manifest and hand-written records.
 Run: pytest verification/test_harness.py"""
+import importlib.util
 import json
 import os
 import re
 import shutil
 import subprocess
+import sys
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 import pytest
@@ -29,6 +34,9 @@ SCRIPTS = (HASH_SCRIPT, PREPARE_SCRIPT, PUBLISH_SCRIPT, RELEASE_SCRIPT)
 TREES = ("gpaw", "gpaw-weaver", "abTEM")
 RELEASES_REL = Path("verification") / IMAGE / "releases"
 VERSION = 3
+REQUIREMENTS = f"requirements-{IMAGE}.txt"
+ABTEM = "abtem"  # the component whose test script is exercised itself
+LAUNCHERS = [f"{c}-{p}.sbatch" for c in ("perlmutter", "delta") for p in ("cpu", "gpu")]
 
 STUB_ENGINE = """#!/bin/bash
 echo "$*" >> "$STUB_LOG"
@@ -350,3 +358,432 @@ def test_release_aborts_on_a_registry_error_that_is_not_manifest_unknown(recipe,
     res = release(recipe, tmp_path, manifest_out=out)
     assert res.returncode != 0 and "cannot tell" in res.stderr
     assert engine_calls(tmp_path, "tag") == [] and engine_calls(tmp_path, "push") == []
+
+
+# ---- the harness verify.py and the gate check_release.py ----
+
+VERIFICATION = ROOT / "verification"
+COMPONENTS_HEADER = "component\torigin\ttest\tparts\tclusters\n"
+KNOWN_HEADER = "component\ttest id\tcluster\tpart\treason\treference\n"
+# Fake components: alpha runs in both parts of both clusters, beta in the cpu part of c1.
+ALPHA = ("alpha", "alpha", "cpu,gpu", "c1,c2")
+BETA = ("beta", "beta", "cpu", "c1")
+OK = '#!/bin/sh\necho "PASS one"\necho "PASS two"\n'
+SOURCES = {"gpaw": "a" * 40, "abTEM": "b" * 40}
+BUILD = "20261201T101500Z"
+
+
+def junit(cases, rc=1):
+    """A test script that writes a junit file of (classname, name, outcome) cases and exits rc."""
+    body = "".join(
+        f'<testcase classname="{c}" name="{n}">' + {
+            "pass": "", "skip": "<skipped/>",
+            "fail": '<failure message="boom">trace</failure>'}[o] + "</testcase>"
+        for c, n, o in cases)
+    return (f'#!/bin/sh\ncat > "$VERIFY_JUNIT" <<\'EOF\'\n<testsuites><testsuite>{body}'
+            f'</testsuite></testsuites>\nEOF\nexit {rc}\n')
+
+
+class Suite:
+    """A temporary git repository holding the recipe, verify.py, check_release.py, fake
+    components and a manifest; the commit tagged `base` is the gate's base (VERSION B)."""
+
+    def __init__(self, recipe, tmp_path):
+        self.recipe, self.repo, self.tmp = recipe, repo_root(recipe), tmp_path
+        self.vdir = self.repo / "verification"
+        self.idir = self.vdir / IMAGE
+        (self.vdir / "tests").mkdir(parents=True)
+        self.idir.mkdir()
+        for name in ("verify.py", "check_release.py"):
+            shutil.copy(VERIFICATION / name, self.vdir / name)
+        (recipe / "sources.txt").write_text("".join(f"{n} {s}\n" for n, s in SOURCES.items()))
+        (recipe / REQUIREMENTS).write_text("# curated\nalpha>=1  # a\nBeta[extra]==2\n")
+        self.components(ALPHA, BETA)
+        self.scripts(alpha=OK, beta=OK)
+        self.commit("suite")
+        git(self.repo, "tag", "base")
+
+    def commit(self, msg="change"):
+        commit_all(self.repo, msg)
+
+    def components(self, *rows, known=()):
+        (self.idir / "components.tsv").write_text(
+            COMPONENTS_HEADER + "".join(f"{c}\tsource\t{t}\t{p}\t{cl}\n" for c, t, p, cl in rows))
+        (self.idir / "known-failures.tsv").write_text(
+            KNOWN_HEADER + "".join("\t".join(k) + "\n" for k in known))
+
+    def scripts(self, **bodies):
+        for name, body in bodies.items():
+            path = self.vdir / "tests" / name
+            path.write_text(body)
+            path.chmod(0o755)
+
+    # -- the gate --
+    def gate(self):
+        return subprocess.run([sys.executable, self.vdir / "check_release.py", IMAGE, "--base",
+                               "base"], cwd=self.repo, capture_output=True, text=True)
+
+    def release(self, version=VERSION + 1, mutate=None):
+        """Bump VERSION, then write a complete, passing record for every required pair."""
+        (self.recipe / "VERSION").write_text(f"{version}\n")
+        self.commit("bump")
+        records = {}
+        for cluster in ("c1", "c2"):
+            for part in ("cpu", "gpu"):
+                comps = ["alpha", "beta"] if (cluster, part) == ("c1", "cpu") else ["alpha"]
+                records[f"{cluster}-{part}"] = {
+                    "image": IMAGE, "version": version, "build_id": BUILD,
+                    "recipe_hash": recipe_hash(self.recipe), "sources": dict(SOURCES),
+                    "lammps_ctest": True, "complete": True, "cluster": cluster, "part": part,
+                    "components": {c: {"status": "pass", "passed": 2, "failed": 0, "skipped": 0,
+                                       "known_failed": 0, "unexpected": [], "stale_known": [],
+                                       "seconds": 1} for c in comps}}
+        if mutate:
+            mutate(records)
+        out = self.idir / "releases" / str(version)
+        out.mkdir(parents=True)
+        for name, rec in records.items():
+            (out / f"{name}.json").write_text(json.dumps(rec))
+        self.commit("records")
+
+    # -- the harness --
+    def manifest(self, **over):
+        m = {"image": IMAGE, "version": VERSION + 1, "recipe_hash": recipe_hash(self.recipe),
+             "build_id": BUILD, "sources": dict(SOURCES), "lammps_ctest": True}
+        path = self.tmp / "manifest.json"
+        path.write_text(json.dumps({**m, **over}))
+        return path
+
+    def verify(self, cluster, part, *args, scrub="unused-string", **env):
+        full = {"PATH": os.environ["PATH"], "VERIFY_CLUSTER": cluster, "VERIFY_JOB_ID": "7",
+                "VERIFY_IMAGE_DIGEST": "sha256:cc", "VERIFY_SCRUB": scrub,
+                "VERIFY_WORK": str(self.tmp / "work"), "VERIFY_MANIFEST": str(self.manifest())}
+        full.update({k: str(v) for k, v in env.items()})
+        return subprocess.run([sys.executable, self.vdir / "verify.py", IMAGE, "--part", part,
+                               *args], env=full, capture_output=True, text=True)
+
+    def record(self, cluster, part, version=VERSION + 1):
+        return json.loads((self.idir / "releases" / str(version) / f"{cluster}-{part}.json")
+                          .read_text())
+
+
+@pytest.fixture
+def suite(recipe, tmp_path):
+    return Suite(recipe, tmp_path)
+
+
+def gate_fails(res, needle):
+    assert res.returncode != 0, res.stdout
+    assert needle in res.stdout, res.stdout
+
+
+# gate
+
+def test_gate_passes_a_complete_release(suite):
+    suite.release()
+    res = suite.gate()
+    assert res.returncode == 0, res.stdout + res.stderr
+
+
+def test_gate_passes_an_unchanged_recipe_at_the_same_version(suite):
+    (suite.recipe / "README.md").write_text("docs only\n")
+    suite.commit()
+    assert suite.gate().returncode == 0
+
+
+def test_gate_fails_a_recipe_change_without_a_bump(suite):
+    (suite.recipe / "Dockerfile").write_text("FROM scratch\nRUN true\n")
+    suite.commit()
+    gate_fails(suite.gate(), f"VERSION is still {VERSION}")
+
+
+def test_gate_fails_a_bump_by_two(suite):
+    suite.release(VERSION + 2)
+    gate_fails(suite.gate(), "exactly 1")
+
+
+def test_gate_fails_a_missing_cluster_record(suite):
+    suite.release(mutate=lambda recs: recs.pop("c2-gpu"))
+    gate_fails(suite.gate(), "c2-gpu.json is missing")
+
+
+def test_gate_fails_a_record_with_another_recipe_hash(suite):
+    suite.release(mutate=lambda recs: recs["c1-cpu"].update(recipe_hash="0" * 64))
+    gate_fails(suite.gate(), "c1-cpu.json has another recipe hash")
+
+
+def test_gate_fails_a_record_of_another_version(suite):
+    suite.release(mutate=lambda recs: recs["c1-cpu"].update(version=VERSION))
+    gate_fails(suite.gate(), "c1-cpu.json has version")
+
+
+def test_gate_fails_records_with_two_build_ids(suite):
+    suite.release(mutate=lambda recs: recs["c2-cpu"].update(build_id="20250101T000000Z"))
+    gate_fails(suite.gate(), "more than one build id")
+
+
+def test_gate_fails_sources_that_differ_from_sources_txt(suite):
+    suite.release(mutate=lambda recs: recs["c1-gpu"]["sources"].update(gpaw="c" * 40))
+    gate_fails(suite.gate(), "c1-gpu.json has sources that differ")
+
+
+def test_gate_fails_an_image_built_without_the_lammps_ctest(suite):
+    suite.release(mutate=lambda recs: recs["c1-gpu"].update(lammps_ctest=False))
+    gate_fails(suite.gate(), "LAMMPS ctest")
+
+
+def test_gate_fails_an_incomplete_record(suite):
+    suite.release(mutate=lambda recs: recs["c1-cpu"].update(complete=False))
+    gate_fails(suite.gate(), "c1-cpu.json is incomplete")
+
+
+def test_gate_fails_a_failed_component(suite):
+    suite.release(mutate=lambda recs: recs["c1-cpu"]["components"]["beta"].update(status="fail"))
+    gate_fails(suite.gate(), "beta is fail")
+
+
+def test_gate_fails_a_component_that_was_not_run(suite):
+    suite.release(mutate=lambda recs: recs["c1-cpu"]["components"]["beta"].update(status="not-run"))
+    gate_fails(suite.gate(), "beta is not-run")
+
+
+def test_gate_fails_a_non_empty_unexpected(suite):
+    suite.release(mutate=lambda recs: recs["c2-gpu"]["components"]["alpha"].update(
+        unexpected=["t::x"]))
+    gate_fails(suite.gate(), "unexpected: t::x")
+
+
+def test_gate_passes_stale_known_with_a_message(suite):
+    suite.release(mutate=lambda recs: recs["c2-gpu"]["components"]["alpha"].update(
+        stale_known=["t::old"]))
+    res = suite.gate()
+    assert res.returncode == 0, res.stdout
+    assert "t::old" in res.stdout and "shorten the list" in res.stdout
+
+
+def test_gate_fails_a_requirement_without_a_row(suite):
+    suite.components(ALPHA)
+    suite.release()
+    gate_fails(suite.gate(), "beta is in the requirements file and has no row")
+
+
+def test_gate_accepts_a_covered_by_row_for_a_requirement(suite):
+    suite.components(ALPHA, ("beta", "covered-by:alpha", "cpu", "c1"))
+    suite.release()
+    assert suite.gate().returncode == 0
+
+
+def test_gate_fails_a_test_file_that_does_not_exist(suite):
+    suite.components(ALPHA, BETA, ("gamma", "gamma", "cpu", "c1"))
+    suite.release()
+    gate_fails(suite.gate(), "tests/gamma does not exist")
+
+
+def test_gate_bootstraps_at_version_zero_with_a_recipe_change(suite):
+    (suite.recipe / "VERSION").write_text("0\n")
+    suite.commit("zero")
+    git(suite.repo, "tag", "-f", "base")
+    (suite.recipe / "Dockerfile").write_text("FROM scratch\nRUN true\n")
+    suite.components(ALPHA)  # a requirement without a row is no failure before release 1
+    suite.commit()
+    res = suite.gate()
+    assert res.returncode == 0, res.stdout
+
+
+def test_gate_fails_a_recipe_with_uncommitted_changes(suite):
+    (suite.recipe / "Dockerfile").write_text("changed\n")
+    gate_fails(suite.gate(), "uncommitted")
+
+
+# harness
+
+def test_verify_writes_a_record_per_part_and_the_gate_requires_both(suite):
+    suite.release()  # the manifest of the image carries the same identity
+    shutil.rmtree(suite.idir / "releases")
+    for cluster, part in (("c1", "cpu"), ("c1", "gpu"), ("c2", "cpu")):
+        assert suite.verify(cluster, part).returncode == 0
+    rec = suite.record("c1", "cpu")
+    assert rec["part"] == "cpu" and rec["cluster"] == "c1" and rec["complete"] is True
+    assert set(rec["components"]) == {"alpha", "beta"}
+    assert set(suite.record("c1", "gpu")["components"]) == {"alpha"}
+    want = subprocess.run([suite.recipe / HASH_SCRIPT, suite.vdir / "tests"], check=True,
+                          capture_output=True, text=True).stdout.strip()
+    assert rec["tests_hash"] == want  # the recipe-hash construction, applied to tests/
+    assert (rec["build_id"], rec["image_digest"], rec["job_id"]) == (BUILD, "sha256:cc", "7")
+    gate_fails(suite.gate(), "c2-gpu.json is missing")
+    assert suite.verify("c2", "gpu").returncode == 0
+    res = suite.gate()
+    assert res.returncode == 0, res.stdout
+
+
+def test_verify_marks_an_only_run_incomplete(suite):
+    assert suite.verify("c1", "cpu", "--only", "alpha").returncode == 0
+    rec = suite.record("c1", "cpu")
+    assert rec["complete"] is False
+    assert rec["components"]["alpha"]["status"] == "pass"
+    assert rec["components"]["beta"]["status"] == "not-run"
+    assert suite.verify("c1", "cpu", "--only", "nothing").returncode != 0
+
+
+def test_verify_refuses_to_run_without_the_launcher_variables(suite):
+    res = suite.verify("c1", "cpu", scrub="")
+    assert res.returncode != 0 and "VERIFY_SCRUB" in res.stderr
+
+
+def test_verify_counts_a_failure_in_the_list_and_one_outside_it(suite):
+    cases = [("m.t", "a", "pass"), ("m.t", "known", "fail"), ("m.t", "new", "fail"),
+             ("m.t", "s", "skip")]
+    suite.scripts(alpha=junit(cases))
+    suite.components(ALPHA, known=[("alpha", "m.t::known", "*", "*", "why", "")])
+    res = suite.verify("c1", "cpu")
+    assert res.returncode != 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert entry["status"] == "fail" and entry["unexpected"] == ["m.t::new"]
+    assert (entry["passed"], entry["failed"], entry["skipped"], entry["known_failed"]) == (1, 2, 1, 1)
+    assert "m.t::new" in (suite.idir / "releases/4/c1-cpu/alpha.log").read_text()
+
+
+def test_verify_passes_a_run_whose_only_failures_are_listed(suite):
+    suite.scripts(alpha=junit([("m", "a", "pass"), ("m", "known", "fail")]))
+    suite.components(ALPHA, known=[("alpha", "m::known", "c1", "cpu", "why", "")])
+    assert suite.verify("c1", "cpu").returncode == 0
+    assert suite.record("c1", "cpu")["components"]["alpha"]["status"] == "pass"
+
+
+@pytest.mark.parametrize("cluster, part, component", [
+    ("c2", "cpu", "alpha"), ("c1", "gpu", "alpha"), ("c1", "cpu", "beta")])
+def test_verify_does_not_apply_a_listed_failure_of_another_cluster_part_or_component(
+        suite, cluster, part, component):
+    suite.scripts(alpha=junit([("m", "a", "pass"), ("m", "known", "fail")]))
+    suite.components(ALPHA, BETA, known=[(component, "m::known", cluster, part, "why", "")])
+    assert suite.verify("c1", "cpu").returncode != 0
+
+
+def test_verify_reports_a_listed_test_that_passes_as_stale(suite):
+    suite.scripts(alpha=junit([("m", "a", "pass"), ("m", "old", "pass")], rc=0))
+    suite.components(ALPHA, known=[("alpha", "m::old", "*", "*", "why", "")])
+    assert suite.verify("c1", "cpu").returncode == 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert entry["status"] == "pass" and entry["stale_known"] == ["m::old"]
+
+
+def test_verify_reads_pass_and_fail_lines(suite):
+    suite.scripts(alpha='#!/bin/sh\necho "PASS a"\necho "FAIL b"\nexit 1\n')
+    assert suite.verify("c1", "cpu").returncode != 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert (entry["passed"], entry["failed"], entry["unexpected"]) == (1, 1, ["b"])
+
+
+def test_verify_fails_a_test_that_exits_non_zero_without_junit(suite):
+    suite.scripts(alpha="#!/bin/sh\necho crashed\nexit 3\n")
+    assert suite.verify("c1", "cpu").returncode != 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert entry["status"] == "fail" and entry["unexpected"] == ["exit status 3"]
+    assert "crashed" in (suite.idir / "releases/4/c1-cpu/alpha.log").read_text()
+
+
+def test_verify_fails_a_test_that_reports_nothing(suite):
+    suite.scripts(alpha="#!/bin/sh\nexit 0\n")
+    assert suite.verify("c1", "cpu").returncode != 0
+    assert suite.record("c1", "cpu")["components"]["alpha"]["unexpected"] == ["no test results"]
+
+
+def test_verify_reports_a_preflight_failure_as_fail_never_as_skipped(suite):
+    suite.scripts(alpha='#!/bin/sh\necho "FAIL preflight: library missing"\nexit 1\n')
+    assert suite.verify("c1", "cpu").returncode != 0
+    entry = suite.record("c1", "cpu")["components"]["alpha"]
+    assert entry["status"] == "fail" and entry["skipped"] == 0
+    assert entry["unexpected"] == ["preflight: library missing"]
+
+
+def test_verify_removes_every_scrub_string_from_the_record_and_the_logs(suite):
+    secrets = ["secretuser", "/secret/path", "acct-123"]
+    suite.scripts(alpha=(
+        '#!/bin/sh\necho "PASS /secret/path/x"\necho "FAIL acct-123 of secretuser"\n'
+        'echo "secretuser at /secret/path/y" >&2\nexit 1\n'),
+        beta=junit([("secretuser.m", "t", "fail")]))
+    res = suite.verify("c1", "cpu", scrub=":".join(secrets))
+    assert res.returncode != 0
+    files = [p for p in (suite.idir / "releases").rglob("*") if p.is_file()]
+    assert len(files) == 4  # record, two logs, README
+    for p in files:
+        assert not any(s in p.read_text() for s in secrets), p
+    assert "<scrubbed>" in (suite.idir / "releases/4/c1-cpu/alpha.log").read_text()
+    assert res.returncode != 0 and not any(s in res.stdout + res.stderr for s in secrets)
+
+
+def test_verify_generates_a_table_of_components_by_cluster_and_part(suite):
+    suite.release()
+    shutil.rmtree(suite.idir / "releases")
+    for cluster, part in (("c1", "cpu"), ("c1", "gpu"), ("c2", "cpu"), ("c2", "gpu")):
+        assert suite.verify(cluster, part).returncode == 0
+    lines = (suite.idir / "releases/4/README.md").read_text().splitlines()
+    table = [line for line in lines if line.startswith("|")]
+    assert table[0].split(" | ")[1:] == ["c1-cpu", "c1-gpu", "c2-cpu", "c2-gpu |"]
+    assert len(table) == 2 + 2  # header, separator, one row per component
+    cell = "pass 2 / 0 / 0 / 0"
+    assert table[2] == f"| alpha | {cell} | {cell} | {cell} | {cell} |"
+    assert table[3] == f"| beta | {cell} | - | - | - |"
+
+
+# the abTEM component test
+
+@pytest.fixture
+def abtem_suite(suite, tmp_path):
+    """The real tests/abtem, with fake `abtem` and `cupy` modules on PYTHONPATH."""
+    shutil.copy(VERIFICATION / "tests" / ABTEM, suite.vdir / "tests" / ABTEM)
+    (suite.vdir / "tests" / ABTEM).chmod(0o755)
+    suite.components((ABTEM, ABTEM, "cpu,gpu", "c1"))
+    fake = tmp_path / "fake"
+    (fake / "abtem").mkdir(parents=True)
+    (fake / "abtem/__init__.py").write_text("")
+    (fake / "cupy").mkdir()
+    (fake / "cupy/__init__.py").write_text(
+        "import os\n\nclass cuda:\n    class runtime:\n"
+        "        getDeviceCount = staticmethod(lambda: int(os.environ['FAKE_GPUS']))\n")
+    suite.fake = fake
+    return suite
+
+
+@pytest.mark.parametrize("part, gpus, message", [
+    ("cpu", 1, "a GPU is visible in the cpu part"),
+    ("gpu", 0, "no GPU is visible in the gpu part"),
+    ("cpu", 0, "not from /opt/src/abTEM")])
+def test_abtem_preflight_fails_instead_of_skipping(abtem_suite, part, gpus, message):
+    res = abtem_suite.verify("c1", part, PYTHONPATH=abtem_suite.fake, FAKE_GPUS=gpus)
+    assert res.returncode != 0
+    entry = abtem_suite.record("c1", part)["components"][ABTEM]
+    assert entry["status"] == "fail" and entry["skipped"] == 0
+    assert any(message in t for t in entry["unexpected"]), entry
+
+
+def test_abtem_runs_the_suite_with_the_marker_of_the_part_and_a_junit_file():
+    path = VERIFICATION / "tests" / ABTEM
+    spec = importlib.util.spec_from_loader("abtem_test", SourceFileLoader("abtem_test", str(path)))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    cpu = module.pytest_command("cpu", "j.xml")
+    gpu = module.pytest_command("gpu", "j.xml")
+    for command, marker in ((cpu, "not gpu"), (gpu, "gpu")):
+        assert command[command.index("-m") + 1] == marker
+        assert "--runslow" in command and "--junitxml=j.xml" in command
+        assert command[command.index("--project") + 1] == "/opt/src/abTEM"
+    assert Path(cpu[1]).samefile(ROOT / "shared/testing/run_pytest.py")
+
+
+# the launchers
+
+@pytest.mark.parametrize("name", LAUNCHERS)
+def test_launcher_is_valid_bash_and_names_no_account(name):
+    path = VERIFICATION / "clusters" / name
+    subprocess.run(["bash", "-n", path], check=True)
+    text = path.read_text()
+    account = [line for line in text.splitlines() if line.startswith("#SBATCH --account=")]
+    assert len(account) == 1 and account[0].startswith("#SBATCH --account=<project>")
+    for variable in ("VERIFY_CLUSTER", "VERIFY_IMAGE_DIGEST", "VERIFY_JOB_ID", "VERIFY_SCRUB",
+                     "VERIFY_WORK"):
+        assert variable in text
+    code = "\n".join(line for line in text.splitlines()
+                     if not line.startswith("#") or line.startswith("#SBATCH"))
+    gpu_flags = re.findall(r"--gpu\b|--nv\b|--gpus-per-node", code)
+    assert bool(gpu_flags) == name.endswith("-gpu.sbatch"), (name, gpu_flags)

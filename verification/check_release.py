@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""The release gate: does the head of this checkout carry what its version claims?
+
+    python verification/check_release.py <image> --base <ref>
+
+Let B and H be the image's VERSION at <ref> and in the working tree.
+- H = B: the recipe hash equals the one at <ref>, or H = 0 (no release yet).
+- H = B + 1: releases/H/ holds a complete record for every (cluster, part) that
+  components.tsv requires; all records of the release share one build id; each has version H,
+  the head's recipe hash, the sources of sources.txt and `lammps_ctest` true; every component
+  required in that part on that cluster passed with no unexpected failure. A `stale_known`
+  entry is printed as a request to shorten known-failures.tsv and does not fail.
+- Any other H fails.
+- Always: every `test` file of components.tsv exists. From H = 1 on, every package of the
+  recipe's requirements file has a row in components.tsv.
+
+The personal-data check over verification/ is the repository's personal-data workflow, which
+scans the whole tree. The records are trusted as committed: no CI runner has the cluster GPUs.
+Exit status 0 when the gate passes. Python standard library only.
+"""
+import argparse
+import json
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+from verify import HERE, ROOT, items, own_components, read_tsv, recipe_hash
+
+
+def normalized(name):
+    return name.lower().replace("_", "-")
+
+
+def requirement_names(path):
+    names = set()
+    for line in path.read_text().splitlines():
+        m = re.match(r"[A-Za-z0-9][A-Za-z0-9._-]*", line.split("#")[0].strip())
+        if m:
+            names.add(normalized(m.group()))
+    return names
+
+
+def base_recipe_hash(image, base, rel):
+    """The recipe hash of the recipe directory `rel` at the git ref `base`."""
+    with tempfile.TemporaryDirectory() as tmp:
+        subprocess.run(["git", "-C", ROOT, "worktree", "add", "-q", "--detach", f"{tmp}/base",
+                        base], check=True)
+        try:
+            return recipe_hash(image, Path(tmp) / "base" / rel)
+        finally:
+            subprocess.run(["git", "-C", ROOT, "worktree", "remove", "--force", f"{tmp}/base"],
+                           check=True)
+
+
+def check_release(image, base):
+    """Return the failures and the notes of the gate."""
+    errors, notes = [], []
+    recipe = next(ROOT.glob(f"shared/containers/*/{image}"))
+    version = int(recipe.joinpath("VERSION").read_text())
+    rel = recipe.relative_to(ROOT)
+    base_version = int(subprocess.run(
+        ["git", "-C", ROOT, "show", f"{base}:{rel}/VERSION"], check=True, capture_output=True,
+        text=True).stdout)
+    head_hash = recipe_hash(image, recipe)
+    rows = own_components(image)
+
+    for row in rows:
+        if not (HERE / "tests" / row["test"]).is_file():
+            errors.append(f"{row['component']}: test file tests/{row['test']} does not exist")
+    if version > 0:
+        listed = {normalized(r["component"]) for r in read_tsv(HERE / image / "components.tsv")}
+        for name in sorted(requirement_names(recipe / f"requirements-{image}.txt") - listed):
+            errors.append(f"{name} is in the requirements file and has no row in components.tsv")
+
+    if head_hash == "dirty":
+        errors.append("the recipe has uncommitted changes")
+    elif version == base_version:
+        if version != 0 and head_hash != base_recipe_hash(image, base, rel):
+            errors.append(f"the recipe changed since {base} and VERSION is still {version}")
+    elif version == base_version + 1:
+        check_records(image, version, head_hash, recipe, rows, errors, notes)
+    else:
+        errors.append(f"VERSION is {version}, at {base} it is {base_version}: "
+                      "a release raises it by exactly 1")
+    return errors, notes
+
+
+def check_records(image, version, head_hash, recipe, rows, errors, notes):
+    release_dir = HERE / image / "releases" / str(version)
+    sources = dict(line.split() for line in (recipe / "sources.txt").read_text().splitlines()
+                   if line.strip())
+    records = {p.stem: json.loads(p.read_text()) for p in sorted(release_dir.glob("*.json"))}
+    required = {}
+    for row in rows:
+        for cluster in items(row["clusters"]):
+            for part in items(row["parts"]):
+                required.setdefault(f"{cluster}-{part}", []).append(row["component"])
+
+    for name in sorted(set(required) - set(records)):
+        errors.append(f"releases/{version}/{name}.json is missing")
+    if len({r["build_id"] for r in records.values()}) > 1:
+        errors.append(f"releases/{version} holds records of more than one build id")
+    for name, rec in records.items():
+        where = f"releases/{version}/{name}.json"
+        for ok, what in ((rec["complete"], "is incomplete"),
+                         (rec["version"] == version, f"has version {rec['version']}"),
+                         (rec["recipe_hash"] == head_hash, "has another recipe hash"),
+                         (rec["sources"] == sources, "has sources that differ from sources.txt"),
+                         (rec["lammps_ctest"] is True, "is of an image built without the "
+                          "LAMMPS ctest")):
+            if not ok:
+                errors.append(f"{where} {what}")
+        for comp in required.get(name, []):
+            entry = rec["components"].get(comp, {"status": "missing", "unexpected": []})
+            if entry["status"] != "pass" or entry["unexpected"]:
+                errors.append(f"{where}: {comp} is {entry['status']}"
+                              + (f", unexpected: {', '.join(entry['unexpected'])}"
+                                 if entry["unexpected"] else ""))
+            for tid in entry.get("stale_known", []):
+                notes.append(f"{where}: {comp}: {tid} is listed in known-failures.tsv and "
+                             "passed: shorten the list")
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("image")
+    ap.add_argument("--base", required=True, help="the git ref the pull request merges into")
+    args = ap.parse_args(argv)
+    errors, notes = check_release(args.image, args.base)
+    for note in notes:
+        print("note:", note)
+    for error in errors:
+        print("FAIL:", error)
+    if not errors:
+        print("release gate passed")
+    return 1 if errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
