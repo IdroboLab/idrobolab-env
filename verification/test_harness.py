@@ -919,7 +919,8 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
                           '[ -z "${STUB_PM_DIGEST-x}" ] || echo; exit 0 ;; image) echo "Error: $3: '
                           'image not known" >&2; exit 125 ;; esac\necho "$*" >> "$STUB_LOG"; '
                           'echo "$VERIFY_IMAGE_DIGEST $VERIFY_SCRUB" >> "$STUB_LOG"',
-            "apptainer": 'echo "$*" >> "$STUB_LOG"; echo "$VERIFY_SCRUB:$NUMBA_CACHE_DIR" >> "$STUB_LOG"'}.items():
+            "apptainer": 'echo "$*" >> "$STUB_LOG"; '
+                         'echo "$VERIFY_SCRUB:$NUMBA_CACHE_DIR" >> "$STUB_LOG"'}.items():
         (stubs / tool).write_text(f"#!/bin/sh\n{body}\n")
         (stubs / tool).chmod(0o755)
     for dirname in ("home", "scratch/u1", "proj/software/containers"):
