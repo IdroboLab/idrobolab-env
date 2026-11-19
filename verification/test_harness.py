@@ -956,7 +956,7 @@ def test_perlmutter_launcher_runs_the_release_candidate_with_the_verify_variable
     assert f"ghcr.io/idrobolab/{IMAGE}:0-rc python verification/verify.py {IMAGE} --part {part} " \
            f"--only {ABTEM}" in call
     assert ("--gpu " in call) == (part == "gpu")
-    assert "-e OMP_NUM_THREADS=16" in call
+    assert "_NUM_THREADS" not in call  # the image's OMP/OPENBLAS = 1: GPAW warns above 1
     digest, scrub = log[1].split(" ", 1)
     assert digest == "sha256:abc" and "u1" in scrub.split(":")
     assert not list((tmp_path / "scratch/u1").glob("verify-*"))  # the work directory is removed

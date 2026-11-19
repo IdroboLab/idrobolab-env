@@ -71,12 +71,11 @@ fi
 export VERIFY_IMAGE_DIGEST
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH:$(real "$SCRATCH"):${CFS:-}:${SLURM_JOB_ACCOUNT:-}:${NERSC_PROJECT:-}:$REPO:$WORK"
 
-# One process: leave room for worker threads rather than pinning to one thread (see
-# jobs/gpu_4gpu_node.sbatch). HDF5 file locking fails on CFS and $HOME from a compute node
-# (errno 524).
-THREAD_ENV="-e OMP_NUM_THREADS=16 -e OPENBLAS_NUM_THREADS=16"
+# OMP_NUM_THREADS and OPENBLAS_NUM_THREADS stay at the image's 1: with more, GPAW warns in
+# PW mode and abTEM's suite turns the warning into an error. HDF5 file locking fails on CFS
+# and $HOME from a compute node (errno 524).
 time srun --ntasks=1 --cpu-bind=none \
     podman-hpc run --rm $GROUP_FLAGS --gpu -v "$REPO:$REPO" -v "$WORK:$WORK" --workdir "$REPO" \
         -e VERIFY_CLUSTER -e VERIFY_IMAGE_DIGEST -e VERIFY_JOB_ID -e VERIFY_SCRUB -e VERIFY_WORK \
-        $THREAD_ENV -e HDF5_USE_FILE_LOCKING=FALSE \
+        -e HDF5_USE_FILE_LOCKING=FALSE \
         "$IMAGE" python verification/verify.py "$NAME" --part gpu "$@"
