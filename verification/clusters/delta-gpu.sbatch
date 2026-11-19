@@ -49,6 +49,9 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="$BINDS,$p"; done
 # Apptainer passes the host environment into the container.
 real() { (cd "$1" 2>/dev/null && pwd -P) || true; }
 export VERIFY_CLUSTER=delta VERIFY_JOB_ID=$SLURM_JOB_ID VERIFY_WORK=$WORK
+# Numba caches compiled functions next to their source, inside the small --writable-tmpfs
+# layer; a full layer fails the tests with ENOSPC. The cache goes to the work directory.
+export NUMBA_CACHE_DIR=$WORK/numba
 VERIFY_IMAGE_DIGEST=$(sha256sum "$SIF")
 export VERIFY_IMAGE_DIGEST=sha256:${VERIFY_IMAGE_DIGEST%% *}
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH_BASE/$USER:$(real "$SCRATCH_BASE/$USER"):${PROJECTS_BASE:-}:${SLURM_JOB_ACCOUNT:-}:$REPO:$WORK"
