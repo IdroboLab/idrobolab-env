@@ -19,6 +19,10 @@ same pull command works on both clusters).
   the image by its full name (`$IDROBOLAB_IMAGE`, which is `ghcr.io/idrobolab/idrobolab:latest`;
   a bare `idrobolab:latest` can resolve to a different, older local image) and never
   include a `podman-hpc pull` step. If a run needs a newer image, say so and stop.
+- **An image's digest comes from `podman-hpc images --digests`** (`group.md`, *Provenance*;
+  in a script, `--format '{{.Digest}}' <image>`). `podman-hpc image inspect` and
+  `podman-hpc inspect` answered `image not known` and `no such object` (exit 125) for the
+  group image in the shared read-only store.
 - **`/global/common/software/<project>/` is the project's base for installing software
   itself — Python packages, venvs, editable checkouts meant to be *run*, not scratch
   data.** It is mounted **read-only on compute nodes** (a `pip install`/`uv sync`/editable
