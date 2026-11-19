@@ -52,5 +52,7 @@ export VERIFY_IMAGE_DIGEST=sha256:${VERIFY_IMAGE_DIGEST%% *}
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH_BASE/$USER:$(real "$SCRATCH_BASE/$USER"):${PROJECTS_BASE:-}:${SLURM_JOB_ACCOUNT:-}:$REPO:$WORK"
 
 echo "SIF=$SIF  repo=$REPO  binds=$BINDS"
-time apptainer exec --bind "$BINDS" --pwd "$REPO" "$SIF" \
+# --writable-tmpfs: run_pytest.py installs test dependencies into the image's /opt/venv,
+# which a .sif mounts read-only; the writable layer is discarded at exit.
+time apptainer exec --writable-tmpfs --bind "$BINDS" --pwd "$REPO" "$SIF" \
     python verification/verify.py "$NAME" --part cpu "$@"

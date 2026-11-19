@@ -980,6 +980,7 @@ def test_delta_launcher_uses_the_personal_scratch_area_and_no_scratch_variable(t
                             SCRATCH_BASE=tmp_path / "scratch")
     assert res.returncode == 0, res.stderr
     assert ("--nv " in log[0]) == (part == "gpu")
+    assert "--writable-tmpfs " in log[0]  # run_pytest.py installs test dependencies into /opt/venv
     assert f"python verification/verify.py {IMAGE} --part {part}" in log[0]
     assert f"{tmp_path}/scratch/u1" in log[1].split(":")
     assert not list((tmp_path / "scratch/u1").glob("verify-*"))  # removed at the end
