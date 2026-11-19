@@ -40,7 +40,7 @@ done
 echo ">> nvfortran: $(command -v nvfortran)"
 
 apt-get update
-apt-get install -y --no-install-recommends git cmake ca-certificates patchelf wget make
+apt-get install -y --no-install-recommends git cmake ca-certificates patchelf wget make python3
 rm -rf /var/lib/apt/lists/*
 
 # --- MPICH, built with the NVHPC compilers -----------------------------------
