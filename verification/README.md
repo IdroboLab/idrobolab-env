@@ -67,9 +67,10 @@ git -C ~/idrobolab-env add verification/idrobolab/releases/<N>
 
 The launchers carry the account as `<project>`. On Perlmutter `IMAGE` overrides the image: a
 bare name is qualified with `IMAGE_OWNER` and `TAG` (default `<N>-rc`), a value with a `/` is
-used as given. Their header comments say how to get the image onto the cluster (Perlmutter: `update-image.sh` with `TAG=<N>-rc`; Delta: `get-image.sh`
-into the `.sif`). A launcher passes everything only the host knows to `verify.py`, which runs
-inside the image: `VERIFY_CLUSTER`, `VERIFY_IMAGE_DIGEST` (registry digest on Perlmutter,
+used as given. Their header comments say how to get the image onto the cluster (Perlmutter:
+`update-image.sh` with `TAG=<N>-rc`; Delta: `get-image.sh` into the `.sif`). A launcher
+passes everything only the host knows to `verify.py`, which runs inside the image:
+`VERIFY_CLUSTER`, `VERIFY_IMAGE_DIGEST` (registry digest on Perlmutter,
 `.sif` sha256 on Delta), `VERIFY_JOB_ID`, `VERIFY_WORK` (a writable directory) and
 `VERIFY_SCRUB` (strings separated by `:`: user name, home, scratch and project paths, account,
 the clone). `verify.py` replaces each of them by `<scrubbed>` in the record and the logs and
