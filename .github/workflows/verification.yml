@@ -1,0 +1,35 @@
+# The release gate and the unit tests of the verification harness. check_release.py trusts the
+# committed records (no CI runner has the cluster GPUs); see verification/README.md.
+# The personal-data check over verification/ is personal-data.yml, which scans the whole tree
+# on every pull request.
+name: verification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Release gate
+        run: python3 verification/check_release.py idrobolab --base "origin/${{ github.base_ref }}"
+        if: github.event_name == 'pull_request'
+
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install pytest==9.2.0
+          "$RUNNER_TEMP/venv/bin/pytest" verification/test_harness.py -q
