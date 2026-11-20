@@ -64,8 +64,8 @@ container's own `/opt/venv`, prints which copy of the package Python imports, an
 with `-p no:cacheprovider` (a read-only checkout cannot take the cache write). Nothing persists
 between `podman-hpc run --rm` calls, so every run reinstalls; never install into the image or a
 shared venv, and never `pip install -e <checkout>[test]` (a read-only checkout cannot take the
-egg-info write). On Delta the install needs a writable layer (`--writable-tmpfs` holds 64 MiB, enough for one
-small install; several need an overlay image) and a
+egg-info write). On Delta the install needs a writable layer (`--writable-tmpfs` holds 64 MiB, too little
+for abTEM's and GPAW's test dependencies together; an overlay image holds more) and a
 `NUMBA_CACHE_DIR` outside the image (`delta-cluster`, *Building and shipping a container image*).
 
 **Leave `OMP_NUM_THREADS` at the image's 1** in every command and launcher that runs abTEM's
