@@ -50,7 +50,7 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="$BINDS,$p"; done
 # Apptainer passes the host environment into the container.
 real() { (cd "$1" 2>/dev/null && pwd -P) || true; }
 export VERIFY_CLUSTER=delta VERIFY_JOB_ID=$SLURM_JOB_ID VERIFY_WORK=$WORK
-# Numba caches compiled functions next to their source, inside the small --writable-tmpfs
+# Numba caches compiled functions next to their source, inside the image's writable
 # layer; a full layer fails the tests with ENOSPC. The cache goes to the work directory.
 export NUMBA_CACHE_DIR=$WORK/numba
 VERIFY_IMAGE_DIGEST=$(sha256sum "$SIF")
@@ -74,7 +74,20 @@ echo "2-node MPICH step: exit status $STEP_STATUS"
 cat "$STEP/log"
 export VERIFY_MPI_STEP=$STEP
 
-# --writable-tmpfs: run_pytest.py installs test dependencies into the image's /opt/venv,
-# which a .sif mounts read-only; the writable layer is discarded at exit.
-time apptainer exec --writable-tmpfs --bind "$BINDS" --pwd "$REPO" "$SIF" \
+# The rest runs on the first node only: hand the second back, so it is not billed for the
+# hours verify.py takes. scontrol writes a script that resets the SLURM_* variables to the
+# smaller job, into the working directory. A refused shrink only costs the second node.
+if (cd "$WORK" && scontrol update JobId="$SLURM_JOB_ID" NumNodes=1); then
+    . "$WORK/slurm_job_${SLURM_JOB_ID}_resize.sh"
+    echo "released the second node: running on $SLURM_JOB_NODELIST"
+else
+    echo "WARNING: scontrol could not shrink the job; the second node stays allocated" >&2
+fi
+
+# The tests install their dependencies into the image's /opt/venv, which a .sif mounts
+# read-only. --writable-tmpfs gives a 64 MiB layer on Delta, which abTEM's and GPAW's
+# installs overflow (ENOSPC), so the writable layer is an overlay image in the work
+# directory instead, removed with it.
+apptainer overlay create --size 2048 "$WORK/overlay.img"
+time apptainer exec --overlay "$WORK/overlay.img" --bind "$BINDS" --pwd "$REPO" "$SIF" \
     python verification/verify.py "$NAME" --part cpu "$@"
