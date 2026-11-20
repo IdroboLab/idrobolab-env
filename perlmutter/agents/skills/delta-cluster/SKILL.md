@@ -175,7 +175,10 @@ The layer cache survives a failed build, so a retry skips the download.
 
 **A `.sif` is read-only at run time.** A write into the image (a `pip install` into
 `/opt/venv`) fails with `[Errno 30] Read-only file system`. `apptainer exec --writable-tmpfs`
-adds a temporary in-memory overlay, discarded when the process ends. That overlay is small: a
-cache written there (Numba's, under the installed packages) fills it with `[Errno 28] No space
-left on device`, so point caches at a directory under `$SCRATCH_BASE/$USER`
-(`NUMBA_CACHE_DIR`).
+adds a temporary in-memory overlay, discarded when the process ends. That overlay is 64 MiB on
+Delta: a cache written there (Numba's, under the installed packages) or the test dependencies
+of abTEM and GPAW together fill it with `[Errno 28] No space left on device`. Point caches at a
+directory under `$SCRATCH_BASE/$USER` (`NUMBA_CACHE_DIR`), and for larger installs use an
+overlay image on scratch instead, which works without fakeroot:
+`apptainer overlay create --size 2048 <dir>/overlay.img`, then
+`apptainer exec --overlay <dir>/overlay.img ...`; delete the file afterwards.
