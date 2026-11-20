@@ -85,6 +85,13 @@ same pull command works on both clusters).
   `date` on the compute node and file mtimes are Pacific. Example: for a 30-minute debug job
   whose output files were written 12:37–12:47 PDT, the cancel line's 20:06 is 13:06 PDT. Convert
   before putting a Slurm line next to file times or the job's own printed times.
+- **`scrontab` entries are read in UTC, not Pacific**, although `squeue` prints Pacific: an entry
+  `0 17 * * *` starts at 09:00 PST (10:00 PDT), and `squeue --me --start` shows the next start
+  as `09:00` (measured 2026-11-20, in winter). The same entry therefore starts an hour
+  earlier by the Pacific clock when daylight saving ends and an hour later when it begins; an
+  entry meant for a fixed Pacific hour is edited at each daylight-saving change. A job's own
+  `date` is Pacific, so a job log stamped with `date -u` shows the entry's UTC hour and one
+  stamped with `date` shows Pacific.
 - **A job log that stops is not evidence of a hang: Python's stdout is block-buffered under
   Slurm and in containers.** Output goes to a file or pipe, not a terminal, so printed lines wait
   in a buffer until something flushes it, and a job killed at its time limit loses them.
