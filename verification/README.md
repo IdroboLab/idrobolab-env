@@ -93,11 +93,11 @@ MPICH. The step writes its exit status and log into `$WORK/mpi-step`, `VERIFY_MP
 that directory for `tests/mpich`, and a failed step is recorded there and does not stop the
 job: `tests/mpich` then fails the component. A step that hangs ends after `MPI_STEP_TIMEOUT`
 seconds (default 600) with status 124. The step's output also goes to the job's output file,
-because `$WORK` is removed at the end. After the step the Perlmutter launcher shrinks the job
-to its first node (`scontrol update NumNodes=1`), so the second is not billed while
-`verify.py` runs. Delta refuses that for a running job ("Job is no longer pending
-execution"), so there the second node stays allocated to the end. The GPU launchers stay on
-one node.
+because `$WORK` is removed at the end. After the step the launchers shrink the job to its first
+node (`scontrol update NumNodes=1`), so the second is not billed while `verify.py` runs. Delta
+refuses the shrink ("Job is no longer pending execution") for a job submitted with
+`--ntasks-per-node`, so their headers set none; a refused shrink prints a warning and the job
+goes on with both nodes. The GPU launchers stay on one node.
 
 The time limit of the CPU launchers (4 h) is a guess: GPAW's full suite (`tests/gpaw`) is the
 longest component. Override it at submission: `sbatch --time=12:00:00 <launcher> <image>`.
