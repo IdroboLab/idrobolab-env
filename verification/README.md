@@ -78,10 +78,14 @@ the clone). `verify.py` replaces each of them by `<scrubbed>` in the record and 
 refuses to run when one of these variables is missing. Extra arguments go to `verify.py`: add
 `--only <component>` to run one component; its record is `"complete": false` and never
 satisfies the gate. The image's manifest is read from `/opt/<image>/manifest.json`
-(`VERIFY_MANIFEST` overrides the path).
+(`VERIFY_MANIFEST` overrides the path). On Delta the image's writable layer, where the tests
+install their dependencies into `/opt/venv`, is a 2 GB overlay image in the work directory:
+`--writable-tmpfs` gives only 64 MiB there, too little for abTEM's and GPAW's installs.
 
-The CPU launchers allocate two nodes, and the second node is billed for the whole CPU part.
-Before `verify.py`, which runs on one node as for the other parts, they run the 2-node MPICH
+The CPU launchers allocate two nodes. After the step below they shrink the job to its first
+node (`scontrol update NumNodes=1`), so the second is not billed while `verify.py` runs;
+Perlmutter allows that, Delta refuses it ("Job is no longer pending execution"), and there the
+second node stays allocated to the end. Before `verify.py`, which runs on one node as for the other parts, they run the 2-node MPICH
 step: a ring of one rank per node over the fabric (`tests/mpich --ring --ranks 2`, in the
 container, started by the host's `srun`). On Perlmutter that is `podman-hpc run --mpi`, which
 swaps the host's Cray MPICH in for the image's (ABI-compatible `libmpi.so.12`) as production
