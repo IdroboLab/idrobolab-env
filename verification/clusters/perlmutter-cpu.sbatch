@@ -1,7 +1,7 @@
 #!/bin/bash
 # Release verification, CPU part, on TWO Perlmutter CPU nodes: no GPU is requested and the
 # container starts without --gpu. First the 2-node MPICH step (one rank per node, over the
-# fabric), then verification/verify.py inside the image on one node.
+# fabric), then the job shrinks to its first node and runs verification/verify.py there.
 #
 # Usage (env.sh sourced: its sbatch function adds the account):
 #   sbatch ~/idrobolab-env/verification/clusters/perlmutter-cpu.sbatch <image> [--only <component>]

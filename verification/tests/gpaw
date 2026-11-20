@@ -8,7 +8,7 @@ as `python -m pytest -o cache_dir=$VERIFY_WORK/cache` from /opt/src/gpaw, where 
 there too, as the small writable layer of a read-only image would fill.
 
 cpu part, both `-m 'not gpu'` and with no GPU visible:
-  precalc  `pytest -n 32 -m generate_gpw_files`, as GPAW's CI does: the session fixtures
+  precalc  `pytest -n 32 -m generate_gpw_files` (GPAW's CI runs it with -n 16): the session fixtures
            that write the shared gpw files are filled once, so the xdist workers and the MPI
            ranks of the runs below do not wait on each other's locks (a fixture that waits
            60 s raises);

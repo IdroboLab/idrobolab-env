@@ -1492,6 +1492,7 @@ def test_delta_cpu_launcher_runs_the_two_node_step_first_and_verify_py_on_the_fi
     assert log.index(srun) < log.index(verify_lines(log)[0])
     assert not [line for line in log if line.startswith("srun") and "verify.py" in line]
     assert verify_lines(log)[2] == "step=0"
+    assert not [line for line in log if line.startswith("scontrol")]  # Delta refuses a shrink
 
 
 @pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
@@ -1514,20 +1515,16 @@ def test_cpu_launchers_end_a_hanging_step_with_status_124_and_still_run_verify_p
     assert verify_lines(log)[2] == "step=124"
 
 
-@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
-def test_cpu_launchers_release_the_second_node_after_the_step(tmp_path, name):
-    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
-                            SCRATCH_BASE=tmp_path / "scratch")
+def test_perlmutter_cpu_launcher_releases_the_second_node_after_the_step(tmp_path):
+    res, log = perlmutter("perlmutter-cpu.sbatch", tmp_path, IMAGE)
     assert res.returncode == 0, res.stderr
     shrink = log.index("scontrol update JobId=5 NumNodes=1")
     assert log.index(step_lines(log)[-1]) < shrink < log.index(verify_lines(log)[0])
     assert "released the second node: running on n1" in res.stdout  # the resize script is read
 
 
-@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
-def test_cpu_launchers_run_verify_py_when_the_shrink_is_refused(tmp_path, name):
-    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
-                            SCRATCH_BASE=tmp_path / "scratch", STUB_SHRINK_RC=1)
+def test_perlmutter_cpu_launcher_runs_verify_py_when_the_shrink_is_refused(tmp_path):
+    res, log = perlmutter("perlmutter-cpu.sbatch", tmp_path, IMAGE, STUB_SHRINK_RC=1)
     assert res.returncode == 0, res.stderr
     assert "could not shrink the job" in res.stderr
     assert verify_lines(log)[2] == "step=0"
