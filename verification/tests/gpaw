@@ -8,11 +8,11 @@ as `python -m pytest -o cache_dir=$VERIFY_WORK/cache` from /opt/src/gpaw, where 
 there too, as the small writable layer of a read-only image would fill.
 
 cpu part, both `-m 'not gpu'` and with no GPU visible:
-  precalc  `pytest -n 16 -m generate_gpw_files`, as GPAW's CI does: the session fixtures
+  precalc  `pytest -n 32 -m generate_gpw_files`, as GPAW's CI does: the session fixtures
            that write the shared gpw files are filled once, so the xdist workers and the MPI
            ranks of the runs below do not wait on each other's locks (a fixture that waits
            60 s raises);
-  serial   `pytest -n 16`: pytest-xdist, each test on one rank, to fit the allocation's time;
+  serial   `pytest -n 32`: pytest-xdist, each test on one rank, to fit the allocation's time;
   np4      `mpiexec -n 4 gpaw python -m pytest`, every rank running the whole suite.
 gpu part: `pytest -m gpu` on a real GPU, serial.
 
@@ -38,7 +38,7 @@ import _common
 # the `covered-by:gpaw` rows of components.tsv: a name here needs a check in _common.compiled_in().
 PREFLIGHT_LIBRARIES = ("scalapack", "fftw", "elpa", "libxc", "libvdwxc")
 PYTEST_REQUIREMENTS = ["pytest>=7,<9.1", "pytest-xdist"]
-XDIST_WORKERS = 16
+XDIST_WORKERS = 32
 RANKS = 4
 
 
