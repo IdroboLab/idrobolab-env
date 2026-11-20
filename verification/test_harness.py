@@ -1005,10 +1005,10 @@ class Calls:
 
     def __init__(self, monkeypatch, module, failing=None):
         """`failing`: a word of the command whose call returns exit status 1."""
-        self.calls = []
+        self.calls, self.envs = [], []
         monkeypatch.setattr(module.subprocess, "call",
                             lambda cmd, **kw: self.calls.append((cmd, kw.get("cwd")))
-                            or int(failing in cmd))
+                            or self.envs.append(kw.get("env")) or int(failing in cmd))
         monkeypatch.setattr(module.subprocess, "check_call",
                             lambda cmd, **kw: self.calls.append((cmd, None)) or 0)
 
@@ -1016,9 +1016,13 @@ class Calls:
 def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest(
         monkeypatch, tmp_path):
     gpaw_test = load_script("gpaw")
-    calls = Calls(monkeypatch, gpaw_test).calls
+    monkeypatch.setenv("HYDRA_BOOTSTRAP", "slurm")  # as Delta's environment sets it
+    recorder = Calls(monkeypatch, gpaw_test)
+    calls = recorder.calls
     assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 0
     install, precalc, serial, parallel = calls
+    # the mpiexec GPAW starts itself must not look for a host srun inside a Slurm job
+    assert all(env["HYDRA_BOOTSTRAP"] == "fork" for env in recorder.envs)
     assert "pytest>=7,<9.1" in install[0] and "pytest-xdist" in install[0]
     assert precalc[0][precalc[0].index("-m", 3) + 1] == "generate_gpw_files"  # before the suite
     assert precalc[0][precalc[0].index("-n") + 1] == "32" and precalc[1] == "/opt/src/gpaw"
@@ -1055,9 +1059,12 @@ def test_gpaw_cpu_part_merges_the_precalc_cases_and_fails_when_the_precalc_fails
 
 def test_gpaw_gpu_part_runs_the_gpu_marker_once_and_serial(monkeypatch, tmp_path):
     gpaw_test = load_script("gpaw")
-    calls = Calls(monkeypatch, gpaw_test).calls
+    monkeypatch.setenv("HYDRA_BOOTSTRAP", "slurm")
+    recorder = Calls(monkeypatch, gpaw_test)
+    calls = recorder.calls
     assert gpaw_test.run("gpu", tmp_path, tmp_path / "junit.xml") == 0
     install, serial = calls
+    assert recorder.envs[-1]["HYDRA_BOOTSTRAP"] == "fork"
     assert serial[0][serial[0].index("-m", 3) + 1] == "gpu"
     assert "-n" not in serial[0] and "mpiexec" not in str(serial)
 
