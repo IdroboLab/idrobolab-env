@@ -81,7 +81,10 @@ def run(part, work, junit):
                            "--disable-pip-version-check", *PYTEST_REQUIREMENTS])
     tmp = work / "tmp"
     tmp.mkdir(exist_ok=True)
-    env = {**os.environ, "TMPDIR": str(tmp)}
+    # GPAW starts mpiexec itself (`gpaw -P1 python`, as in test_mpi_enabledness.py). Delta's
+    # environment, which Apptainer passes in, sets HYDRA_BOOTSTRAP=slurm: that mpiexec would
+    # launch through a host srun and never start its process.
+    env = {**os.environ, "TMPDIR": str(tmp), "HYDRA_BOOTSTRAP": "fork"}
     pytest = [sys.executable, "-m", "pytest"]
     if part == "gpu":
         rc = subprocess.call(pytest + pytest_args("gpu", work)
