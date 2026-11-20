@@ -80,18 +80,21 @@ refuses to run when one of these variables is missing. Extra arguments go to `ve
 satisfies the gate. The image's manifest is read from `/opt/<image>/manifest.json`
 (`VERIFY_MANIFEST` overrides the path).
 
-The CPU launchers allocate two nodes. Before `verify.py`, which runs on one node as for the
-other parts, they run the 2-node MPICH step: a ring of one rank per node over the fabric
-(`tests/mpich --ring --ranks 2`, in the container, started by the host's `srun`: Perlmutter
-`podman-hpc run --mpi`, Delta `srun --mpi=pmi2 apptainer exec` with the image's own MPICH). The
-step writes its exit status and log into `$WORK/mpi-step`, `VERIFY_MPI_STEP` names that
-directory for `tests/mpich`, and a failed step is recorded there and does not stop the job:
-`tests/mpich` then fails the component. The step's output also goes to the job's output file,
+The CPU launchers allocate two nodes, and the second node is billed for the whole CPU part.
+Before `verify.py`, which runs on one node as for the other parts, they run the 2-node MPICH
+step: a ring of one rank per node over the fabric (`tests/mpich --ring --ranks 2`, in the
+container, started by the host's `srun`). On Perlmutter that is `podman-hpc run --mpi`, which
+swaps the host's Cray MPICH in for the image's (ABI-compatible `libmpi.so.12`) as production
+jobs launch, so it tests the image's MPI-ABI binaries over the fabric with the host MPICH; on
+Delta it is `srun --mpi=pmi2 apptainer exec` with the image's own MPICH, which tests that
+MPICH. The step writes its exit status and log into `$WORK/mpi-step`, `VERIFY_MPI_STEP` names
+that directory for `tests/mpich`, and a failed step is recorded there and does not stop the
+job: `tests/mpich` then fails the component. A step that hangs ends after `MPI_STEP_TIMEOUT`
+seconds (default 600) with status 124. The step's output also goes to the job's output file,
 because `$WORK` is removed at the end. The GPU launchers stay on one node.
 
-The time limit of the CPU launchers (4 h) is a guess: GPAW's full suite (`tests/gpaw`: a serial
-run with 16 pytest-xdist workers, then a run on 4 MPI ranks) is the longest component. Override
-it at submission: `sbatch --time=12:00:00 <launcher> <image>`.
+The time limit of the CPU launchers (4 h) is a guess: GPAW's full suite (`tests/gpaw`) is the
+longest component. Override it at submission: `sbatch --time=12:00:00 <launcher> <image>`.
 
 ## Reading a record
 
@@ -141,46 +144,25 @@ iterates over that tuple (`tests/gpaw`). `check_release.py` reads the tuple with
 importing the test (no gpaw in the gate), and fails a `covered-by` row whose component name
 (compared lower-case, `_` as `-`) is not in it, or whose covering test declares none.
 
-## GPAW
+## GPAW and MPI tests
 
-`tests/gpaw` runs GPAW's full suite (decision D1) with plain `python -m pytest -o
-cache_dir=$VERIFY_WORK/cache` from `/opt/src/gpaw`, where `pytest.ini` sets `--doctest-modules`
-and `testpaths`, after installing `pytest>=7,<9.1` (GPAW's pin) and `pytest-xdist`. It does not
-use `shared/testing/run_pytest.py`: GPAW's conftest uses pytest's cache (`config.cache`) in
-`pytest_report_header` and in the `gpw_files` fixture, and `run_pytest.py` passes `-p
-no:cacheprovider`. Dry run with GPAW master on the workstation (one test file, pytest 9.2.0, so
-outside GPAW's pin): with `-p no:cacheprovider` the session ends in an INTERNALERROR
-(`AttributeError: 'Config' object has no attribute 'cache'`, raised by `pytest_report_header`);
-with `-o cache_dir=<dir>` the tests run. The first cluster run confirms it in the image.
+Each test's docstring says what it runs; this lists what is not obvious from it.
 
-- cpu part: a serial run (`-n 16`, `-m 'not gpu'`) and `mpiexec -n 4 gpaw python -m pytest -m
-  'not gpu'`; gpu part: `-m gpu`. The `-n 16` of pytest-xdist keeps each test on one rank and
-  is a guess to fit the allocation's time (`XDIST_WORKERS` in `tests/gpaw`).
-- The junit files are merged into `VERIFY_JUNIT` with the classname prefix `serial.` or `np4.`.
-  Every rank of the MPI run writes its own file (MPICH's `PMI_RANK`): the cases of rank 0 count,
-  and only the failing cases of ranks 1 to 3 are added, as `np4-rank<k>.`.
-- Tests of an absent optional library skip, so the preflight checks ScaLAPACK, FFTW, ELPA,
-  libxc and libvdwxc through GPAW's own build information, and `gpaw.gpu.cupy_is_fake` (GPAW's
-  CPU emulation of CuPy runs the `-m gpu` tests without a GPU). `-rs` puts the skip reasons into
-  the pytest output; `verify.py` keeps that output only for a failing run that reports no
-  failing test.
-- A rank that hangs in an MPI collective runs until the job's time limit, and a job killed
-  there writes no record.
+- `tests/gpaw`: GPAW's full suite with plain `python -m pytest`, not
+  `shared/testing/run_pytest.py`: GPAW's conftest uses pytest's cache (`config.cache`), which
+  `run_pytest.py` disables with `-p no:cacheprovider`, so the suite uses `-o cache_dir`
+  instead. Tests of an absent optional library skip, so its preflight checks the libraries
+  through GPAW's own build information. `verify.py` keeps pytest's output (`-rs` skip reasons
+  included) only for a failing run that reports no failing test. A rank that hangs in an MPI
+  collective runs until the job's time limit, and a job killed there writes no record.
+- `tests/gpaw-eigensolvers`: ScaLAPACK against ELPA total energies, and which solver each run
+  used.
+- `tests/gpaw-weaver`: gpaw-weaver's own suite and a real GPAW run of its entry point. Its SCF
+  history cases fail with the log formats of the image's GPAW until gpaw-weaver's parser reads
+  them, or `known-failures.tsv` lists them.
+- `tests/gpaw-data`: the PAW setups of the gpaw-data wheel.
+- `tests/mpich`: the in-container ring and the result of the 2-node step above.
 
-## The other GPAW and MPI tests
-
-- `tests/gpaw-eigensolvers`: total energies of bulk Al in LCAO mode with 2x2x2 k-points, two SCF
-  iterations on 4 ranks, once with ScaLAPACK and once with ELPA, must agree to 1e-10 eV (ELPA
-  works only in the legacy GPAW implementation, which the test selects). The tolerance is the
-  one GPAW's own ELPA tests use; the first cluster run is its first measurement.
-- `tests/gpaw-weaver`: gpaw-weaver's own suite through `run_pytest.py`, and an H2 run of the
-  public entry point (`run_and_store_gpaw_calculation`) with both values of `legacy_gpaw`. Each
-  run reports four cases: the stored row, the `legacy_gpaw` flag in the row, the SCF history
-  parsed from the log, and the energy of the reloaded `.gpw`. The SCF history is empty with the
-  image's GPAW (its `iter` lines have no `iter time total` header, which
-  `gpaw_weaver.log.extract_scf_convergence` requires), so those two cases fail until gpaw-weaver
-  parses the log or `known-failures.tsv` lists them.
-- `tests/gpaw-data`: for the elements H, B, C, N, O, Si and Fe, the PAW setup is read from
-  `gpaw_data.datapath()` under `/opt/venv` (`GPAW_SETUP_PATH` is unset) and its core electrons
-  plus valence electrons must equal Z.
-- `tests/mpich`: a ring of 4 ranks inside the container, and the result of the 2-node step above.
+The test scripts share `tests/_common.py`, which is not a component: it has no row, is covered
+by `tests_hash` like every file in `tests/`, and is imported from the script's own directory
+(not under `PYTHONSAFEPATH=1`).
