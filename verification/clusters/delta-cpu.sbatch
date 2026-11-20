@@ -60,11 +60,13 @@ export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH_BASE/$USER:$(real "$SC
 echo "SIF=$SIF  repo=$REPO  binds=$BINDS"
 # The 2-node MPICH step: one rank on each node, the image's own MPICH under srun --mpi=pmi2
 # (delta/jobs/README.md, "How MPI is launched", item 3). tests/mpich reports its exit status
-# and log from VERIFY_MPI_STEP. A failure is recorded there, and does not stop the job.
+# and log from VERIFY_MPI_STEP. A failure is recorded there, and does not stop the job; a hang
+# in the fabric or in PMI ends after MPI_STEP_TIMEOUT seconds (10 minutes) with status 124.
 STEP=$WORK/mpi-step
 mkdir -p "$STEP"
 STEP_STATUS=0
-srun --mpi=pmi2 --nodes=2 --ntasks=2 --ntasks-per-node=1 \
+timeout --kill-after=30 "${MPI_STEP_TIMEOUT:-600}" \
+    srun --mpi=pmi2 --nodes=2 --ntasks=2 --ntasks-per-node=1 \
     apptainer exec --bind "$BINDS" --pwd "$REPO" "$SIF" \
     python verification/tests/mpich --ring --ranks 2 > "$STEP/log" 2>&1 || STEP_STATUS=$?
 echo "$STEP_STATUS" > "$STEP/status"
