@@ -93,8 +93,8 @@ export VERIFY_MPI_STEP=$STEP
 
 # The rest runs on the first node only: hand the second back, so it is not billed for the
 # hours verify.py takes. scontrol writes a script that resets the SLURM_* variables to the
-# smaller job, into the working directory. A refused shrink only costs the second node; Delta
-# refuses it when the job was submitted with --ntasks-per-node, so the header sets none.
+# smaller job, into the working directory. A refused shrink only costs the second node. The
+# header sets no --ntasks-per-node, as on Delta, where it makes scontrol refuse the shrink.
 if (cd "$WORK" && scontrol update JobId="$SLURM_JOB_ID" NumNodes=1); then
     . "$WORK/slurm_job_${SLURM_JOB_ID}_resize.sh"
     echo "released the second node: running on $SLURM_JOB_NODELIST"
@@ -106,7 +106,8 @@ fi
 # PW mode and abTEM's suite turns the warning into an error. HDF5 file locking fails on CFS
 # and $HOME from a compute node (errno 524).
 time srun --nodes=1 --ntasks=1 --cpu-bind=none \
-    podman-hpc run --rm $GROUP_FLAGS -v "$REPO:$REPO" -v "$GIT_COMMON:$GIT_COMMON" -v "$WORK:$WORK" --workdir "$REPO" \
+    podman-hpc run --rm $GROUP_FLAGS -v "$REPO:$REPO" -v "$GIT_COMMON:$GIT_COMMON" \
+        -v "$WORK:$WORK" --workdir "$REPO" \
         -e VERIFY_CLUSTER -e VERIFY_IMAGE_DIGEST -e VERIFY_JOB_ID -e VERIFY_SCRUB -e VERIFY_WORK \
         -e VERIFY_MPI_STEP -e HDF5_USE_FILE_LOCKING=FALSE \
         "$IMAGE" python verification/verify.py "$NAME" --part cpu "$@"
