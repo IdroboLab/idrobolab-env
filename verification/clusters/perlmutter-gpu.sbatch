@@ -49,6 +49,10 @@ case "$IMAGE" in
     *)   IMAGE="ghcr.io/${IMAGE_OWNER:-idrobolab}/${IMAGE}:${TAG:-${VERSION}-rc}" ;;
 esac
 
+# verify.py hashes its tests with git, which needs the repository's git directory: outside
+# $REPO when the clone is a worktree (podman-hpc binds only what -v names).
+GIT_COMMON=$(git -C "$REPO" rev-parse --path-format=absolute --git-common-dir)
+
 # Supplementary groups give access to project directories; see jobs/README.md.
 GROUP_FLAGS=${PODMAN_GROUP_FLAGS---group-add keep-groups}
 
@@ -75,7 +79,7 @@ export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH:$(real "$SCRATCH"):${C
 # PW mode and abTEM's suite turns the warning into an error. HDF5 file locking fails on CFS
 # and $HOME from a compute node (errno 524).
 time srun --ntasks=1 --cpu-bind=none \
-    podman-hpc run --rm $GROUP_FLAGS --gpu -v "$REPO:$REPO" -v "$WORK:$WORK" --workdir "$REPO" \
+    podman-hpc run --rm $GROUP_FLAGS --gpu -v "$REPO:$REPO" -v "$GIT_COMMON:$GIT_COMMON" -v "$WORK:$WORK" --workdir "$REPO" \
         -e VERIFY_CLUSTER -e VERIFY_IMAGE_DIGEST -e VERIFY_JOB_ID -e VERIFY_SCRUB -e VERIFY_WORK \
         -e HDF5_USE_FILE_LOCKING=FALSE \
         "$IMAGE" python verification/verify.py "$NAME" --part gpu "$@"

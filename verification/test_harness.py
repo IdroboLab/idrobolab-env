@@ -1419,6 +1419,9 @@ def test_perlmutter_launcher_runs_the_release_candidate_with_the_verify_variable
            f"--only {ABTEM}" in call
     assert ("--gpu " in call) == (part == "gpu")
     assert "_NUM_THREADS" not in call  # the image's OMP/OPENBLAS = 1: GPAW warns above 1
+    common = subprocess.run(["git", "-C", str(VERIFICATION), "rev-parse", "--path-format=absolute",
+                             "--git-common-dir"], capture_output=True, text=True).stdout.strip()
+    assert f"-v {common}:{common} " in call  # git in the container reaches a worktree's repository
     digest, scrub = verify_lines(log)[1].split(" ", 1)
     assert digest == "sha256:abc" and "u1" in scrub.split(":")
     assert not list((tmp_path / "scratch/u1").glob("verify-*"))  # the work directory is removed
