@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Release test of MPICH: ranks of the image's MPICH exchange data, within the container and
+across two nodes.
+
+1. An in-container ring: `mpiexec -n 4` of the image's MPICH, GPAW's `world` as the MPI
+   binding (the image has no mpi4py). Each rank passes its rank around the ring and must see
+   every rank once, the sum of the ranks, and the same sum from an allreduce.
+2. The same ring with one rank on each of two nodes, over the fabric. A host-side step of the
+   launcher runs it first (the container's MPI cannot start ranks on another node) and
+   writes `status` (the exit status) and `log` into the directory VERIFY_MPI_STEP names; this
+   test reports that result. A missing or failed step is a failure, never a skip.
+
+`mpich --ring --ranks N` is the payload of both: every rank runs it, and rank 0 prints
+`ring ok: N ranks`. Prints one PASS or FAIL line per check. Environment: VERIFY_MPI_STEP.
+"""
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+RANKS = 4  # in-container ring
+STEP_RANKS = 2  # one per node: the launchers' step
+
+
+def ring(ranks):
+    """The payload: every rank sees every rank once. Raises on a wrong result."""
+    os.environ.setdefault("GPAW_MPI_BACKEND", "cgpaw")  # under any MPI launcher
+    import numpy as np
+
+    from gpaw.mpi import world
+
+    expected = ranks * (ranks - 1) // 2
+    if world.size != ranks:
+        raise RuntimeError(f"MPI_COMM_WORLD has {world.size} ranks, not {ranks}")
+    send, received, seen = np.array([float(world.rank)]), np.zeros(1), 0.0
+    for _ in range(ranks):
+        world.sendreceive(send, (world.rank + 1) % ranks, received, (world.rank - 1) % ranks)
+        seen += received[0]
+        send[:] = received
+    total = world.sum_scalar(float(world.rank))
+    if seen != expected or total != expected:
+        raise RuntimeError(f"rank {world.rank}: ring sum {seen}, allreduce {total}, "
+                           f"expected {expected}")
+    if world.rank == 0:
+        print(f"ring ok: {ranks} ranks")
+
+
+def last_lines(text, count=3):
+    return " | ".join(text.strip().splitlines()[-count:])[:300]
+
+
+def report(name, ok, detail):
+    print(f"{'PASS' if ok else 'FAIL'} {name}" + ("" if ok else f": {detail}"))
+    return ok
+
+
+def main():
+    # -bootstrap fork: inside a Slurm allocation Hydra would otherwise look for a host srun.
+    run = subprocess.run(["mpiexec", "-bootstrap", "fork", "-n", str(RANKS), sys.executable,
+                          __file__, "--ring", "--ranks", str(RANKS)],
+                         capture_output=True, text=True)
+    ok = [report(f"in-container ring of {RANKS} ranks",
+                 run.returncode == 0 and f"ring ok: {RANKS} ranks" in run.stdout,
+                 f"exit status {run.returncode}: {last_lines(run.stdout + run.stderr)}")]
+
+    step = os.environ.get("VERIFY_MPI_STEP", "")
+    name = f"2-node ring of {STEP_RANKS} ranks"
+    try:
+        status = int((Path(step) / "status").read_text())
+        log = (Path(step) / "log").read_text()
+    except (OSError, ValueError):
+        ok.append(report(name, False, f"no result of the launcher's step in {step!r}"))
+    else:
+        ok.append(report(name, status == 0 and f"ring ok: {STEP_RANKS} ranks" in log,
+                         f"exit status {status}: {last_lines(log)}"))
+    return 0 if all(ok) else 1
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ring", action="store_true")
+    parser.add_argument("--ranks", type=int)
+    args = parser.parse_args()
+    if args.ring:
+        ring(args.ranks)
+    else:
+        sys.exit(main())

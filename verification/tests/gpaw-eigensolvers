@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Release test of the dense eigensolvers of GPAW's LCAO mode: ScaLAPACK and ELPA.
+
+Bulk Al (periodic, 2x2x2 k-points) with two SCF iterations on 4 MPI ranks (2 k-point groups of
+2 ranks, a ScaLAPACK grid in each), once diagonalized with ScaLAPACK and once with ELPA. Same
+start and same iteration count (ELPA is a feature of the legacy implementation, which the test
+selects), so the two total energies differ only by the eigensolver; they
+must agree to 1e-10 eV. A preflight fails (it never skips) when GPAW is not compiled with both
+libraries. Prints one PASS or FAIL line per check. Without arguments it starts itself under
+`mpiexec -n 4`; each rank then runs it with --worker.
+"""
+import os
+import subprocess
+import sys
+
+TOLERANCE = 1e-10  # eV
+RANKS = 4
+
+
+def preflight():
+    """The failed checks, as messages."""
+    from gpaw.utilities import compiled_with_sl
+    from gpaw.utilities.elpa import LibElpa
+    return [f"GPAW is not compiled with {name}"
+            for name, compiled in (("ScaLAPACK", compiled_with_sl()),
+                                   ("ELPA", LibElpa.have_elpa())) if not compiled]
+
+
+def worker():
+    from ase.build import bulk
+
+    from gpaw import GPAW
+    from gpaw.mpi import world
+
+    energies = {}
+    for name, use_elpa in (("scalapack", False), ("elpa", True)):
+        atoms = bulk("Al")
+        atoms.calc = GPAW(mode="lcao", basis="sz(dzp)", kpts=[2, 2, 2], txt=None,
+                          parallel=dict(sl_auto=True, use_elpa=use_elpa, band=1, kpt=2),
+                          convergence={"maximum iterations": 2}, legacy_gpaw=True)
+        energies[name] = atoms.get_potential_energy()
+    difference = abs(energies["elpa"] - energies["scalapack"])
+    if world.rank == 0:
+        print(f"E(scalapack) = {energies['scalapack']:.12f} eV, "
+              f"E(elpa) = {energies['elpa']:.12f} eV")
+        print(f"{'PASS' if difference < TOLERANCE else 'FAIL'} "
+              f"elpa and scalapack total energies agree to {TOLERANCE} eV "
+              f"(difference {difference:.3e})")
+    return 0 if difference < TOLERANCE else 1
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--worker"]:
+        sys.exit(worker())
+    failed = preflight()
+    for message in failed:
+        print(f"FAIL preflight: {message}")
+    # The mpiexec of the image's MPICH, started in this container: -bootstrap fork, because
+    # inside a Slurm allocation Hydra would otherwise look for a host srun.
+    command = ["mpiexec", "-bootstrap", "fork", "-n", str(RANKS), sys.executable, __file__,
+               "--worker"]
+    env = {**os.environ, "GPAW_MPI_BACKEND": "cgpaw"}
+    sys.exit(1 if failed else subprocess.call(command, env=env))

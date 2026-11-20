@@ -1,6 +1,7 @@
 #!/bin/bash
-# Release verification, CPU part, on ONE Perlmutter CPU node: no GPU is requested and the
-# container starts without --gpu. Runs verification/verify.py inside the image.
+# Release verification, CPU part, on TWO Perlmutter CPU nodes: no GPU is requested and the
+# container starts without --gpu. First the 2-node MPICH step (one rank per node, over the
+# fabric), then verification/verify.py inside the image on one node.
 #
 # Usage (env.sh sourced: its sbatch function adds the account):
 #   sbatch ~/idrobolab-env/verification/clusters/perlmutter-cpu.sbatch <image> [--only <component>]
@@ -10,12 +11,14 @@
 # a value containing "/" is used verbatim. Pull it on a login node first:
 #   TAG=<VERSION>-rc ~/idrobolab-env/perlmutter/helpers/update-image.sh <image>
 # Records and logs are written into this clone, under verification/<image>/releases/<N>/.
+# The time limit below is a guess for GPAW's full suite (tests/gpaw, the longest component):
+# override it at submission, e.g.  sbatch --time=12:00:00 ... perlmutter-cpu.sbatch <image>
 #
 #SBATCH --job-name=verify_cpu
 #SBATCH --account=<project>   # <- replace, or pass sbatch -A "$NERSC_PROJECT"; no _g needed (jobs/README.md)
 #SBATCH --constraint=cpu
 #SBATCH --qos=regular
-#SBATCH --nodes=1
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=256
 #SBATCH --mem=440G
@@ -68,11 +71,26 @@ fi
 export VERIFY_IMAGE_DIGEST
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH:$(real "$SCRATCH"):${CFS:-}:${SLURM_JOB_ACCOUNT:-}:${NERSC_PROJECT:-}:$REPO:$WORK"
 
+# The 2-node MPICH step: one rank on each node, with the host Cray MPICH swapped in by --mpi
+# (as in perlmutter/jobs/gpaw_cpu_multinode.sbatch). tests/mpich reports its exit status and
+# log from VERIFY_MPI_STEP. A failure is recorded there, and does not stop the job.
+STEP=$WORK/mpi-step
+mkdir -p "$STEP"
+STEP_STATUS=0
+srun --nodes=2 --ntasks=2 --ntasks-per-node=1 --cpu-bind=none \
+    podman-hpc run --rm $GROUP_FLAGS --mpi --network=no_vni -v "$REPO:$REPO" --workdir "$REPO" \
+        "$IMAGE" python verification/tests/mpich --ring --ranks 2 > "$STEP/log" 2>&1 \
+    || STEP_STATUS=$?
+echo "$STEP_STATUS" > "$STEP/status"
+echo "2-node MPICH step: exit status $STEP_STATUS"
+cat "$STEP/log"
+export VERIFY_MPI_STEP=$STEP
+
 # OMP_NUM_THREADS and OPENBLAS_NUM_THREADS stay at the image's 1: with more, GPAW warns in
 # PW mode and abTEM's suite turns the warning into an error. HDF5 file locking fails on CFS
 # and $HOME from a compute node (errno 524).
-time srun --ntasks=1 --cpu-bind=none \
+time srun --nodes=1 --ntasks=1 --cpu-bind=none \
     podman-hpc run --rm $GROUP_FLAGS -v "$REPO:$REPO" -v "$WORK:$WORK" --workdir "$REPO" \
         -e VERIFY_CLUSTER -e VERIFY_IMAGE_DIGEST -e VERIFY_JOB_ID -e VERIFY_SCRUB -e VERIFY_WORK \
-        -e HDF5_USE_FILE_LOCKING=FALSE \
+        -e VERIFY_MPI_STEP -e HDF5_USE_FILE_LOCKING=FALSE \
         "$IMAGE" python verification/verify.py "$NAME" --part cpu "$@"

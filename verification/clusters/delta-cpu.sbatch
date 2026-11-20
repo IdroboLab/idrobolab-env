@@ -1,6 +1,7 @@
 #!/bin/bash
-# Release verification, CPU part, on ONE Delta CPU node: no GPU is requested and Apptainer
-# runs without --nv. Runs verification/verify.py inside the image.
+# Release verification, CPU part, on TWO Delta CPU nodes: no GPU is requested and Apptainer
+# runs without --nv. First the 2-node MPICH step (one rank per node, over the fabric), then
+# verification/verify.py inside the image on the first node.
 #
 # Usage (env.sh sourced: its sbatch function adds the account):
 #   sbatch ~/idrobolab-env/verification/clusters/delta-cpu.sbatch <image> [--only <component>]
@@ -8,11 +9,13 @@
 # SIF defaults to $PROJECTS_BASE/software/containers/<image>.sif; build it from the release
 # candidate first:  TAG=<VERSION>-rc SIF=$PROJECTS_BASE/software/containers/<image>.sif ~/idrobolab-env/delta/get-image.sh
 # Records and logs are written into this clone, under verification/<image>/releases/<N>/.
+# The time limit below is a guess for GPAW's full suite (tests/gpaw, the longest component):
+# override it at submission, e.g.  sbatch --time=12:00:00 ... delta-cpu.sbatch <image>
 #
 #SBATCH --job-name=verify_cpu
 #SBATCH --account=<project>-delta-cpu   # <- replace; see `accounts` command
 #SBATCH --partition=cpu
-#SBATCH --nodes=1
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=240G
@@ -55,6 +58,20 @@ export VERIFY_IMAGE_DIGEST=sha256:${VERIFY_IMAGE_DIGEST%% *}
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH_BASE/$USER:$(real "$SCRATCH_BASE/$USER"):${PROJECTS_BASE:-}:${SLURM_JOB_ACCOUNT:-}:$REPO:$WORK"
 
 echo "SIF=$SIF  repo=$REPO  binds=$BINDS"
+# The 2-node MPICH step: one rank on each node, the image's own MPICH under srun --mpi=pmi2
+# (delta/jobs/README.md, "How MPI is launched", item 3). tests/mpich reports its exit status
+# and log from VERIFY_MPI_STEP. A failure is recorded there, and does not stop the job.
+STEP=$WORK/mpi-step
+mkdir -p "$STEP"
+STEP_STATUS=0
+srun --mpi=pmi2 --nodes=2 --ntasks=2 --ntasks-per-node=1 \
+    apptainer exec --bind "$BINDS" --pwd "$REPO" "$SIF" \
+    python verification/tests/mpich --ring --ranks 2 > "$STEP/log" 2>&1 || STEP_STATUS=$?
+echo "$STEP_STATUS" > "$STEP/status"
+echo "2-node MPICH step: exit status $STEP_STATUS"
+cat "$STEP/log"
+export VERIFY_MPI_STEP=$STEP
+
 # --writable-tmpfs: run_pytest.py installs test dependencies into the image's /opt/venv,
 # which a .sif mounts read-only; the writable layer is discarded at exit.
 time apptainer exec --writable-tmpfs --bind "$BINDS" --pwd "$REPO" "$SIF" \

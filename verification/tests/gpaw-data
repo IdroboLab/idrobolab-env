@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""Release test of gpaw-data: GPAW reads its PAW setups from the gpaw-data wheel in /opt/venv.
+
+Per element, the setup file GPAW opens lies under gpaw_data.datapath() and holds Z = core +
+valence electrons. A preflight fails (it never skips) when gpaw_data is not imported from
+/opt/venv. Prints one PASS or FAIL line per check.
+"""
+import os
+import sys
+
+VENV = "/opt/venv"
+ELEMENTS = ("H", "B", "C", "N", "O", "Si", "Fe")
+
+
+def main():
+    os.environ.pop("GPAW_SETUP_PATH", None)  # a host setting would put another directory first
+    import gpaw_data
+    datapath = os.path.realpath(gpaw_data.datapath())
+    if not datapath.startswith(VENV + "/"):
+        print(f"FAIL preflight: gpaw-data is at {datapath}, not under {VENV}")
+        return 1
+    from gpaw.setup_data import SetupData
+    failed = False
+    for symbol in ELEMENTS:
+        data = SetupData(symbol, "PBE", "paw")
+        ok = os.path.realpath(data.filename).startswith(datapath + "/") \
+            and data.Nc + data.Nv == data.Z
+        failed |= not ok
+        print(f"{'PASS' if ok else 'FAIL'} {symbol}: setup of gpaw-data, core + valence = Z")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
