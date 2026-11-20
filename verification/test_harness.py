@@ -1022,12 +1022,12 @@ def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest
     install, precalc, serial, parallel = calls
     assert "pytest>=7,<9.1" in install[0] and "pytest-xdist" in install[0]
     assert precalc[0][precalc[0].index("-m", 3) + 1] == "generate_gpw_files"  # before the suite
-    assert precalc[0][precalc[0].index("-n") + 1] == "16" and precalc[1] == "/opt/src/gpaw"
+    assert precalc[0][precalc[0].index("-n") + 1] == "32" and precalc[1] == "/opt/src/gpaw"
     assert f"cache_dir={tmp_path}/cache" in precalc[0]  # the cache the suites read the files from
     assert f"--junitxml={tmp_path}/precalc.xml" in precalc[0]
     assert serial[1] == "/opt/src/gpaw"
     assert serial[0][1:3] == ["-m", "pytest"]
-    assert serial[0][serial[0].index("-n") + 1] == "16"
+    assert serial[0][serial[0].index("-n") + 1] == "32"
     assert serial[0][serial[0].index("-m", 3) + 1] == "not gpu"
     assert f"cache_dir={tmp_path}/cache" in serial[0] and "-rsfE" in serial[0]
     assert f"--junitxml={tmp_path}/serial.xml" in serial[0]
