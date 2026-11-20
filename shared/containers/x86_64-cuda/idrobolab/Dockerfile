@@ -195,10 +195,12 @@ RUN set -eux; cd /tmp; \
     cp elpa-${ELPA_VERSION}.tar.gz ${SOURCES_DIR}/; \
     tar xzf elpa-${ELPA_VERSION}.tar.gz; cd elpa-${ELPA_VERSION}; \
     mkdir build && cd build; \
+    # No -funsafe-math-optimizations (or any fast-math flag): with it ELPA returns
+    # eigenvectors that are not orthonormal.
     ../configure \
         CC=mpicc CXX=mpicxx FC=mpifort \
-        CFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -funsafe-math-optimizations -fno-math-errno" \
-        FCFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -funsafe-math-optimizations -fno-math-errno" \
+        CFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -fno-math-errno" \
+        FCFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -fno-math-errno" \
         SCALAPACK_LDFLAGS="-L${INSTALL_DIR}/scalapack/lib -Wl,-rpath,${INSTALL_DIR}/scalapack/lib -lscalapack -lopenblas" \
         SCALAPACK_FCFLAGS="-L${INSTALL_DIR}/scalapack/lib" \
         --prefix=${INSTALL_DIR}/elpa-${ELPA_VERSION} \
