@@ -581,10 +581,38 @@ def test_gate_fails_a_requirement_without_a_row(suite):
     gate_fails(suite.gate(), "beta is in the requirements file and has no row")
 
 
-def test_gate_accepts_a_covered_by_row_for_a_requirement(suite):
+def naming(*libraries):
+    """A covering test whose preflight names `libraries`."""
+    return f"#!/usr/bin/env python3\nPREFLIGHT_LIBRARIES = {libraries!r}\n"
+
+
+def test_gate_accepts_a_covered_by_row_for_a_library_the_preflight_names(suite):
     suite.components(ALPHA, ("beta", "covered-by:alpha", "cpu", "c1"))
+    suite.scripts(alpha=naming("gamma", "beta"))
     suite.release()
     assert suite.gate().returncode == 0
+
+
+@pytest.mark.parametrize("body", [
+    naming("gamma"),                                    # names other libraries
+    naming(),                                           # names none
+    "#!/usr/bin/env python3\nprint('beta')\n",          # declares nothing
+    "#!/usr/bin/env python3\nPREFLIGHT_LIBRARIES = [x for x in 'beta']\n",  # not a literal
+    OK])                                                # not Python
+def test_gate_fails_a_covered_by_row_whose_library_the_preflight_does_not_name(suite, body):
+    suite.components(ALPHA, ("beta", "covered-by:alpha", "cpu", "c1"))
+    suite.scripts(alpha=body)
+    suite.release()
+    gate_fails(suite.gate(), "beta is covered-by:alpha, but tests/alpha does not name beta in "
+               "PREFLIGHT_LIBRARIES")
+
+
+def test_gate_fails_a_covered_by_row_whose_covering_test_file_does_not_exist(suite):
+    suite.components(("alpha", "ghost", "cpu", "c1"), ("beta", "covered-by:alpha", "cpu", "c1"))
+    suite.release()
+    res = suite.gate()
+    gate_fails(res, "alpha: test file tests/ghost does not exist")
+    assert "beta is covered-by:alpha, but tests/ghost does not name beta" in res.stdout
 
 
 def test_gate_fails_a_test_file_that_does_not_exist(suite):
@@ -652,6 +680,7 @@ def test_gate_fails_a_row_without_clusters_or_parts(suite, row):
 def test_gate_fails_covered_by_a_component_without_a_test_of_its_own(suite, target):
     suite.components(ALPHA, ("beta", f"covered-by:{target}", "cpu", "c1"),
                      ("gamma", "covered-by:alpha", "cpu", "c1"))
+    suite.scripts(alpha=naming("gamma"))
     suite.release()
     gate_fails(suite.gate(), f"covered-by:{target}, which has no row with a test of its own")
 
