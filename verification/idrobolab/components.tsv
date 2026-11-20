@@ -1,2 +1,12 @@
 component	origin	test	parts	clusters
 abtem	source	abtem	cpu,gpu	perlmutter,delta
+gpaw	source	gpaw	cpu,gpu	perlmutter,delta
+gpaw-eigensolvers	source	gpaw-eigensolvers	cpu	perlmutter,delta
+gpaw-weaver	source	gpaw-weaver	cpu	perlmutter,delta
+gpaw-data	wheel	gpaw-data	cpu	perlmutter,delta
+mpich	system-lib	mpich	cpu	perlmutter,delta
+fftw	system-lib	covered-by:gpaw	cpu,gpu	perlmutter,delta
+scalapack	system-lib	covered-by:gpaw	cpu,gpu	perlmutter,delta
+libxc	system-lib	covered-by:gpaw	cpu,gpu	perlmutter,delta
+libvdwxc	system-lib	covered-by:gpaw	cpu,gpu	perlmutter,delta
+elpa	system-lib	covered-by:gpaw	cpu,gpu	perlmutter,delta
