@@ -1361,7 +1361,11 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
                           'exit "${STUB_STEP_RC:-0}" ;; esac; '
                           'echo "$VERIFY_IMAGE_DIGEST $VERIFY_SCRUB" >> "$STUB_LOG"; '
                           'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"',
-            "apptainer": 'echo "$*" >> "$STUB_LOG"; '
+            # As Slurm: the shrink writes a resize script into the working directory.
+            "scontrol": 'echo "scontrol $*" >> "$STUB_LOG"; [ "${STUB_SHRINK_RC:-0}" = 0 ] || '
+                        'exit "$STUB_SHRINK_RC"; echo "export SLURM_JOB_NODELIST=n1" '
+                        '> "slurm_job_${SLURM_JOB_ID}_resize.sh"',
+            "apptainer": 'echo "$*" >> "$STUB_LOG"; [ "$1" != overlay ] || exit 0; '
                          'case "$*" in *tests/mpich*) [ -z "$STUB_STEP_HANG" ] || exec sleep 30; '
                          'exit "${STUB_STEP_RC:-0}" ;; esac; '
                          'echo "$VERIFY_SCRUB:$NUMBA_CACHE_DIR" >> "$STUB_LOG"; '
@@ -1451,7 +1455,9 @@ def test_delta_launcher_uses_the_personal_scratch_area_and_no_scratch_variable(t
     assert res.returncode == 0, res.stderr
     call, scrub = verify_lines(log)[:2]
     assert ("--nv " in call) == (part == "gpu")
-    assert "--writable-tmpfs " in call  # run_pytest.py installs test dependencies into /opt/venv
+    work = f"{tmp_path}/scratch/u1/verify-5"
+    assert f"overlay create --size 2048 {work}/overlay.img" in log  # not the 64 MiB tmpfs
+    assert f"--overlay {work}/overlay.img " in call and "--writable-tmpfs" not in call
     assert f"{tmp_path}/scratch/u1/verify-5/numba" in scrub.split(":")  # NUMBA_CACHE_DIR
     assert f"python verification/verify.py {IMAGE} --part {part}" in call
     assert f"{tmp_path}/scratch/u1" in scrub.split(":")
@@ -1506,6 +1512,25 @@ def test_cpu_launchers_end_a_hanging_step_with_status_124_and_still_run_verify_p
     assert res.returncode == 0, res.stderr
     assert "2-node MPICH step: exit status 124" in res.stdout
     assert verify_lines(log)[2] == "step=124"
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
+def test_cpu_launchers_release_the_second_node_after_the_step(tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch")
+    assert res.returncode == 0, res.stderr
+    shrink = log.index("scontrol update JobId=5 NumNodes=1")
+    assert log.index(step_lines(log)[-1]) < shrink < log.index(verify_lines(log)[0])
+    assert "released the second node: running on n1" in res.stdout  # the resize script is read
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
+def test_cpu_launchers_run_verify_py_when_the_shrink_is_refused(tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch", STUB_SHRINK_RC=1)
+    assert res.returncode == 0, res.stderr
+    assert "could not shrink the job" in res.stderr
+    assert verify_lines(log)[2] == "step=0"
 
 
 @pytest.mark.parametrize("name", ["perlmutter-gpu.sbatch", "delta-gpu.sbatch"])

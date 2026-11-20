@@ -88,6 +88,16 @@ echo "2-node MPICH step: exit status $STEP_STATUS"
 cat "$STEP/log"
 export VERIFY_MPI_STEP=$STEP
 
+# The rest runs on the first node only: hand the second back, so it is not billed for the
+# hours verify.py takes. scontrol writes a script that resets the SLURM_* variables to the
+# smaller job, into the working directory. A refused shrink only costs the second node.
+if (cd "$WORK" && scontrol update JobId="$SLURM_JOB_ID" NumNodes=1); then
+    . "$WORK/slurm_job_${SLURM_JOB_ID}_resize.sh"
+    echo "released the second node: running on $SLURM_JOB_NODELIST"
+else
+    echo "WARNING: scontrol could not shrink the job; the second node stays allocated" >&2
+fi
+
 # OMP_NUM_THREADS and OPENBLAS_NUM_THREADS stay at the image's 1: with more, GPAW warns in
 # PW mode and abTEM's suite turns the warning into an error. HDF5 file locking fails on CFS
 # and $HOME from a compute node (errno 524).
