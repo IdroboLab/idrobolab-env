@@ -82,11 +82,8 @@ satisfies the gate. The image's manifest is read from `/opt/<image>/manifest.jso
 install their dependencies into `/opt/venv`, is a 2 GB overlay image in the work directory:
 `--writable-tmpfs` gives only 64 MiB there, too little for abTEM's and GPAW's installs.
 
-The CPU launchers allocate two nodes. After the step below they shrink the job to its first
-node (`scontrol update NumNodes=1`), so the second is not billed while `verify.py` runs;
-Perlmutter allows that, Delta refuses it ("Job is no longer pending execution"), and there the
-second node stays allocated to the end. Before `verify.py`, which runs on one node as for the other parts, they run the 2-node MPICH
-step: a ring of one rank per node over the fabric (`tests/mpich --ring --ranks 2`, in the
+The CPU launchers allocate two nodes. Before `verify.py`, which runs on one node as for the
+other parts, they run the 2-node MPICH step: a ring of one rank per node over the fabric (`tests/mpich --ring --ranks 2`, in the
 container, started by the host's `srun`). On Perlmutter that is `podman-hpc run --mpi`, which
 swaps the host's Cray MPICH in for the image's (ABI-compatible `libmpi.so.12`) as production
 jobs launch, so it tests the image's MPI-ABI binaries over the fabric with the host MPICH; on
@@ -95,7 +92,11 @@ MPICH. The step writes its exit status and log into `$WORK/mpi-step`, `VERIFY_MP
 that directory for `tests/mpich`, and a failed step is recorded there and does not stop the
 job: `tests/mpich` then fails the component. A step that hangs ends after `MPI_STEP_TIMEOUT`
 seconds (default 600) with status 124. The step's output also goes to the job's output file,
-because `$WORK` is removed at the end. The GPU launchers stay on one node.
+because `$WORK` is removed at the end. After the step the Perlmutter launcher shrinks the job
+to its first node (`scontrol update NumNodes=1`), so the second is not billed while
+`verify.py` runs. Delta refuses that for a running job ("Job is no longer pending
+execution"), so there the second node stays allocated to the end. The GPU launchers stay on
+one node.
 
 The time limit of the CPU launchers (4 h) is a guess: GPAW's full suite (`tests/gpaw`) is the
 longest component. Override it at submission: `sbatch --time=12:00:00 <launcher> <image>`.
