@@ -1582,7 +1582,7 @@ def test_cpu_launchers_release_the_second_node_after_the_step(tmp_path, name):
     assert log.index(step_lines(log)[-1]) < shrink < log.index(verify_lines(log)[0])
     assert "released the second node: running on n1" in res.stdout  # the resize script is read
     text = (VERIFICATION / "clusters" / name).read_text()
-    assert "#SBATCH --ntasks-per-node" not in text  # Delta refuses the shrink with it
+    assert "#SBATCH --ntasks-per-node" not in text  # with it, Delta refuses the shrink
 
 
 @pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
