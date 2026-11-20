@@ -20,19 +20,15 @@ import traceback
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import _common
+
 SRC = "/opt/src/gpaw-weaver"
 RUN_PYTEST = Path(__file__).resolve().parents[2] / "shared" / "testing" / "run_pytest.py"
 
 
 def preflight():
     """The failed checks, as messages."""
-    try:
-        import gpaw_weaver
-    except ImportError as e:
-        return [f"gpaw_weaver does not import: {e}"]
-    if not os.path.realpath(gpaw_weaver.__file__).startswith(SRC + "/"):
-        return [f"gpaw_weaver is imported from {gpaw_weaver.__file__}, not from {SRC}"]
-    return []
+    return _common.imported_from("gpaw_weaver", SRC)
 
 
 def real_checks(legacy_gpaw, work):
@@ -92,7 +88,5 @@ def run(work, junit):
 
 
 if __name__ == "__main__":
-    failed = preflight()
-    for message in failed:
-        print(f"FAIL preflight: {message}")
-    sys.exit(1 if failed else run(Path(os.environ["VERIFY_WORK"]), os.environ["VERIFY_JUNIT"]))
+    _common.finish(preflight(), lambda: run(Path(os.environ["VERIFY_WORK"]),
+                                            os.environ["VERIFY_JUNIT"]))

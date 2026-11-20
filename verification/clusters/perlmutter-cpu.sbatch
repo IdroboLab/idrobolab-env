@@ -73,11 +73,13 @@ export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH:$(real "$SCRATCH"):${C
 
 # The 2-node MPICH step: one rank on each node, with the host Cray MPICH swapped in by --mpi
 # (as in perlmutter/jobs/gpaw_cpu_multinode.sbatch). tests/mpich reports its exit status and
-# log from VERIFY_MPI_STEP. A failure is recorded there, and does not stop the job.
+# log from VERIFY_MPI_STEP. A failure is recorded there, and does not stop the job; a hang in
+# the fabric or in PMI ends after MPI_STEP_TIMEOUT seconds (10 minutes) with status 124.
 STEP=$WORK/mpi-step
 mkdir -p "$STEP"
 STEP_STATUS=0
-srun --nodes=2 --ntasks=2 --ntasks-per-node=1 --cpu-bind=none \
+timeout --kill-after=30 "${MPI_STEP_TIMEOUT:-600}" \
+    srun --nodes=2 --ntasks=2 --ntasks-per-node=1 --cpu-bind=none \
     podman-hpc run --rm $GROUP_FLAGS --mpi --network=no_vni -v "$REPO:$REPO" --workdir "$REPO" \
         "$IMAGE" python verification/tests/mpich --ring --ranks 2 > "$STEP/log" 2>&1 \
     || STEP_STATUS=$?

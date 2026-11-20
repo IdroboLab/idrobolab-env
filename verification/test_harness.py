@@ -365,6 +365,7 @@ def test_release_aborts_on_a_registry_error_that_is_not_manifest_unknown(recipe,
 # ---- the harness verify.py and the gate check_release.py ----
 
 VERIFICATION = ROOT / "verification"
+sys.path.insert(0, str(VERIFICATION / "tests"))  # _common, for the scripts loaded as modules
 COMPONENTS_HEADER = "component\torigin\ttest\tparts\tclusters\n"
 KNOWN_HEADER = "component\ttest id\tcluster\tpart\treason\treference\n"
 # Fake components: alpha runs in both parts of both clusters, beta in the cpu part of c1.
@@ -875,11 +876,17 @@ def test_verify_generates_a_table_of_components_by_cluster_and_part(suite):
 
 # the abTEM component test
 
+def install_test(suite, name):
+    """The real tests/<name> in the fake suite, with the _common.py it imports."""
+    shutil.copy(VERIFICATION / "tests" / name, suite.vdir / "tests" / name)
+    shutil.copy(VERIFICATION / "tests/_common.py", suite.vdir / "tests/_common.py")
+    (suite.vdir / "tests" / name).chmod(0o755)
+
+
 @pytest.fixture
 def abtem_suite(suite, tmp_path):
     """The real tests/abtem, with fake `abtem` and `cupy` modules on PYTHONPATH."""
-    shutil.copy(VERIFICATION / "tests" / ABTEM, suite.vdir / "tests" / ABTEM)
-    (suite.vdir / "tests" / ABTEM).chmod(0o755)
+    install_test(suite, ABTEM)
     suite.components((ABTEM, ABTEM, "cpu,gpu", "c1"))
     fake = tmp_path / "fake"
     (fake / "abtem").mkdir(parents=True)
@@ -996,10 +1003,12 @@ def test_the_gpaw_preflight_names_every_library_that_covered_by_gpaw_rows_stand_
 class Calls:
     """Stand-ins for subprocess.call and check_call that record the command and directory."""
 
-    def __init__(self, monkeypatch, module):
+    def __init__(self, monkeypatch, module, failing=None):
+        """`failing`: a word of the command whose call returns exit status 1."""
         self.calls = []
         monkeypatch.setattr(module.subprocess, "call",
-                            lambda cmd, **kw: self.calls.append((cmd, kw.get("cwd"))) or 0)
+                            lambda cmd, **kw: self.calls.append((cmd, kw.get("cwd")))
+                            or int(failing in cmd))
         monkeypatch.setattr(module.subprocess, "check_call",
                             lambda cmd, **kw: self.calls.append((cmd, None)) or 0)
 
@@ -1009,8 +1018,12 @@ def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest
     gpaw_test = load_script("gpaw")
     calls = Calls(monkeypatch, gpaw_test).calls
     assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 0
-    install, serial, parallel = calls
+    install, precalc, serial, parallel = calls
     assert "pytest>=7,<9.1" in install[0] and "pytest-xdist" in install[0]
+    assert precalc[0][precalc[0].index("-m", 3) + 1] == "generate_gpw_files"  # before the suite
+    assert precalc[0][precalc[0].index("-n") + 1] == "16" and precalc[1] == "/opt/src/gpaw"
+    assert f"cache_dir={tmp_path}/cache" in precalc[0]  # the cache the suites read the files from
+    assert f"--junitxml={tmp_path}/precalc.xml" in precalc[0]
     assert serial[1] == "/opt/src/gpaw"
     assert serial[0][1:3] == ["-m", "pytest"]
     assert serial[0][serial[0].index("-n") + 1] == "16"
@@ -1024,6 +1037,20 @@ def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest
     assert f'{tmp_path}/np4-rank"$PMI_RANK".xml' in command[command.index("-c") + 1]
     assert command[command.index("-m") + 1] == "not gpu"
     assert "no:cacheprovider" not in str(calls)  # GPAW's conftest needs the cache plugin
+
+
+def test_gpaw_cpu_part_merges_the_precalc_cases_and_fails_when_the_precalc_fails(
+        monkeypatch, tmp_path):
+    gpaw_test = load_script("gpaw")
+    Calls(monkeypatch, gpaw_test, failing="generate_gpw_files")
+    for name in ("precalc", "serial", "np4-rank0"):
+        (tmp_path / f"{name}.xml").write_text(
+            f'<testsuites><testsuite><testcase classname="t" name="{name}"/></testsuite>'
+            "</testsuites>")
+    assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 1
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    passed, _, _ = verify.parse_junit(tmp_path / "junit.xml")
+    assert passed == ["precalc.t::precalc", "serial.t::serial", "np4.t::np4-rank0"]
 
 
 def test_gpaw_gpu_part_runs_the_gpu_marker_once_and_serial(monkeypatch, tmp_path):
@@ -1061,20 +1088,36 @@ def test_gpaw_eigensolvers_preflight_fails_for_each_library_that_is_not_compiled
         monkeypatch):
     fake_gpaw(monkeypatch, libraries=())
     assert load_script("gpaw-eigensolvers").preflight() == [
-        "GPAW is not compiled with ScaLAPACK", "GPAW is not compiled with ELPA"]
+        "GPAW is not compiled with scalapack", "GPAW is not compiled with elpa"]
     fake_gpaw(monkeypatch, libraries=("scalapack", "elpa"))
     assert load_script("gpaw-eigensolvers").preflight() == []
 
 
+def test_gpaw_eigensolvers_preflight_fails_for_a_gpaw_outside_opt_src(monkeypatch):
+    fake_gpaw(monkeypatch, file="/srv/elsewhere/gpaw/__init__.py")
+    assert load_script("gpaw-eigensolvers").preflight() == [
+        "gpaw is imported from /srv/elsewhere/gpaw/__init__.py, not from /opt/src/gpaw"]
+
+
+@pytest.mark.parametrize("ksl, solver", [
+    (types.SimpleNamespace(libelpa=None), "scalapack"),
+    (types.SimpleNamespace(libelpa=object()), "elpa"),
+    (types.SimpleNamespace(), "none")])
+def test_gpaw_eigensolvers_reads_the_solver_from_the_ks_layout(ksl, solver):
+    calc = types.SimpleNamespace(wfs=types.SimpleNamespace(ksl=ksl))
+    assert load_script("gpaw-eigensolvers").solver_of(calc) == solver
+
+
 def test_gpaw_eigensolvers_stops_at_a_failed_preflight_without_starting_mpiexec(
         suite, tmp_path):
-    shutil.copy(VERIFICATION / "tests/gpaw-eigensolvers", suite.vdir / "tests")
-    (suite.vdir / "tests/gpaw-eigensolvers").chmod(0o755)
+    install_test(suite, "gpaw-eigensolvers")
     suite.components(("gpaw-eigensolvers", "gpaw-eigensolvers", "cpu", "c1"))
     fake = tmp_path / "fake"
     (fake / "gpaw/utilities").mkdir(parents=True)
     (fake / "gpaw/__init__.py").write_text("")
-    (fake / "gpaw/utilities/__init__.py").write_text("compiled_with_sl = lambda: True\n")
+    (fake / "gpaw/fftw.py").write_text("have_fftw = lambda: True\n")
+    (fake / "gpaw/utilities/__init__.py").write_text(
+        "compiled_with_sl = lambda: True\ncompiled_with_libvdwxc = lambda: True\n")
     (fake / "gpaw/utilities/elpa.py").write_text(
         "class LibElpa:\n    have_elpa = staticmethod(lambda: False)\n")
     bin_dir = tmp_path / "bin"
@@ -1084,8 +1127,8 @@ def test_gpaw_eigensolvers_stops_at_a_failed_preflight_without_starting_mpiexec(
     res = suite.verify("c1", "cpu", PYTHONPATH=fake, STARTED=tmp_path / "started",
                        PATH=f"{bin_dir}:{os.environ['PATH']}")
     entry = suite.record("c1", "cpu")["components"]["gpaw-eigensolvers"]
-    assert res.returncode != 0 and entry["unexpected"] == [
-        "preflight: GPAW is not compiled with ELPA"]
+    assert res.returncode != 0
+    assert "preflight: GPAW is not compiled with elpa" in entry["unexpected"]
     assert not (tmp_path / "started").exists()
 
 
@@ -1194,8 +1237,7 @@ def test_gpaw_weaver_preflight_fails_for_a_copy_outside_opt_src(monkeypatch):
 def mpich_suite(suite, tmp_path):
     """tests/mpich in the fake suite, with a stub mpiexec on PATH and a launcher step result
     in tmp_path/step (status 0 and the line of a good ring, to be changed by the test)."""
-    shutil.copy(VERIFICATION / "tests/mpich", suite.vdir / "tests")
-    (suite.vdir / "tests/mpich").chmod(0o755)
+    install_test(suite, "mpich")
     suite.components(("mpich", "mpich", "cpu", "c1"))
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -1315,11 +1357,13 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
             "podman-hpc": 'case "$1" in images) printf "%s" "${STUB_PM_DIGEST-sha256:abc}"; '
                           '[ -z "${STUB_PM_DIGEST-x}" ] || echo; exit 0 ;; image) echo "Error: $3: '
                           'image not known" >&2; exit 125 ;; esac\necho "$*" >> "$STUB_LOG"; '
-                          'case "$*" in *tests/mpich*) exit "${STUB_STEP_RC:-0}" ;; esac; '
+                          'case "$*" in *tests/mpich*) [ -z "$STUB_STEP_HANG" ] || exec sleep 30; '
+                          'exit "${STUB_STEP_RC:-0}" ;; esac; '
                           'echo "$VERIFY_IMAGE_DIGEST $VERIFY_SCRUB" >> "$STUB_LOG"; '
                           'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"',
             "apptainer": 'echo "$*" >> "$STUB_LOG"; '
-                         'case "$*" in *tests/mpich*) exit "${STUB_STEP_RC:-0}" ;; esac; '
+                         'case "$*" in *tests/mpich*) [ -z "$STUB_STEP_HANG" ] || exec sleep 30; '
+                         'exit "${STUB_STEP_RC:-0}" ;; esac; '
                          'echo "$VERIFY_SCRUB:$NUMBA_CACHE_DIR" >> "$STUB_LOG"; '
                          'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"'}.items():
         (stubs / tool).write_text(f"#!/bin/sh\n{body}\n")
@@ -1451,6 +1495,17 @@ def test_cpu_launchers_record_a_failed_step_and_still_run_verify_py(tmp_path, na
     assert res.returncode == 0, res.stderr
     assert "2-node MPICH step: exit status 3" in res.stdout
     assert verify_lines(log)[2] == "step=3"
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
+def test_cpu_launchers_end_a_hanging_step_with_status_124_and_still_run_verify_py(
+        tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch", STUB_STEP_HANG=1,
+                            MPI_STEP_TIMEOUT=1)
+    assert res.returncode == 0, res.stderr
+    assert "2-node MPICH step: exit status 124" in res.stdout
+    assert verify_lines(log)[2] == "step=124"
 
 
 @pytest.mark.parametrize("name", ["perlmutter-gpu.sbatch", "delta-gpu.sbatch"])

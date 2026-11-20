@@ -87,11 +87,12 @@ def check_release(image, base):
         text=True).stdout)
     head_hash = recipe_hash(image, recipe)
     rows = own_components(image)
+    tests_of = {r["component"]: r["test"] for r in rows}
 
     for row in read_tsv(HERE / image / "components.tsv"):
         comp, test = row["component"], row["test"]
         if test.startswith("covered-by:"):
-            covering = {r["component"]: r["test"] for r in rows}.get(test[len("covered-by:"):])
+            covering = tests_of.get(test[len("covered-by:"):])
             if covering is None:
                 errors.append(f"{comp} is {test}, which has no row with a test of its own")
             elif normalized(comp) not in preflight_libraries(HERE / "tests" / covering):
