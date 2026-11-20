@@ -63,13 +63,17 @@ for name in ['fftw3_omp', 'fftw3_mpi', 'fftw3']:
 
 # ELPA (scalable dense eigensolver; alternative to the ScaLAPACK dense
 # diagonalisation). Headers install in a versioned subdir, so glob for it —
-# the ELPA version can bump in the Dockerfile without editing this file.
+# the ELPA version can bump in the Dockerfile without editing this file. An
+# --enable-openmp build names both the subdir and the library elpa_openmp
+# (include/elpa_openmp-<version>, libelpa_openmp.so), so the library name is
+# taken from the subdir. The Dockerfile asserts that GPAW has ELPA.
 _elpa_root = '/opt/software/elpa'
-_elpa_inc = glob.glob(os.path.join(_elpa_root, 'include', 'elpa-*'))
+_elpa_inc = glob.glob(os.path.join(_elpa_root, 'include', 'elpa*-*'))
 if _elpa_inc:
     elpa = True
-    if 'elpa' not in libraries:
-        libraries += ['elpa']
+    _elpa_name = os.path.basename(_elpa_inc[0]).rsplit('-', 1)[0]
+    if _elpa_name not in libraries:
+        libraries += [_elpa_name]
     _elpa_lib = os.path.join(_elpa_root, 'lib')
     if _elpa_lib not in library_dirs:
         library_dirs += [_elpa_lib]

@@ -188,16 +188,19 @@ RUN set -eux; cd /tmp; \
 # --- ELPA (scalable dense eigensolver; GPAW elpa=True) ----------------------
 # CPU build (AVX2 + OpenMP, against our MPICH + OpenBLAS + ScaLAPACK): a
 # better-scaling replacement for the ScaLAPACK dense diagonalisation. Headers
-# install under <prefix>/include/elpa-<version>/; the siteconfig globs for it.
+# install under <prefix>/include/elpa_openmp-<version>/ (library libelpa_openmp,
+# from --enable-openmp); the siteconfig globs for it.
 RUN set -eux; cd /tmp; \
     wget -q https://elpa.mpcdf.mpg.de/software/tarball-archive/Releases/${ELPA_VERSION}/elpa-${ELPA_VERSION}.tar.gz; \
     cp elpa-${ELPA_VERSION}.tar.gz ${SOURCES_DIR}/; \
     tar xzf elpa-${ELPA_VERSION}.tar.gz; cd elpa-${ELPA_VERSION}; \
     mkdir build && cd build; \
+    # No -funsafe-math-optimizations (or any fast-math flag): with it ELPA returns
+    # eigenvectors that are not orthonormal.
     ../configure \
         CC=mpicc CXX=mpicxx FC=mpifort \
-        CFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -funsafe-math-optimizations -fno-math-errno" \
-        FCFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -funsafe-math-optimizations -fno-math-errno" \
+        CFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -fno-math-errno" \
+        FCFLAGS="-O3 -march=x86-64-v3 -ftree-vectorize -fno-math-errno" \
         SCALAPACK_LDFLAGS="-L${INSTALL_DIR}/scalapack/lib -Wl,-rpath,${INSTALL_DIR}/scalapack/lib -lscalapack -lopenblas" \
         SCALAPACK_FCFLAGS="-L${INSTALL_DIR}/scalapack/lib" \
         --prefix=${INSTALL_DIR}/elpa-${ELPA_VERSION} \
@@ -463,6 +466,7 @@ RUN python -c "import numpy,scipy,ase,gpaw,_gpaw,pymatgen.core,phonopy,hiphive,a
 from importlib.metadata import version; \
 assert hasattr(_gpaw,'new_blacs_context'),'GPAW built without ScaLAPACK'; \
 assert hasattr(_gpaw,'FFTWPlan'),'GPAW built without FFTW'; \
+assert hasattr(_gpaw,'pyelpa_allocate'),'GPAW built without ELPA'; \
 print('gpaw',gpaw.__version__,'| torch',torch.__version__,'| ase',ase.__version__,'| pymatgen',version('pymatgen'))" \
  && command -v cc && command -v c++ && test -f "$(python -c 'import sysconfig;print(sysconfig.get_paths()["include"])')/Python.h" \
  && python -c "import fairchem.core, orb_models, ptyrad; print('ML/ptycho stack ok')" \
