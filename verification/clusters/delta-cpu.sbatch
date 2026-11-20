@@ -1,8 +1,7 @@
 #!/bin/bash
 # Release verification, CPU part, on TWO Delta CPU nodes: no GPU is requested and Apptainer
 # runs without --nv. First the 2-node MPICH step (one rank per node, over the fabric), then
-# verification/verify.py inside the image on the first node. The second node stays allocated
-# to the end: Delta refuses to shrink a running job (verification/README.md).
+# verification/verify.py inside the image on the first node, after releasing the second.
 #
 # Usage (env.sh sourced: its sbatch function adds the account):
 #   sbatch ~/idrobolab-env/verification/clusters/delta-cpu.sbatch <image> [--only <component>]
@@ -17,7 +16,6 @@
 #SBATCH --account=<project>-delta-cpu   # <- replace; see `accounts` command
 #SBATCH --partition=cpu
 #SBATCH --nodes=2
-#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=240G
 #SBATCH --time=04:00:00
@@ -74,6 +72,17 @@ echo "$STEP_STATUS" > "$STEP/status"
 echo "2-node MPICH step: exit status $STEP_STATUS"
 cat "$STEP/log"
 export VERIFY_MPI_STEP=$STEP
+
+# The rest runs on the first node only: hand the second back, so it is not billed for the
+# hours verify.py takes. scontrol writes a script that resets the SLURM_* variables to the
+# smaller job, into the working directory. A refused shrink only costs the second node; Delta
+# refuses it when the job was submitted with --ntasks-per-node, so the header sets none.
+if (cd "$WORK" && scontrol update JobId="$SLURM_JOB_ID" NumNodes=1); then
+    . "$WORK/slurm_job_${SLURM_JOB_ID}_resize.sh"
+    echo "released the second node: running on $SLURM_JOB_NODELIST"
+else
+    echo "WARNING: scontrol could not shrink the job; the second node stays allocated" >&2
+fi
 
 # The writable layer for the tests' installs: an overlay image (verification/README.md).
 apptainer overlay create --size 2048 "$WORK/overlay.img"

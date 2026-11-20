@@ -19,7 +19,6 @@
 #SBATCH --constraint=cpu
 #SBATCH --qos=regular
 #SBATCH --nodes=2
-#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=256
 #SBATCH --mem=440G
 #SBATCH --time=04:00:00
@@ -94,7 +93,8 @@ export VERIFY_MPI_STEP=$STEP
 
 # The rest runs on the first node only: hand the second back, so it is not billed for the
 # hours verify.py takes. scontrol writes a script that resets the SLURM_* variables to the
-# smaller job, into the working directory. A refused shrink only costs the second node.
+# smaller job, into the working directory. A refused shrink only costs the second node; Delta
+# refuses it when the job was submitted with --ntasks-per-node, so the header sets none.
 if (cd "$WORK" && scontrol update JobId="$SLURM_JOB_ID" NumNodes=1); then
     . "$WORK/slurm_job_${SLURM_JOB_ID}_resize.sh"
     echo "released the second node: running on $SLURM_JOB_NODELIST"
