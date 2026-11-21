@@ -67,9 +67,19 @@ real() { (cd "$1" 2>/dev/null && pwd -P) || true; }
 export VERIFY_CLUSTER=perlmutter VERIFY_JOB_ID=$SLURM_JOB_ID VERIFY_WORK=$WORK
 echo "IMAGE=$IMAGE  repo=$REPO"
 # `podman-hpc images` lists the images of the shared read-only store; `image inspect` does not.
-VERIFY_IMAGE_DIGEST=$(podman-hpc images --digests --format '{{.Digest}}' "$IMAGE")
+# `images` lists an image once per store that holds it; `sort -u` folds those lines.
+VERIFY_IMAGE_DIGEST=$(podman-hpc images --digests --format '{{.Digest}}' "$IMAGE" | sort -u)
 if [ -z "$VERIFY_IMAGE_DIGEST" ]; then
     echo "ERROR: $IMAGE is not in podman-hpc images; pull it first (header of this script)" >&2
+    exit 1
+fi
+# Each store has its own tags: a stale copy in another store (podman-hpc's default squash
+# directory, $SCRATCH/storage, after a plain `podman-hpc pull`) keeps the tag, and podman
+# may run either image.
+if [ "$(printf '%s\n' "$VERIFY_IMAGE_DIGEST" | wc -l)" -gt 1 ]; then
+    echo "ERROR: $IMAGE names several images:" $VERIFY_IMAGE_DIGEST >&2
+    echo "  remove the unwanted copy from its store (\$SCRATCH/storage or \$PODMAN_STORE):" >&2
+    echo "  podman-hpc --squash-dir <store> rmsqi $IMAGE" >&2
     exit 1
 fi
 export VERIFY_IMAGE_DIGEST

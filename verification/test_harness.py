@@ -1419,6 +1419,22 @@ def test_perlmutter_launcher_stops_when_podman_hpc_lists_no_such_image(tmp_path,
 
 
 @pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_perlmutter_launcher_stops_when_the_tag_names_two_images(tmp_path, part):
+    res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE,
+                          STUB_PM_DIGEST="sha256:new\nsha256:old\nsha256:new")
+    assert res.returncode != 0 and not log  # the container never starts
+    assert "names several images: sha256:new sha256:old" in res.stderr
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_perlmutter_launcher_records_one_digest_for_two_copies_of_an_image(tmp_path, part):
+    res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE,
+                          STUB_PM_DIGEST="sha256:abc\nsha256:abc")
+    assert res.returncode == 0, res.stderr
+    assert verify_lines(log)[1].startswith("sha256:abc u1:")  # one digest, then the scrub
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
 def test_perlmutter_launcher_runs_the_release_candidate_with_the_verify_variables(tmp_path, part):
     res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE, "--only", ABTEM)
     assert res.returncode == 0, res.stderr
