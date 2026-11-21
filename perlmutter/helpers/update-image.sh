@@ -1,12 +1,16 @@
 #!/bin/bash
-# Pull (or refresh) a container image into the project's shared podman-hpc store on
-# CFS, so it survives $SCRATCH purges and is readable by the whole project.
+# Pull (or refresh) a container image into a podman-hpc squash store. A released tag goes
+# to the project's shared store on CFS, which survives $SCRATCH purges and is readable by
+# the whole project. A dev build or release candidate (TAG=dev, TAG=<N>-rc) goes to the
+# puller's own store, podman-hpc's default squash directory $SCRATCH/storage: those tags
+# exist for testing and verification, and stay out of the group's store.
 #
 # Run on a Perlmutter LOGIN node — compute nodes have no route to ghcr.io.
 #
 # Usage:
 #   ./update-image.sh                      # ghcr.io/idrobolab/idrobolab:latest
 #   TAG=v2 ./update-image.sh idrobolab     # a specific tag
+#   TAG=dev ./update-image.sh idrobolab    # a dev build, into $SCRATCH/storage
 #   IMAGE=ghcr.io/someone/thing ./update-image.sh   # any other image: repository, no tag (TAG sets it)
 #   REFRESH=1 ./update-image.sh            # drop the squashed copy first
 #
@@ -14,9 +18,20 @@
 # env.sh, which exports PODMANHPC_ADDITIONAL_STORES for exactly that.
 set -euo pipefail
 
+TAG=${TAG:-latest}
+
 # Defaults match env.sh; sourcing that file first parameterises this script
 # (PODMAN_STORE / PODMAN_STORE_RO), and STORE / STORE_RO still win if set.
-STORE=${STORE:-${PODMAN_STORE:?set NERSC_PROJECT and source env.sh, or pass STORE=}}
+# podman-hpc reads its default squash directory in every job without configuration.
+OWN_STORE=${SCRATCH:+$SCRATCH/storage}
+if [ -z "${STORE:-}" ]; then
+    case $TAG in
+        dev|*-rc) STORE=${OWN_STORE:?SCRATCH is not set; pass STORE=} ;;
+        *)        STORE=${PODMAN_STORE:?set NERSC_PROJECT and source env.sh, or pass STORE=} ;;
+    esac
+fi
+own_store=0
+[ "$STORE" != "$OWN_STORE" ] || own_store=1
 
 # Derive the read path FROM $STORE instead of defaulting it separately. As two
 # independent literals they drift — and a stale STORE_RO is invisible here,
@@ -31,7 +46,6 @@ fi
 
 NAME=${1:-idrobolab}
 IMAGE=${IMAGE:-ghcr.io/${IMAGE_OWNER:-idrobolab}/$NAME}
-TAG=${TAG:-latest}
 REF="${IMAGE}:${TAG}"
 WHOAMI=${USER:-$(id -un)}       # $USER is not set in every batch/container shell
 
@@ -65,7 +79,7 @@ esac
 umask "${IDROBOLAB_ENV_UMASK:-0002}"
 mkdir -p "$STORE"
 [ -w "$STORE" ] || { echo "ERROR: $STORE is not writable by $WHOAMI" >&2; exit 1; }
-chmod g+rxs "$STORE" 2>/dev/null || true
+[ "$own_store" = 1 ] || chmod g+rxs "$STORE" 2>/dev/null || true
 
 # The squash step writes into the shared store over several minutes and is not
 # atomic, and podman-hpc itself takes no lock (its migrate step only creates
@@ -225,7 +239,8 @@ echo ">> pull completed in $((SECONDS - started))s"
 # second inline copy is how the store paths drifted earlier in this repo. See
 # fix-store-perms.sh for why umask is not sufficient and why a default ACL
 # cannot replace re-applying the modes after each write.
-if [ "${FIX_PERMS:-1}" = "1" ]; then
+# The own store is the puller's alone: nothing to share.
+if [ "${FIX_PERMS:-1}" = "1" ] && [ "$own_store" = 0 ]; then
     _permfix="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fix-store-perms.sh"
     if [ -x "$_permfix" ]; then
         "$_permfix" "$STORE" || echo "WARNING: could not make $STORE group-readable" >&2
@@ -343,10 +358,29 @@ if probe_root=$(mktemp -d 2>/dev/null); then
     rm -rf "$probe_root"
 fi
 
+# --- one image per tag ------------------------------------------------------
+# podman-hpc keeps tags per store, and a job reads both stores: a copy left in the other
+# one under the same tag makes the tag name two images, and podman may run either.
+# `images` lists an image once per store that holds it; `sort -u` folds those lines.
+digests=$(podman-hpc images --digests --format '{{.Digest}}' "$REF" 2>/dev/null | sort -u) \
+    || digests=""
+if [ "$(printf '%s\n' "$digests" | grep -c .)" -gt 1 ]; then
+    echo "ERROR: $REF now names several images:" $digests >&2
+    echo "       This pull went to $STORE. Remove the copy from the store that holds it" >&2
+    echo "       (rmsqi by tag; never in $STORE, which would remove the new image):" >&2
+    for other in "$OWN_STORE" "${PODMAN_STORE:-}"; do
+        [ -z "$other" ] || [ "$other" = "$STORE" ] ||
+            echo "         podman-hpc --squash-dir $other rmsqi $REF" >&2
+    done
+    exit 1
+fi
+
+store_line="export PODMANHPC_ADDITIONAL_STORES=$STORE_RO     # or: source env.sh"
+[ "$own_store" = 0 ] || store_line="# $STORE is podman-hpc's default: jobs read it as is"
 cat <<EOF
 >> done. Use it from a job:
 
-   export PODMANHPC_ADDITIONAL_STORES=$STORE_RO     # or: source env.sh
+   $store_line
    srun ... -L scratch,cfs podman-hpc run --rm --gpu \\
        -v \$SCRATCH:\$SCRATCH -v \$CFS:\$CFS -v \$HOME:\$HOME \\
        --workdir "\$PWD" \\
