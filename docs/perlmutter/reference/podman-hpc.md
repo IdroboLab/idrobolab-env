@@ -56,6 +56,22 @@ podman-hpc keeps **two** stores, which is what makes `migrate` necessary:
 hence `podman-hpc migrate <tag>`. `podman-hpc images` lists both copies, the
 squashed one flagged read-only.
 
+A job reads squashed images from two directories: podman-hpc's default squash directory,
+`$SCRATCH/storage` (where a plain `podman-hpc pull` puts the squashed image), and the
+group's shared store on CFS, which `env.sh` adds through
+`PODMANHPC_ADDITIONAL_STORES`. `update-image.sh` puts released tags into the shared store
+and dev builds and release candidates (`dev`, `<N>-rc`) into `$SCRATCH/storage`. Tags are
+kept per store: a plain `podman-hpc pull` migrates into `$SCRATCH/storage`, and a copy
+left there keeps its tag after a newer image under the same tag lands in the shared
+store. `podman-hpc images` then lists two digests for the tag, and podman may run either
+image. `update-image.sh` stops in that case.
+Remove the unwanted copy by tag, in the store that holds it (`rmsqi` does not take an
+image ID):
+
+```bash
+podman-hpc --squash-dir "$SCRATCH/storage" rmsqi ghcr.io/idrobolab/idrobolab:dev
+```
+
 Upstream defaults are `graph_root=/tmp/{uid}_hpc/storage` and
 `run_root=/tmp/{uid}_hpc`; NERSC overrides them site-wide — a Perlmutter login
 node was observed using `/images/<uid>_hpc/storage`, node-local space that NERSC
