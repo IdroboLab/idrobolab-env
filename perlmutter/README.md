@@ -20,7 +20,7 @@ via podman-hpc, OCI/Docker images only).
 | [agents/](agents/) | What members' coding agents follow: `group.md` (the group's rules), `skills/` (the group's agent skills: `perlmutter-cluster`, `idrobolab-container`), `nersc/` (a vendored copy of NERSC's baseline, with `UPSTREAM` naming the commit) and `sync-nersc.sh` (refreshes `nersc/`; run weekly by the `nersc-agents-sync` workflow). Installed by `helpers/setup-agents.sh` ([page 10](../docs/perlmutter/10-coding-agents.md#instructions-three-layers)) |
 | [helpers/setup-user.sh](helpers/setup-user.sh) | Per-user setup ([page 2](../docs/perlmutter/02-shell-setup.md)) — one command sets up your shell, Jupyter kernels, and checks what silently breaks later |
 | [helpers/](helpers/) | Scripts run by hand on a login node: image pulls, store permissions, shared uv, the Nion Swift launcher |
-| [helpers/update-image.sh](helpers/update-image.sh) | Pull/refresh an image into the shared CFS store (`/global/cfs/cdirs/<project>/podman-hpc`). Login nodes only |
+| [helpers/update-image.sh](helpers/update-image.sh) | Pull/refresh an image: a released tag into the shared CFS store (`/global/cfs/cdirs/<project>/podman-hpc`), a dev build or release candidate into `$SCRATCH/storage`. Login nodes only |
 | [nersc-filesystem-guard.md](../docs/perlmutter/reference/nersc-filesystem-guard.md) | NERSC's hook that checks every Bash command an AI agent runs for broad filesystem scans: what it blocks, harmless `grep -r` regexes it blocks too, and how to write those |
 | [env.sh](env.sh) | Source from `~/.bashrc`: `PODMANHPC_ADDITIONAL_STORES` and friends, plus interactive aliases (`cds` `cdp` `q` `sr` `sp`) and `sbatch`/`salloc` functions that add `-A "$NERSC_PROJECT"`. Silent, idempotent, inert off Perlmutter |
 
