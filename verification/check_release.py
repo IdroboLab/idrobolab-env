@@ -12,8 +12,10 @@ Let B and H be the image's VERSION at <ref> and in the working tree.
   entry is printed as a request to shorten known-failures.tsv and does not fail.
 - Any other H fails.
 - Always: every row of components.tsv lists clusters and parts and has a `test` file that
-  exists, or `covered-by:<component>` of a row that has one. From H = 1 on, every package of
-  the recipe's requirements file has a row in components.tsv.
+  exists, or `covered-by:<component>` of a row that has one, whose test file names the row's
+  component in its module-level `PREFLIGHT_LIBRARIES` (a tuple of string literals, read with
+  `ast` without importing the test; the preflight iterates over the same tuple). From H = 1 on,
+  every package of the recipe's requirements file has a row in components.tsv.
 - Beyond the spec: each record's `tests_hash` equals the recipe-hash construction applied to
   verification/tests/ at the head, so tests changed after the cluster runs fail the gate; a
   record names its own image, cluster and part, as its file name does.
@@ -23,6 +25,7 @@ scans the whole tree. The records are trusted as committed: no CI runner has the
 Exit status 0 when the gate passes. Python standard library only.
 """
 import argparse
+import ast
 import json
 import re
 import subprocess
@@ -34,6 +37,22 @@ from verify import HERE, ROOT, items, own_components, read_tsv, recipe_dir, reci
 
 def normalized(name):
     return name.lower().replace("_", "-")
+
+
+def preflight_libraries(test):
+    """The names in the module-level PREFLIGHT_LIBRARIES of the test file, as the gate reads
+    them: without importing it. Empty when the file is missing, is no Python, or declares no
+    literal tuple."""
+    try:
+        tree = ast.parse(test.read_text())
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(
+                    isinstance(t, ast.Name) and t.id == "PREFLIGHT_LIBRARIES"
+                    for t in node.targets):
+                return {normalized(name) for name in ast.literal_eval(node.value)}
+    except (OSError, SyntaxError, ValueError):
+        pass
+    return set()
 
 
 def requirement_names(path):
@@ -68,12 +87,17 @@ def check_release(image, base):
         text=True).stdout)
     head_hash = recipe_hash(image, recipe)
     rows = own_components(image)
+    tests_of = {r["component"]: r["test"] for r in rows}
 
     for row in read_tsv(HERE / image / "components.tsv"):
         comp, test = row["component"], row["test"]
         if test.startswith("covered-by:"):
-            if test[len("covered-by:"):] not in [r["component"] for r in rows]:
+            covering = tests_of.get(test[len("covered-by:"):])
+            if covering is None:
                 errors.append(f"{comp} is {test}, which has no row with a test of its own")
+            elif normalized(comp) not in preflight_libraries(HERE / "tests" / covering):
+                errors.append(f"{comp} is {test}, but tests/{covering} does not name {comp} "
+                              "in PREFLIGHT_LIBRARIES")
             continue
         if not items(row["clusters"]) or not items(row["parts"]):
             errors.append(f"{comp} lists no clusters or no parts")

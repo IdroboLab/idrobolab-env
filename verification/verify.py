@@ -209,6 +209,7 @@ def main(argv=None):
     if args.only and args.only not in [r["component"] for r in rows]:
         sys.exit(f"verify.py: no component {args.only} in the {cluster} {part} part")
     known = read_tsv(HERE / args.image / "known-failures.tsv")
+    tests_hash = recipe_hash(args.image, HERE / "tests")  # before the tests: it needs git
 
     release_dir = HERE / args.image / "releases" / str(manifest["version"])
     log_dir = release_dir / f"{cluster}-{part}"
@@ -229,7 +230,7 @@ def main(argv=None):
               "build_id": manifest["build_id"], "recipe_hash": manifest["recipe_hash"],
               "sources": manifest["sources"], "lammps_ctest": manifest["lammps_ctest"],
               "image_digest": os.environ["VERIFY_IMAGE_DIGEST"],
-              "tests_hash": recipe_hash(args.image, HERE / "tests"), "cluster": cluster,
+              "tests_hash": tests_hash, "cluster": cluster,
               "part": part, "date_utc": today,
               "job_id": os.environ["VERIFY_JOB_ID"],
               "gpu": gpu_description() if part == "gpu" else "none",

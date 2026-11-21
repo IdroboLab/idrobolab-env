@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Release test of the dense eigensolvers of GPAW's LCAO mode: ScaLAPACK and ELPA.
+
+Bulk Al (periodic, 2x2x2 k-points) with two SCF iterations on 4 MPI ranks (2 k-point groups of
+2 ranks, a ScaLAPACK grid in each), once diagonalized with ScaLAPACK and once with ELPA. Same
+start and same iteration count (ELPA is a feature of the legacy implementation, which the test
+selects), so the two total energies differ only by the eigensolver; they must agree to 1e-10
+eV. The test also checks which solver each run used (the KS layout of the calculator holds an
+ELPA object only in the ELPA run), so a silent fall back to ScaLAPACK fails. A preflight fails
+(it never skips) when GPAW is not imported from /opt/src/gpaw or is not compiled with both
+libraries. Prints one PASS or FAIL line per check. Without arguments it starts itself under
+`mpiexec -n 4`; each rank then runs it with --worker.
+"""
+import os
+import subprocess
+import sys
+
+import _common
+
+TOLERANCE = 1e-10  # eV
+RANKS = 4
+LIBRARIES = ("scalapack", "elpa")
+
+
+def preflight():
+    """The failed checks, as messages."""
+    return _common.imported_from("gpaw", _common.GPAW_SRC) + _common.missing_libraries(LIBRARIES)
+
+
+def solver_of(calc):
+    """The dense eigensolver of the LCAO layout of a calculator: "elpa", "scalapack", or
+    "none" when the layout is not a BLACS one."""
+    ksl = calc.wfs.ksl
+    if not hasattr(ksl, "libelpa"):
+        return "none"
+    return "scalapack" if ksl.libelpa is None else "elpa"
+
+
+def worker():
+    from ase.build import bulk
+
+    from gpaw import GPAW
+    from gpaw.mpi import world
+
+    energies, solvers = {}, {}
+    for name, use_elpa in (("scalapack", False), ("elpa", True)):
+        atoms = bulk("Al")
+        atoms.calc = GPAW(mode="lcao", basis="sz(dzp)", kpts=[2, 2, 2], txt=None,
+                          parallel=dict(sl_auto=True, use_elpa=use_elpa, band=1, kpt=2),
+                          convergence={"maximum iterations": 2}, legacy_gpaw=True)
+        energies[name] = atoms.get_potential_energy()
+        solvers[name] = solver_of(atoms.calc)
+    difference = abs(energies["elpa"] - energies["scalapack"])
+    ok = difference < TOLERANCE and all(solvers[name] == name for name in solvers)
+    if world.rank == 0:
+        for name in solvers:
+            print(f"{'PASS' if solvers[name] == name else 'FAIL'} the {name} run used "
+                  f"{solvers[name]}")
+        print(f"E(scalapack) = {energies['scalapack']:.12f} eV, "
+              f"E(elpa) = {energies['elpa']:.12f} eV")
+        print(f"{'PASS' if difference < TOLERANCE else 'FAIL'} "
+              f"elpa and scalapack total energies agree to {TOLERANCE} eV"
+              + ("" if difference < TOLERANCE else f": difference {difference:.3e} eV"))
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--worker"]:
+        sys.exit(worker())
+    env = {**os.environ, "GPAW_MPI_BACKEND": "cgpaw"}
+    _common.finish(preflight(), lambda: subprocess.call(
+        _common.mpiexec(RANKS) + [sys.executable, __file__, "--worker"], env=env))

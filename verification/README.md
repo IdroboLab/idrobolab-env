@@ -36,7 +36,8 @@ record), the manifest path `/opt/<image>/manifest.json`, the recipe layout
 - anything else fails.
 
 It also fails, always, when a row of `components.tsv` lists no clusters or no parts, its `test`
-file is missing, or it is `covered-by:<component>` of a row without a test of its own, and,
+file is missing, or it is `covered-by:<component>` of a row without a test of its own or of a
+test whose preflight does not name the row's component (*Naming a covered library*), and,
 from release 1 on, when a package of `requirements-<image>.txt` has no row there. Two checks go
 beyond the verification spec: every record names its own image, cluster and part, and its
 `tests_hash` equals the hash of `tests/` at this commit, so tests changed after the cluster
@@ -77,7 +78,28 @@ the clone). `verify.py` replaces each of them by `<scrubbed>` in the record and 
 refuses to run when one of these variables is missing. Extra arguments go to `verify.py`: add
 `--only <component>` to run one component; its record is `"complete": false` and never
 satisfies the gate. The image's manifest is read from `/opt/<image>/manifest.json`
-(`VERIFY_MANIFEST` overrides the path).
+(`VERIFY_MANIFEST` overrides the path). On Delta the image's writable layer, where the tests
+install their dependencies into `/opt/venv`, is a 2 GB overlay image in the work directory:
+`--writable-tmpfs` gives only 64 MiB there, too little for abTEM's and GPAW's installs.
+
+The CPU launchers allocate two nodes. Before `verify.py`, which runs on one node as for the
+other parts, they run the 2-node MPICH step: a ring of one rank per node over the fabric (`tests/mpich --ring --ranks 2`, in the
+container, started by the host's `srun`). On Perlmutter that is `podman-hpc run --mpi`, which
+swaps the host's Cray MPICH in for the image's (ABI-compatible `libmpi.so.12`) as production
+jobs launch, so it tests the image's MPI-ABI binaries over the fabric with the host MPICH; on
+Delta it is `srun --mpi=pmi2 apptainer exec` with the image's own MPICH, which tests that
+MPICH. The step writes its exit status and log into `$WORK/mpi-step`, `VERIFY_MPI_STEP` names
+that directory for `tests/mpich`, and a failed step is recorded there and does not stop the
+job: `tests/mpich` then fails the component. A step that hangs ends after `MPI_STEP_TIMEOUT`
+seconds (default 600) with status 124. The step's output also goes to the job's output file,
+because `$WORK` is removed at the end. After the step the launchers shrink the job to its first
+node (`scontrol update NumNodes=1`), so the second is not billed while `verify.py` runs. Delta
+refuses the shrink ("Job is no longer pending execution") for a job submitted with
+`--ntasks-per-node`, so their headers set none; a refused shrink prints a warning and the job
+goes on with both nodes. The GPU launchers stay on one node.
+
+The time limit of the CPU launchers (4 h) is a guess: GPAW's full suite (`tests/gpaw`) is the
+longest component. Override it at submission: `sbatch --time=12:00:00 <launcher> <image>`.
 
 ## Reading a record
 
@@ -104,7 +126,7 @@ cluster and part, each cell the status and the passed / failed / skipped / known
 1. A row in `<image>/components.tsv`: `component`, `origin` (`source`, `wheel`, `system-lib`),
    `test` (a file in `tests/`, or `covered-by:<component>`), `parts` (`cpu`, `gpu`, `cpu,gpu`),
    `clusters` (comma list). A `covered-by` row is valid only when the covering test's
-   preflight names the library.
+   preflight names the library (*Naming a covered library*).
 2. An executable `tests/<test>` that gets `VERIFY_PART`, `VERIFY_WORK` and `VERIFY_JUNIT`
    (see `tests/abtem`). It exits 0 on success and reports either with `--junitxml=$VERIFY_JUNIT`
    or with one `PASS <id>` or `FAIL <id>` line per check. It starts with a preflight that
@@ -116,3 +138,36 @@ cluster and part, each cell the status and the passed / failed / skipped / known
    tracker). A junit test id is `<classname>::<name>`; copy it from a record's `unexpected`.
 
 The unit tests: `pytest verification/test_harness.py`.
+
+## Naming a covered library
+
+A system library without a test of its own is `covered-by:<component>`, and the covering test's
+preflight must check it: a green upstream suite can hide that a library is absent, because the
+tests that need it skip. The test declares the libraries its preflight checks as a module-level
+tuple of string literals, `PREFLIGHT_LIBRARIES = ("scalapack", "fftw", ...)`, and its preflight
+iterates over that tuple (`tests/gpaw`). `check_release.py` reads the tuple with `ast`, without
+importing the test (no gpaw in the gate), and fails a `covered-by` row whose component name
+(compared lower-case, `_` as `-`) is not in it, or whose covering test declares none.
+
+## GPAW and MPI tests
+
+Each test's docstring says what it runs; this lists what is not obvious from it.
+
+- `tests/gpaw`: GPAW's full suite with plain `python -m pytest`, not
+  `shared/testing/run_pytest.py`: GPAW's conftest uses pytest's cache (`config.cache`), which
+  `run_pytest.py` disables with `-p no:cacheprovider`, so the suite uses `-o cache_dir`
+  instead. Tests of an absent optional library skip, so its preflight checks the libraries
+  through GPAW's own build information. `verify.py` keeps pytest's output (`-rs` skip reasons
+  included) only for a failing run that reports no failing test. A rank that hangs in an MPI
+  collective runs until the job's time limit, and a job killed there writes no record.
+- `tests/gpaw-eigensolvers`: ScaLAPACK against ELPA total energies, and which solver each run
+  used.
+- `tests/gpaw-weaver`: gpaw-weaver's own suite and a real GPAW run of its entry point. Its SCF
+  history cases fail with the log formats of the image's GPAW until gpaw-weaver's parser reads
+  them, or `known-failures.tsv` lists them.
+- `tests/gpaw-data`: the PAW setups of the gpaw-data wheel.
+- `tests/mpich`: the in-container ring and the result of the 2-node step above.
+
+The test scripts share `tests/_common.py`, which is not a component: it has no row, is covered
+by `tests_hash` like every file in `tests/`, and is imported from the script's own directory
+(not under `PYTHONSAFEPATH=1`).

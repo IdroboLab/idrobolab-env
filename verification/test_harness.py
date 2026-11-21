@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import types
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
@@ -364,6 +365,7 @@ def test_release_aborts_on_a_registry_error_that_is_not_manifest_unknown(recipe,
 # ---- the harness verify.py and the gate check_release.py ----
 
 VERIFICATION = ROOT / "verification"
+sys.path.insert(0, str(VERIFICATION / "tests"))  # _common, for the scripts loaded as modules
 COMPONENTS_HEADER = "component\torigin\ttest\tparts\tclusters\n"
 KNOWN_HEADER = "component\ttest id\tcluster\tpart\treason\treference\n"
 # Fake components: alpha runs in both parts of both clusters, beta in the cpu part of c1.
@@ -580,10 +582,38 @@ def test_gate_fails_a_requirement_without_a_row(suite):
     gate_fails(suite.gate(), "beta is in the requirements file and has no row")
 
 
-def test_gate_accepts_a_covered_by_row_for_a_requirement(suite):
+def naming(*libraries):
+    """A covering test whose preflight names `libraries`."""
+    return f"#!/usr/bin/env python3\nPREFLIGHT_LIBRARIES = {libraries!r}\n"
+
+
+def test_gate_accepts_a_covered_by_row_for_a_library_the_preflight_names(suite):
     suite.components(ALPHA, ("beta", "covered-by:alpha", "cpu", "c1"))
+    suite.scripts(alpha=naming("gamma", "beta"))
     suite.release()
     assert suite.gate().returncode == 0
+
+
+@pytest.mark.parametrize("body", [
+    naming("gamma"),                                    # names other libraries
+    naming(),                                           # names none
+    "#!/usr/bin/env python3\nprint('beta')\n",          # declares nothing
+    "#!/usr/bin/env python3\nPREFLIGHT_LIBRARIES = [x for x in 'beta']\n",  # not a literal
+    OK])                                                # not Python
+def test_gate_fails_a_covered_by_row_whose_library_the_preflight_does_not_name(suite, body):
+    suite.components(ALPHA, ("beta", "covered-by:alpha", "cpu", "c1"))
+    suite.scripts(alpha=body)
+    suite.release()
+    gate_fails(suite.gate(), "beta is covered-by:alpha, but tests/alpha does not name beta in "
+               "PREFLIGHT_LIBRARIES")
+
+
+def test_gate_fails_a_covered_by_row_whose_covering_test_file_does_not_exist(suite):
+    suite.components(("alpha", "ghost", "cpu", "c1"), ("beta", "covered-by:alpha", "cpu", "c1"))
+    suite.release()
+    res = suite.gate()
+    gate_fails(res, "alpha: test file tests/ghost does not exist")
+    assert "beta is covered-by:alpha, but tests/ghost does not name beta" in res.stdout
 
 
 def test_gate_fails_a_test_file_that_does_not_exist(suite):
@@ -651,6 +681,7 @@ def test_gate_fails_a_row_without_clusters_or_parts(suite, row):
 def test_gate_fails_covered_by_a_component_without_a_test_of_its_own(suite, target):
     suite.components(ALPHA, ("beta", f"covered-by:{target}", "cpu", "c1"),
                      ("gamma", "covered-by:alpha", "cpu", "c1"))
+    suite.scripts(alpha=naming("gamma"))
     suite.release()
     gate_fails(suite.gate(), f"covered-by:{target}, which has no row with a test of its own")
 
@@ -845,11 +876,17 @@ def test_verify_generates_a_table_of_components_by_cluster_and_part(suite):
 
 # the abTEM component test
 
+def install_test(suite, name):
+    """The real tests/<name> in the fake suite, with the _common.py it imports."""
+    shutil.copy(VERIFICATION / "tests" / name, suite.vdir / "tests" / name)
+    shutil.copy(VERIFICATION / "tests/_common.py", suite.vdir / "tests/_common.py")
+    (suite.vdir / "tests" / name).chmod(0o755)
+
+
 @pytest.fixture
 def abtem_suite(suite, tmp_path):
     """The real tests/abtem, with fake `abtem` and `cupy` modules on PYTHONPATH."""
-    shutil.copy(VERIFICATION / "tests" / ABTEM, suite.vdir / "tests" / ABTEM)
-    (suite.vdir / "tests" / ABTEM).chmod(0o755)
+    install_test(suite, ABTEM)
     suite.components((ABTEM, ABTEM, "cpu,gpu", "c1"))
     fake = tmp_path / "fake"
     (fake / "abtem").mkdir(parents=True)
@@ -888,6 +925,411 @@ def test_abtem_runs_the_suite_with_the_marker_of_the_part_and_a_junit_file():
     assert Path(cpu[1]).samefile(ROOT / "shared/testing/run_pytest.py")
 
 
+# the GPAW and MPI component tests (their preflights run against fake modules)
+
+def load_script(name):
+    """A test script of verification/tests as a module, not run."""
+    path = VERIFICATION / "tests" / name
+    loader = SourceFileLoader(f"script_{name}", str(path))
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+    loader.exec_module(module)
+    return module
+
+
+def fake_gpaw(monkeypatch, *, libraries=("scalapack", "fftw", "elpa", "libxc", "libvdwxc"),
+              fake_cupy=True, file="/opt/src/gpaw/gpaw/__init__.py"):
+    """Fake gpaw modules answering the build-info API of GPAW: the libraries compiled in, and
+    whether GPAW's CuPy is the CPU emulation."""
+    def module(name, **attrs):
+        mod = types.ModuleType(name)
+        vars(mod).update(attrs)
+        monkeypatch.setitem(sys.modules, name, mod)
+        return mod
+
+    elpa = module("gpaw.utilities.elpa", LibElpa=types.SimpleNamespace(
+        have_elpa=lambda: "elpa" in libraries))
+    utilities = module("gpaw.utilities", elpa=elpa,
+                       compiled_with_sl=lambda: "scalapack" in libraries,
+                       compiled_with_libvdwxc=lambda: "libvdwxc" in libraries)
+    fftw = module("gpaw.fftw", have_fftw=lambda: "fftw" in libraries)
+    gpu = module("gpaw.gpu", cupy_is_fake=fake_cupy)
+    module("gpaw", __file__=file, fftw=fftw, utilities=utilities, gpu=gpu,
+           get_libraries=lambda: {"libxc": "7.0.0" if "libxc" in libraries else ""})
+
+
+def test_gpaw_preflight_passes_when_every_library_is_compiled_in(monkeypatch):
+    fake_gpaw(monkeypatch)
+    gpaw_test = load_script("gpaw")
+    assert gpaw_test.preflight("cpu") == []
+    fake_gpaw(monkeypatch, fake_cupy=False)
+    assert gpaw_test.preflight("gpu") == []
+
+
+@pytest.mark.parametrize("library", ["scalapack", "fftw", "elpa", "libxc", "libvdwxc"])
+def test_gpaw_preflight_fails_for_each_library_that_is_not_compiled_in(monkeypatch, library):
+    fake_gpaw(monkeypatch, libraries=tuple(set(load_script("gpaw").PREFLIGHT_LIBRARIES)
+                                           - {library}))
+    assert load_script("gpaw").preflight("cpu") == [f"GPAW is not compiled with {library}"]
+
+
+@pytest.mark.parametrize("part, fake_cupy, message", [
+    ("gpu", True, "GPAW has no real GPU in the gpu part"),
+    ("cpu", False, "a GPU is visible to GPAW in the cpu part")])
+def test_gpaw_preflight_fails_where_the_gpu_does_not_match_the_part(
+        monkeypatch, part, fake_cupy, message):
+    fake_gpaw(monkeypatch, fake_cupy=fake_cupy)
+    assert [m.startswith(message) for m in load_script("gpaw").preflight(part)] == [True]
+
+
+def test_gpaw_preflight_fails_for_gpaw_imported_from_elsewhere(monkeypatch):
+    fake_gpaw(monkeypatch, file="/usr/lib/python3/gpaw/__init__.py")
+    assert load_script("gpaw").preflight("cpu")[0].endswith("not from /opt/src/gpaw")
+
+
+def test_the_gpaw_preflight_names_every_library_that_covered_by_gpaw_rows_stand_for():
+    rows = [r for r in (VERIFICATION / IMAGE / "components.tsv").read_text().splitlines()[1:]
+            if "\tcovered-by:gpaw\t" in r]
+    loader = SourceFileLoader("check_release", str(VERIFICATION / "check_release.py"))
+    sys.path.insert(0, str(VERIFICATION))
+    try:
+        gate = loader.load_module()
+    finally:
+        sys.path.remove(str(VERIFICATION))
+    assert len(rows) == 5
+    assert {r.split("\t")[0] for r in rows} <= gate.preflight_libraries(
+        VERIFICATION / "tests" / "gpaw")
+
+
+class Calls:
+    """Stand-ins for subprocess.call and check_call that record the command and directory."""
+
+    def __init__(self, monkeypatch, module, failing=None):
+        """`failing`: a word of the command whose call returns exit status 1."""
+        self.calls, self.envs = [], []
+        monkeypatch.setattr(module.subprocess, "call",
+                            lambda cmd, **kw: self.calls.append((cmd, kw.get("cwd")))
+                            or self.envs.append(kw.get("env")) or int(failing in cmd))
+        monkeypatch.setattr(module.subprocess, "check_call",
+                            lambda cmd, **kw: self.calls.append((cmd, None)) or 0)
+
+
+def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest(
+        monkeypatch, tmp_path):
+    gpaw_test = load_script("gpaw")
+    monkeypatch.setenv("HYDRA_BOOTSTRAP", "slurm")  # as Delta's environment sets it
+    recorder = Calls(monkeypatch, gpaw_test)
+    calls = recorder.calls
+    assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 0
+    install, precalc, serial, parallel = calls
+    # the mpiexec GPAW starts itself must not look for a host srun inside a Slurm job
+    assert all(env["HYDRA_BOOTSTRAP"] == "fork" for env in recorder.envs)
+    assert "pytest>=7,<9.1" in install[0] and "pytest-xdist" in install[0]
+    assert precalc[0][precalc[0].index("-m", 3) + 1] == "generate_gpw_files"  # before the suite
+    assert precalc[0][precalc[0].index("-n") + 1] == "32" and precalc[1] == "/opt/src/gpaw"
+    assert f"cache_dir={tmp_path}/cache" in precalc[0]  # the cache the suites read the files from
+    assert f"--junitxml={tmp_path}/precalc.xml" in precalc[0]
+    assert serial[1] == "/opt/src/gpaw"
+    assert serial[0][1:3] == ["-m", "pytest"]
+    assert serial[0][serial[0].index("-n") + 1] == "32"
+    assert serial[0][serial[0].index("-m", 3) + 1] == "not gpu"
+    assert f"cache_dir={tmp_path}/cache" in serial[0] and "-rsfE" in serial[0]
+    assert f"--junitxml={tmp_path}/serial.xml" in serial[0]
+    command = parallel[0]
+    assert command[:5] == ["mpiexec", "-bootstrap", "fork", "-n", "4"] and parallel[1] == \
+        "/opt/src/gpaw"
+    assert 'exec gpaw python -m pytest --junitxml=' in command[command.index("-c") + 1]
+    assert f'{tmp_path}/np4-rank"$PMI_RANK".xml' in command[command.index("-c") + 1]
+    assert command[command.index("-m") + 1] == "not gpu"
+    assert "no:cacheprovider" not in str(calls)  # GPAW's conftest needs the cache plugin
+
+
+def test_gpaw_cpu_part_merges_the_precalc_cases_and_fails_when_the_precalc_fails(
+        monkeypatch, tmp_path):
+    gpaw_test = load_script("gpaw")
+    Calls(monkeypatch, gpaw_test, failing="generate_gpw_files")
+    for name in ("precalc", "serial", "np4-rank0"):
+        (tmp_path / f"{name}.xml").write_text(
+            f'<testsuites><testsuite><testcase classname="t" name="{name}"/></testsuite>'
+            "</testsuites>")
+    assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 1
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    passed, _, _ = verify.parse_junit(tmp_path / "junit.xml")
+    assert passed == ["precalc.t::precalc", "serial.t::serial", "np4.t::np4-rank0"]
+
+
+def test_gpaw_gpu_part_runs_the_gpu_marker_once_and_serial(monkeypatch, tmp_path):
+    gpaw_test = load_script("gpaw")
+    monkeypatch.setenv("HYDRA_BOOTSTRAP", "slurm")
+    recorder = Calls(monkeypatch, gpaw_test)
+    calls = recorder.calls
+    assert gpaw_test.run("gpu", tmp_path, tmp_path / "junit.xml") == 0
+    install, serial = calls
+    assert recorder.envs[-1]["HYDRA_BOOTSTRAP"] == "fork"
+    assert serial[0][serial[0].index("-m", 3) + 1] == "gpu"
+    assert "-n" not in serial[0] and "mpiexec" not in str(serial)
+
+
+def test_gpaw_junit_files_are_merged_with_classnames_that_keep_the_runs_apart(tmp_path):
+    def junit(name, cases):
+        body = "".join(f'<testcase classname="t.mod" name="{n}">'
+                       + ('<failure message="boom">x</failure>' if bad else "") + "</testcase>"
+                       for n, bad in cases)
+        (tmp_path / name).write_text(f"<testsuites><testsuite>{body}</testsuite></testsuites>")
+
+    junit("serial.xml", [("test_a", False)])
+    junit("np4-rank0.xml", [("test_a", False)])
+    junit("np4-rank1.xml", [("test_a", False), ("test_b", True)])
+    gpaw_test = load_script("gpaw")
+    gpaw_test.merge_junit(
+        [(tmp_path / "serial.xml", "serial.", False), (tmp_path / "np4-rank0.xml", "np4.", False),
+         (tmp_path / "np4-rank1.xml", "np4-rank1.", True),
+         (tmp_path / "np4-rank2.xml", "np4-rank2.", True)],  # a rank that wrote no file
+        tmp_path / "merged.xml")
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    passed, failures, skipped = verify.parse_junit(tmp_path / "merged.xml")
+    assert passed == ["serial.t.mod::test_a", "np4.t.mod::test_a"]
+    assert list(failures) == ["np4-rank1.t.mod::test_b"]
+
+
+def test_gpaw_eigensolvers_preflight_fails_for_each_library_that_is_not_compiled_in(
+        monkeypatch):
+    fake_gpaw(monkeypatch, libraries=())
+    assert load_script("gpaw-eigensolvers").preflight() == [
+        "GPAW is not compiled with scalapack", "GPAW is not compiled with elpa"]
+    fake_gpaw(monkeypatch, libraries=("scalapack", "elpa"))
+    assert load_script("gpaw-eigensolvers").preflight() == []
+
+
+def test_gpaw_eigensolvers_preflight_fails_for_a_gpaw_outside_opt_src(monkeypatch):
+    fake_gpaw(monkeypatch, file="/srv/elsewhere/gpaw/__init__.py")
+    assert load_script("gpaw-eigensolvers").preflight() == [
+        "gpaw is imported from /srv/elsewhere/gpaw/__init__.py, not from /opt/src/gpaw"]
+
+
+@pytest.mark.parametrize("ksl, solver", [
+    (types.SimpleNamespace(libelpa=None), "scalapack"),
+    (types.SimpleNamespace(libelpa=object()), "elpa"),
+    (types.SimpleNamespace(), "none")])
+def test_gpaw_eigensolvers_reads_the_solver_from_the_ks_layout(ksl, solver):
+    calc = types.SimpleNamespace(wfs=types.SimpleNamespace(ksl=ksl))
+    assert load_script("gpaw-eigensolvers").solver_of(calc) == solver
+
+
+def test_gpaw_eigensolvers_stops_at_a_failed_preflight_without_starting_mpiexec(
+        suite, tmp_path):
+    install_test(suite, "gpaw-eigensolvers")
+    suite.components(("gpaw-eigensolvers", "gpaw-eigensolvers", "cpu", "c1"))
+    fake = tmp_path / "fake"
+    (fake / "gpaw/utilities").mkdir(parents=True)
+    (fake / "gpaw/__init__.py").write_text("")
+    (fake / "gpaw/fftw.py").write_text("have_fftw = lambda: True\n")
+    (fake / "gpaw/utilities/__init__.py").write_text(
+        "compiled_with_sl = lambda: True\ncompiled_with_libvdwxc = lambda: True\n")
+    (fake / "gpaw/utilities/elpa.py").write_text(
+        "class LibElpa:\n    have_elpa = staticmethod(lambda: False)\n")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "mpiexec").write_text("#!/bin/sh\necho started > \"$STARTED\"\n")
+    (bin_dir / "mpiexec").chmod(0o755)
+    res = suite.verify("c1", "cpu", PYTHONPATH=fake, STARTED=tmp_path / "started",
+                       PATH=f"{bin_dir}:{os.environ['PATH']}")
+    entry = suite.record("c1", "cpu")["components"]["gpaw-eigensolvers"]
+    assert res.returncode != 0
+    assert "preflight: GPAW is not compiled with elpa" in entry["unexpected"]
+    assert not (tmp_path / "started").exists()
+
+
+@pytest.fixture
+def gpaw_data_module(monkeypatch, tmp_path):
+    """tests/gpaw-data with fake gpaw_data and SetupData: H and C are fine, N lacks a core
+    electron; the setups are files under a fake /opt/venv."""
+    module = load_script("gpaw-data")
+    monkeypatch.setattr(module, "VENV", str(tmp_path))
+    monkeypatch.setattr(module, "ELEMENTS", ("H", "C", "N"))
+    data = tmp_path / "gpaw_data/setups"
+    data.mkdir(parents=True)
+    electrons = {"H": (1, 0, 1), "C": (6, 2, 4), "N": (7, 2, 4)}  # Z, core, valence
+
+    def setup_data(symbol, xc, name):
+        z, core, valence = electrons[symbol]
+        return types.SimpleNamespace(Z=z, Nc=core, Nv=valence,
+                                     filename=f"{data}/{symbol}.PBE.gz")
+
+    monkeypatch.setitem(sys.modules, "gpaw_data", types.SimpleNamespace(datapath=lambda: data))
+    monkeypatch.setitem(sys.modules, "gpaw.setup_data",
+                        types.SimpleNamespace(SetupData=setup_data))
+    return module
+
+
+def test_gpaw_data_checks_core_plus_valence_electrons_of_each_setup(gpaw_data_module, capsys):
+    assert gpaw_data_module.main() == 1
+    assert capsys.readouterr().out.splitlines() == [
+        "PASS H: setup of gpaw-data, core + valence = Z",
+        "PASS C: setup of gpaw-data, core + valence = Z",
+        "FAIL N: setup of gpaw-data, core + valence = Z"]
+
+
+def test_gpaw_data_fails_for_a_setup_read_from_outside_the_wheel(
+        gpaw_data_module, capsys, monkeypatch, tmp_path):
+    monkeypatch.setattr(gpaw_data_module, "ELEMENTS", ("H",))
+    sys.modules["gpaw.setup_data"].SetupData = lambda *a: types.SimpleNamespace(
+        Z=1, Nc=0, Nv=1, filename="/elsewhere/H.PBE.gz")
+    assert gpaw_data_module.main() == 1
+    assert capsys.readouterr().out.startswith("FAIL H")
+
+
+def test_gpaw_data_ignores_a_setup_path_of_the_host(gpaw_data_module, monkeypatch):
+    monkeypatch.setenv("GPAW_SETUP_PATH", "/host/setups")
+    gpaw_data_module.main()
+    assert "GPAW_SETUP_PATH" not in os.environ
+
+
+def test_gpaw_data_fails_the_preflight_for_a_wheel_outside_the_venv(
+        gpaw_data_module, capsys, monkeypatch):
+    monkeypatch.setattr(gpaw_data_module, "VENV", "/opt/venv")
+    assert gpaw_data_module.main() == 1
+    assert "FAIL preflight: gpaw-data is at" in capsys.readouterr().out
+
+
+@pytest.fixture
+def weaver_module(monkeypatch, tmp_path):
+    """tests/gpaw-weaver with a stand-in for the pytest run (it writes one passing case) and
+    for the real run (for legacy_gpaw=False one check fails, for True the run itself raises)."""
+    module = load_script("gpaw-weaver")
+    commands = []
+
+    def call(command, **kwargs):
+        commands.append(command)
+        (tmp_path / "upstream.xml").write_text(
+            '<testsuites><testsuite><testcase classname="tests.test_log" name="test_x"/>'
+            "</testsuite></testsuites>")
+        return 0
+
+    def real_checks(legacy_gpaw, work):
+        assert work == tmp_path
+        if legacy_gpaw:
+            raise RuntimeError("GPAW did not start")
+        return {"row_energy": None, "scf_history": "no SCF history"}
+
+    monkeypatch.setattr(module.subprocess, "call", call)
+    monkeypatch.setattr(module, "real_checks", real_checks)
+    module.commands = commands
+    return module
+
+
+def test_gpaw_weaver_runs_its_suite_through_run_pytest_and_merges_the_real_runs(
+        weaver_module, tmp_path):
+    assert weaver_module.run(tmp_path, tmp_path / "junit.xml") == 1
+    command, = weaver_module.commands
+    assert Path(command[1]).samefile(ROOT / "shared/testing/run_pytest.py")
+    assert command[command.index("--project") + 1] == "/opt/src/gpaw-weaver"
+    assert command[-1] == "/opt/src/gpaw-weaver/tests"
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    passed, failures, _ = verify.parse_junit(tmp_path / "junit.xml")
+    assert passed == ["tests.test_log::test_x", "real_gpaw::h2_pw_legacy_gpaw_False_row_energy"]
+    assert list(failures) == ["real_gpaw::h2_pw_legacy_gpaw_True_run",
+                              "real_gpaw::h2_pw_legacy_gpaw_False_scf_history"]
+    assert "GPAW did not start" in failures["real_gpaw::h2_pw_legacy_gpaw_True_run"]
+
+
+def test_gpaw_weaver_preflight_fails_for_a_copy_outside_opt_src(monkeypatch):
+    monkeypatch.setitem(sys.modules, "gpaw_weaver",
+                        types.SimpleNamespace(__file__="/srv/elsewhere/gpaw_weaver/__init__.py"))
+    assert load_script("gpaw-weaver").preflight() == [
+        "gpaw_weaver is imported from /srv/elsewhere/gpaw_weaver/__init__.py, not from "
+        "/opt/src/gpaw-weaver"]
+
+
+@pytest.fixture
+def mpich_suite(suite, tmp_path):
+    """tests/mpich in the fake suite, with a stub mpiexec on PATH and a launcher step result
+    in tmp_path/step (status 0 and the line of a good ring, to be changed by the test)."""
+    install_test(suite, "mpich")
+    suite.components(("mpich", "mpich", "cpu", "c1"))
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "mpiexec").write_text(
+        '#!/bin/sh\necho "$*" > "$MPIEXEC_ARGS"\n'
+        '[ "${STUB_RING_RC:-0}" = 0 ] && echo "ring ok: 4 ranks"\nexit "${STUB_RING_RC:-0}"\n')
+    (bin_dir / "mpiexec").chmod(0o755)
+    step = tmp_path / "step"
+    step.mkdir()
+    (step / "status").write_text("0\n")
+    (step / "log").write_text("ring ok: 2 ranks\n")
+    suite.step = step
+
+    def verify(**env):
+        env = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "VERIFY_MPI_STEP": step,
+               "MPIEXEC_ARGS": tmp_path / "mpiexec.args", **env}
+        res = suite.verify("c1", "cpu", **env)
+        return res, suite.record("c1", "cpu")["components"]["mpich"]
+
+    suite.run_mpich = verify
+    return suite
+
+
+def test_mpich_passes_when_the_ring_and_the_launchers_step_pass(mpich_suite, tmp_path):
+    res, entry = mpich_suite.run_mpich()
+    assert res.returncode == 0, res.stdout + res.stderr
+    assert (entry["passed"], entry["failed"]) == (2, 0)
+    # in the container, one rank per core of -n 4, started without a host srun
+    assert (tmp_path / "mpiexec.args").read_text().startswith("-bootstrap fork -n 4 ")
+    assert "--ring --ranks 4" in (tmp_path / "mpiexec.args").read_text()
+
+
+@pytest.mark.parametrize("status, log, message", [
+    ("1\n", "ring ok: 2 ranks\n", "2-node ring of 2 ranks: exit status 1"),
+    ("0\n", "MPI_Init failed\n", "exit status 0: MPI_Init failed"),
+    ("x\n", "", "no result of the launcher's step")])
+def test_mpich_fails_a_failed_or_unreadable_step(mpich_suite, status, log, message):
+    (mpich_suite.step / "status").write_text(status)
+    (mpich_suite.step / "log").write_text(log)
+    res, entry = mpich_suite.run_mpich()
+    assert res.returncode != 0
+    assert [t for t in entry["unexpected"] if message in t], entry
+
+
+@pytest.mark.parametrize("env", [{"VERIFY_MPI_STEP": ""}, {"VERIFY_MPI_STEP": "/nonexistent"}])
+def test_mpich_fails_a_step_that_left_no_result(mpich_suite, env):
+    res, entry = mpich_suite.run_mpich(**env)
+    assert res.returncode != 0 and entry["passed"] == 1
+    assert [t for t in entry["unexpected"] if "no result of the launcher's step" in t]
+
+
+def test_mpich_fails_a_failed_in_container_ring(mpich_suite):
+    res, entry = mpich_suite.run_mpich(STUB_RING_RC=3)
+    assert res.returncode != 0 and entry["passed"] == 1
+    assert [t for t in entry["unexpected"] if "in-container ring of 4 ranks: exit status 3" in t]
+
+
+@pytest.fixture
+def ring_world(monkeypatch):
+    """A one-rank stand-in for gpaw.mpi.world; `size` and `wrong_sum` break the ring."""
+    world = types.SimpleNamespace(rank=0, size=1, wrong_sum=False)
+
+    def sendreceive(send, dest, received, src):
+        received[:] = send
+
+    world.sendreceive = sendreceive
+    world.sum_scalar = lambda value: value + (1 if world.wrong_sum else 0)
+    monkeypatch.setitem(sys.modules, "gpaw", types.ModuleType("gpaw"))
+    monkeypatch.setitem(sys.modules, "gpaw.mpi", types.SimpleNamespace(world=world))
+    return world
+
+
+def test_mpich_ring_payload_prints_ok_on_rank_0_for_a_correct_ring(ring_world, capsys):
+    load_script("mpich").ring(1)
+    assert capsys.readouterr().out == "ring ok: 1 ranks\n"
+
+
+@pytest.mark.parametrize("change, message", [({"size": 2}, "has 2 ranks, not 1"),
+                                             ({"wrong_sum": True}, "allreduce 1.0")])
+def test_mpich_ring_payload_raises_for_a_wrong_world_or_sum(ring_world, change, message):
+    vars(ring_world).update(change)
+    with pytest.raises(RuntimeError, match=message):
+        load_script("mpich").ring(1)
+
+
 # the launchers
 
 @pytest.mark.parametrize("name", LAUNCHERS)
@@ -904,6 +1346,9 @@ def test_launcher_is_valid_bash_and_names_no_account(name):
                      if not line.startswith("#") or line.startswith("#SBATCH"))
     gpu_flags = re.findall(r"--gpu\b|--nv\b|--gpus-per-node", code)
     assert bool(gpu_flags) == name.endswith("-gpu.sbatch"), (name, gpu_flags)
+    # the cpu launchers allocate two nodes for the 2-node MPICH step; verify.py runs on one
+    assert f"#SBATCH --nodes={1 if name.endswith('-gpu.sbatch') else 2}\n" in text, name
+    assert ("VERIFY_MPI_STEP" in text) == name.endswith("-cpu.sbatch")
 
 
 def run_launcher(name, tmp_path, *args, launcher=None, **env):
@@ -912,15 +1357,26 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
     stubs = tmp_path / "stubs"
     stubs.mkdir(exist_ok=True)
     for tool, body in {
-            "srun": 'while [ "${1#--}" != "$1" ]; do shift; done; exec "$@"',
+            "srun": 'echo "srun $*" >> "$STUB_LOG"; while [ "${1#--}" != "$1" ]; do shift; done; '
+                    'exec "$@"',
             # As on Perlmutter: an image in the shared read-only store is listed by `images`
             # but unknown to `image inspect`.
             "podman-hpc": 'case "$1" in images) printf "%s" "${STUB_PM_DIGEST-sha256:abc}"; '
                           '[ -z "${STUB_PM_DIGEST-x}" ] || echo; exit 0 ;; image) echo "Error: $3: '
                           'image not known" >&2; exit 125 ;; esac\necho "$*" >> "$STUB_LOG"; '
-                          'echo "$VERIFY_IMAGE_DIGEST $VERIFY_SCRUB" >> "$STUB_LOG"',
-            "apptainer": 'echo "$*" >> "$STUB_LOG"; '
-                         'echo "$VERIFY_SCRUB:$NUMBA_CACHE_DIR" >> "$STUB_LOG"'}.items():
+                          'case "$*" in *tests/mpich*) [ -z "$STUB_STEP_HANG" ] || exec sleep 30; '
+                          'exit "${STUB_STEP_RC:-0}" ;; esac; '
+                          'echo "$VERIFY_IMAGE_DIGEST $VERIFY_SCRUB" >> "$STUB_LOG"; '
+                          'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"',
+            # As Slurm: the shrink writes a resize script into the working directory.
+            "scontrol": 'echo "scontrol $*" >> "$STUB_LOG"; [ "${STUB_SHRINK_RC:-0}" = 0 ] || '
+                        'exit "$STUB_SHRINK_RC"; echo "export SLURM_JOB_NODELIST=n1" '
+                        '> "slurm_job_${SLURM_JOB_ID}_resize.sh"',
+            "apptainer": 'echo "$*" >> "$STUB_LOG"; [ "$1" != overlay ] || exit 0; '
+                         'case "$*" in *tests/mpich*) [ -z "$STUB_STEP_HANG" ] || exec sleep 30; '
+                         'exit "${STUB_STEP_RC:-0}" ;; esac; '
+                         'echo "$VERIFY_SCRUB:$NUMBA_CACHE_DIR" >> "$STUB_LOG"; '
+                         'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"'}.items():
         (stubs / tool).write_text(f"#!/bin/sh\n{body}\n")
         (stubs / tool).chmod(0o755)
     for dirname in ("home", "scratch/u1", "proj/software/containers"):
@@ -936,6 +1392,19 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
     return res, (log.read_text().splitlines() if log.exists() else [])
 
 
+def verify_lines(log):
+    """The lines the stub engines logged for the verify.py call (after the srun line, if any):
+    its arguments, then the
+    digest and scrub strings (Perlmutter) or scrub and Numba cache (Delta), then the step."""
+    return log[next(i for i, line in enumerate(log)
+                    if "verification/verify.py" in line and not line.startswith("srun")):]
+
+
+def step_lines(log):
+    """The lines logged for the 2-node MPICH step (srun options, then the engine call)."""
+    return [line for line in log if "tests/mpich" in line]
+
+
 def perlmutter(name, tmp_path, *args, **env):
     return run_launcher(name, tmp_path, *args, SCRATCH=tmp_path / "scratch/u1", **env)
 
@@ -949,15 +1418,34 @@ def test_perlmutter_launcher_stops_when_podman_hpc_lists_no_such_image(tmp_path,
 
 
 @pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_perlmutter_launcher_stops_when_the_tag_names_two_images(tmp_path, part):
+    res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE,
+                          STUB_PM_DIGEST="sha256:new\nsha256:old\nsha256:new")
+    assert res.returncode != 0 and not log  # the container never starts
+    assert "names several images: sha256:new sha256:old" in res.stderr
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_perlmutter_launcher_records_one_digest_for_two_copies_of_an_image(tmp_path, part):
+    res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE,
+                          STUB_PM_DIGEST="sha256:abc\nsha256:abc")
+    assert res.returncode == 0, res.stderr
+    assert verify_lines(log)[1].startswith("sha256:abc u1:")  # one digest, then the scrub
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
 def test_perlmutter_launcher_runs_the_release_candidate_with_the_verify_variables(tmp_path, part):
     res, log = perlmutter(f"perlmutter-{part}.sbatch", tmp_path, IMAGE, "--only", ABTEM)
     assert res.returncode == 0, res.stderr
-    call = log[0]
+    call = verify_lines(log)[0]
     assert f"ghcr.io/idrobolab/{IMAGE}:0-rc python verification/verify.py {IMAGE} --part {part} " \
            f"--only {ABTEM}" in call
     assert ("--gpu " in call) == (part == "gpu")
     assert "_NUM_THREADS" not in call  # the image's OMP/OPENBLAS = 1: GPAW warns above 1
-    digest, scrub = log[1].split(" ", 1)
+    common = subprocess.run(["git", "-C", str(VERIFICATION), "rev-parse", "--path-format=absolute",
+                             "--git-common-dir"], capture_output=True, text=True).stdout.strip()
+    assert f"-v {common}:{common} " in call  # git in the container reaches a worktree's repository
+    digest, scrub = verify_lines(log)[1].split(" ", 1)
     assert digest == "sha256:abc" and "u1" in scrub.split(":")
     assert not list((tmp_path / "scratch/u1").glob("verify-*"))  # the work directory is removed
 
@@ -970,7 +1458,7 @@ def test_perlmutter_launcher_qualifies_a_bare_image_name_and_keeps_a_reference(
         tmp_path, env, image):
     res, log = perlmutter("perlmutter-cpu.sbatch", tmp_path, IMAGE, **env)
     assert res.returncode == 0, res.stderr
-    assert f" {image} python " in log[0]
+    assert f" {image} python " in verify_lines(log)[0]
 
 
 @pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "perlmutter-gpu.sbatch"])
@@ -991,12 +1479,91 @@ def test_delta_launcher_uses_the_personal_scratch_area_and_no_scratch_variable(t
     res, log = run_launcher(f"delta-{part}.sbatch", tmp_path, IMAGE,
                             SCRATCH_BASE=tmp_path / "scratch")
     assert res.returncode == 0, res.stderr
-    assert ("--nv " in log[0]) == (part == "gpu")
-    assert "--writable-tmpfs " in log[0]  # run_pytest.py installs test dependencies into /opt/venv
-    assert f"{tmp_path}/scratch/u1/verify-5/numba" in log[1].split(":")  # NUMBA_CACHE_DIR
-    assert f"python verification/verify.py {IMAGE} --part {part}" in log[0]
-    assert f"{tmp_path}/scratch/u1" in log[1].split(":")
+    call, scrub = verify_lines(log)[:2]
+    assert ("--nv " in call) == (part == "gpu")
+    work = f"{tmp_path}/scratch/u1/verify-5"
+    assert f"overlay create --size 2048 {work}/overlay.img" in log  # not the 64 MiB tmpfs
+    assert f"--overlay {work}/overlay.img " in call and "--writable-tmpfs" not in call
+    assert f"{tmp_path}/scratch/u1/verify-5/numba" in scrub.split(":")  # NUMBA_CACHE_DIR
+    assert f"python verification/verify.py {IMAGE} --part {part}" in call
+    assert f"{tmp_path}/scratch/u1" in scrub.split(":")
     assert not list((tmp_path / "scratch/u1").glob("verify-*"))  # removed at the end
     text = (VERIFICATION / "clusters" / f"delta-{part}.sbatch").read_text()
     code = re.sub(r"(?m)^(?!#SBATCH).*?#.*$", lambda m: m.group().split("#")[0], text)
     assert not re.search(r"\$\{?SCRATCH(?![_A-Za-z])", code)
+
+
+def test_perlmutter_cpu_launcher_runs_the_two_node_step_first_and_verify_py_on_one_node(
+        tmp_path):
+    res, log = perlmutter("perlmutter-cpu.sbatch", tmp_path, IMAGE)
+    assert res.returncode == 0, res.stderr
+    srun, podman = step_lines(log)
+    assert "--nodes=2 --ntasks=2 --ntasks-per-node=1 " in srun
+    assert " --mpi " in podman and "python verification/tests/mpich --ring --ranks 2" in podman
+    assert log.index(srun) < log.index(verify_lines(log)[0])
+    verify_srun = next(line for line in log if "verify.py" in line and line.startswith("srun"))
+    assert "--nodes=1 --ntasks=1 " in verify_srun
+    call, _, step = verify_lines(log)[:3]
+    assert "-e VERIFY_MPI_STEP " in call and " --mpi " not in call
+    assert step == "step=0"  # the step's exit status, where tests/mpich reads it
+
+
+def test_delta_cpu_launcher_runs_the_two_node_step_first_and_verify_py_on_the_first_node(
+        tmp_path):
+    res, log = run_launcher("delta-cpu.sbatch", tmp_path, IMAGE, SCRATCH_BASE=tmp_path / "scratch")
+    assert res.returncode == 0, res.stderr
+    srun, apptainer = step_lines(log)
+    assert "--mpi=pmi2 --nodes=2 --ntasks=2 --ntasks-per-node=1 apptainer exec " in srun
+    assert "python verification/tests/mpich --ring --ranks 2" in apptainer
+    assert log.index(srun) < log.index(verify_lines(log)[0])
+    assert not [line for line in log if line.startswith("srun") and "verify.py" in line]
+    assert verify_lines(log)[2] == "step=0"
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
+def test_cpu_launchers_record_a_failed_step_and_still_run_verify_py(tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch", STUB_STEP_RC=3)
+    assert res.returncode == 0, res.stderr
+    assert "2-node MPICH step: exit status 3" in res.stdout
+    assert verify_lines(log)[2] == "step=3"
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
+def test_cpu_launchers_end_a_hanging_step_with_status_124_and_still_run_verify_py(
+        tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch", STUB_STEP_HANG=1,
+                            MPI_STEP_TIMEOUT=1)
+    assert res.returncode == 0, res.stderr
+    assert "2-node MPICH step: exit status 124" in res.stdout
+    assert verify_lines(log)[2] == "step=124"
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
+def test_cpu_launchers_release_the_second_node_after_the_step(tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch")
+    assert res.returncode == 0, res.stderr
+    shrink = log.index("scontrol update JobId=5 NumNodes=1")
+    assert log.index(step_lines(log)[-1]) < shrink < log.index(verify_lines(log)[0])
+    assert "released the second node: running on n1" in res.stdout  # the resize script is read
+    text = (VERIFICATION / "clusters" / name).read_text()
+    assert "#SBATCH --ntasks-per-node" not in text  # with it, Delta refuses the shrink
+
+
+@pytest.mark.parametrize("name", ["perlmutter-cpu.sbatch", "delta-cpu.sbatch"])
+def test_cpu_launchers_run_verify_py_when_the_shrink_is_refused(tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch", STUB_SHRINK_RC=1)
+    assert res.returncode == 0, res.stderr
+    assert "could not shrink the job" in res.stderr
+    assert verify_lines(log)[2] == "step=0"
+
+
+@pytest.mark.parametrize("name", ["perlmutter-gpu.sbatch", "delta-gpu.sbatch"])
+def test_gpu_launchers_run_no_two_node_step(tmp_path, name):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch")
+    assert res.returncode == 0, res.stderr
+    assert step_lines(log) == []

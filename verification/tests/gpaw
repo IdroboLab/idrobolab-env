@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""Release test of GPAW: its own full suite, run with plain pytest.
+
+GPAW's conftest needs pytest's cache plugin, which shared/testing/run_pytest.py disables
+(`-p no:cacheprovider`), so pytest is installed here with GPAW's pin (`pytest>=7,<9.1`) and run
+as `python -m pytest -o cache_dir=$VERIFY_WORK/cache` from /opt/src/gpaw, where pytest.ini sets
+--doctest-modules and testpaths. Everything it writes goes under VERIFY_WORK; TMPDIR points
+there too, as the small writable layer of a read-only image would fill.
+
+cpu part, both `-m 'not gpu'` and with no GPU visible:
+  precalc  `pytest -n 32 -m generate_gpw_files` (GPAW's CI runs it with -n 16): the session fixtures
+           that write the shared gpw files are filled once, so the xdist workers and the MPI
+           ranks of the runs below do not wait on each other's locks (a fixture that waits
+           60 s raises);
+  serial   `pytest -n 32`: pytest-xdist, each test on one rank, to fit the allocation's time;
+  np4      `mpiexec -n 4 gpaw python -m pytest`, every rank running the whole suite.
+gpu part: `pytest -m gpu` on a real GPU, serial.
+
+The cases of the runs are merged into VERIFY_JUNIT with the classname prefix `precalc.`,
+`serial.` or `np4.` (the cases of rank 0 and, under `np4-rank<k>.`, the failing cases of the
+other ranks, whose junit files MPICH's PMI_RANK keeps apart).
+
+A preflight fails (it never skips) when GPAW is not imported from /opt/src/gpaw, when a
+library of PREFLIGHT_LIBRARIES is not compiled in (GPAW skips the tests of an absent
+library), or when GPAW's CuPy is fake in the gpu part (its `-m gpu` tests then pass on a CPU
+emulation) or real in the cpu part. Environment:
+VERIFY_PART, VERIFY_WORK, VERIFY_JUNIT.
+"""
+import os
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+import _common
+
+# The libraries the preflight checks, read by the release gate (check_release.py) to validate
+# the `covered-by:gpaw` rows of components.tsv: a name here needs a check in _common.compiled_in().
+PREFLIGHT_LIBRARIES = ("scalapack", "fftw", "elpa", "libxc", "libvdwxc")
+PYTEST_REQUIREMENTS = ["pytest>=7,<9.1", "pytest-xdist"]
+XDIST_WORKERS = 32
+RANKS = 4
+
+
+def preflight(part):
+    """The failed checks, as messages."""
+    from gpaw.gpu import cupy_is_fake
+    failed = _common.imported_from("gpaw", _common.GPAW_SRC)
+    failed += _common.missing_libraries(PREFLIGHT_LIBRARIES)
+    # cupy_is_fake is GPAW's own verdict: CuPy imports, GPAW's GPU kernels are built and a
+    # device is visible.
+    if part == "gpu" and cupy_is_fake:
+        failed.append("GPAW has no real GPU in the gpu part (gpaw.gpu.cupy_is_fake is True)")
+    if part == "cpu" and not cupy_is_fake:
+        failed.append("a GPU is visible to GPAW in the cpu part")
+    return failed
+
+
+def pytest_args(marker, work):
+    return ["-m", marker, "-o", f"cache_dir={work}/cache", "-q", "-rsfE", "--tb=short"]
+
+
+def merge_junit(parts, out):
+    """Write the cases of the junit files in `parts` ((path, classname prefix, failures only))
+    to one junit file; a file that was not written is skipped."""
+    suite = ET.Element("testsuite")
+    for path, prefix, failures_only in parts:
+        if not Path(path).exists():
+            continue
+        for case in ET.parse(path).iter("testcase"):
+            if failures_only and not any(e.tag in ("failure", "error") for e in case):
+                continue
+            case.set("classname", prefix + (case.get("classname") or ""))
+            suite.append(case)
+    ET.ElementTree(suite).write(out)
+
+
+def run(part, work, junit):
+    """Run the suites of the part; return the worst exit status."""
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir",
+                           "--disable-pip-version-check", *PYTEST_REQUIREMENTS])
+    tmp = work / "tmp"
+    tmp.mkdir(exist_ok=True)
+    # GPAW starts mpiexec itself (`gpaw -P1 python`, as in test_mpi_enabledness.py). Delta's
+    # environment, which Apptainer passes in, sets HYDRA_BOOTSTRAP=slurm: that mpiexec would
+    # launch through a host srun and never start its process.
+    env = {**os.environ, "TMPDIR": str(tmp), "HYDRA_BOOTSTRAP": "fork"}
+    pytest = [sys.executable, "-m", "pytest"]
+    if part == "gpu":
+        rc = subprocess.call(pytest + pytest_args("gpu", work)
+                             + [f"--junitxml={work}/serial.xml"], cwd=_common.GPAW_SRC, env=env)
+        merge_junit([(work / "serial.xml", "serial.", False)], junit)
+        return rc
+
+    xdist = ["-n", str(XDIST_WORKERS)]
+    rc = subprocess.call(pytest + xdist + pytest_args("generate_gpw_files", work)
+                         + [f"--junitxml={work}/precalc.xml"], cwd=_common.GPAW_SRC, env=env)
+    args = pytest_args("not gpu", work)
+    rc = max(rc, subprocess.call(pytest + xdist + [f"--junitxml={work}/serial.xml"] + args,
+                                 cwd=_common.GPAW_SRC, env=env))
+    # Each rank runs pytest with a junit file of its own (Hydra sets PMI_RANK), and a failure
+    # on any rank fails mpiexec. `gpaw python` sets the MPI backend of the ranks.
+    rc = max(rc, subprocess.call(
+        _common.mpiexec(RANKS)
+        + ["sh", "-c", f'exec gpaw python -m pytest --junitxml={work}/np4-rank"$PMI_RANK".xml "$@"',
+           "sh", *args], cwd=_common.GPAW_SRC, env=env))
+    merge_junit([(work / "precalc.xml", "precalc.", False),
+                 (work / "serial.xml", "serial.", False),
+                 (work / "np4-rank0.xml", "np4.", False)]
+                + [(work / f"np4-rank{k}.xml", f"np4-rank{k}.", True) for k in range(1, RANKS)],
+                junit)
+    return rc
+
+
+if __name__ == "__main__":
+    part = os.environ["VERIFY_PART"]
+    _common.finish(preflight(part), lambda: run(part, Path(os.environ["VERIFY_WORK"]),
+                                                os.environ["VERIFY_JUNIT"]))

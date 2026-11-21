@@ -31,5 +31,5 @@ jobs:
           persist-credentials: false
       - run: |
           python3 -m venv "$RUNNER_TEMP/venv"
-          "$RUNNER_TEMP/venv/bin/pip" install pytest==9.2.0
+          "$RUNNER_TEMP/venv/bin/pip" install pytest==9.2.0 numpy==2.4.6  # numpy: the mpich ring payload's buffers
           "$RUNNER_TEMP/venv/bin/pytest" verification/test_harness.py -q
