@@ -112,6 +112,13 @@ else
     echo "WARNING: scontrol could not shrink the job; the second node stays allocated" >&2
 fi
 
+# The job's end time (epoch seconds), so verify.py stops its components in time to write the
+# record. When squeue or date fails, or the time is unknown, verify.py runs without a deadline.
+if END=$(squeue -h -j "$SLURM_JOB_ID" -o %e 2>/dev/null) && [ -n "$END" ] \
+        && DEADLINE=$(date -d "$END" +%s 2>/dev/null); then
+    export VERIFY_DEADLINE=$DEADLINE
+fi
+
 # OMP_NUM_THREADS and OPENBLAS_NUM_THREADS stay at the image's 1: with more, GPAW warns in
 # PW mode and abTEM's suite turns the warning into an error. HDF5 file locking fails on CFS
 # and $HOME from a compute node (errno 524).
@@ -119,5 +126,5 @@ time srun --nodes=1 --ntasks=1 --cpu-bind=none \
     podman-hpc run --rm $GROUP_FLAGS -v "$REPO:$REPO" -v "$GIT_COMMON:$GIT_COMMON" \
         -v "$WORK:$WORK" --workdir "$REPO" \
         -e VERIFY_CLUSTER -e VERIFY_IMAGE_DIGEST -e VERIFY_JOB_ID -e VERIFY_SCRUB -e VERIFY_WORK \
-        -e VERIFY_MPI_STEP -e HDF5_USE_FILE_LOCKING=FALSE \
+        -e VERIFY_MPI_STEP -e VERIFY_DEADLINE -e HDF5_USE_FILE_LOCKING=FALSE \
         "$IMAGE" python verification/verify.py "$NAME" --part cpu "$@"

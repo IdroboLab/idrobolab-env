@@ -1623,7 +1623,11 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
                           'case "$*" in *tests/mpich*) [ -z "$STUB_STEP_HANG" ] || exec sleep 30; '
                           'exit "${STUB_STEP_RC:-0}" ;; esac; '
                           'echo "$VERIFY_IMAGE_DIGEST $VERIFY_SCRUB" >> "$STUB_LOG"; '
-                          'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"',
+                          'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"; '
+                          'echo "deadline=${VERIFY_DEADLINE-unset}" >> "$STUB_LOG"',
+            # As Slurm: the job's end time (local time).
+            "squeue": 'echo "squeue $*" >> "$STUB_LOG"; printf "%s\\n" '
+                      '"${STUB_SQUEUE_END-2027-01-15T08:00:00}"; exit "${STUB_SQUEUE_RC:-0}"',
             # As Slurm: the shrink writes a resize script into the working directory.
             "scontrol": 'echo "scontrol $*" >> "$STUB_LOG"; [ "${STUB_SHRINK_RC:-0}" = 0 ] || '
                         'exit "$STUB_SHRINK_RC"; echo "export SLURM_JOB_NODELIST=n1" '
@@ -1632,7 +1636,8 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
                          'case "$*" in *tests/mpich*) [ -z "$STUB_STEP_HANG" ] || exec sleep 30; '
                          'exit "${STUB_STEP_RC:-0}" ;; esac; '
                          'echo "$VERIFY_SCRUB:$NUMBA_CACHE_DIR" >> "$STUB_LOG"; '
-                         'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"'}.items():
+                         'echo "step=$(cat "$VERIFY_MPI_STEP/status" 2>&1)" >> "$STUB_LOG"; '
+                         'echo "deadline=${VERIFY_DEADLINE-unset}" >> "$STUB_LOG"'}.items():
         (stubs / tool).write_text(f"#!/bin/sh\n{body}\n")
         (stubs / tool).chmod(0o755)
     for dirname in ("home", "scratch/u1", "proj/software/containers"):
@@ -1640,7 +1645,7 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
     (tmp_path / "proj/software/containers" / f"{IMAGE}.sif").write_text("sif")
     full = {"PATH": f"{stubs}:{os.environ['PATH']}", "USER": "u1", "HOME": str(tmp_path / "home"),
             "SLURM_JOB_ID": "5", "STUB_LOG": str(tmp_path / "engine.log"),
-            "PROJECTS_BASE": str(tmp_path / "proj")}
+            "PROJECTS_BASE": str(tmp_path / "proj"), "TZ": "UTC"}
     full.update({k: str(v) for k, v in env.items()})
     res = subprocess.run(["bash", launcher or VERIFICATION / "clusters" / name, *args], env=full,
                          capture_output=True, text=True)
@@ -1651,7 +1656,8 @@ def run_launcher(name, tmp_path, *args, launcher=None, **env):
 def verify_lines(log):
     """The lines the stub engines logged for the verify.py call (after the srun line, if any):
     its arguments, then the
-    digest and scrub strings (Perlmutter) or scrub and Numba cache (Delta), then the step."""
+    digest and scrub strings (Perlmutter) or scrub and Numba cache (Delta), then the step,
+    then the deadline."""
     return log[next(i for i, line in enumerate(log)
                     if "verification/verify.py" in line and not line.startswith("srun")):]
 
@@ -1870,6 +1876,31 @@ def test_cpu_launchers_run_verify_py_when_the_shrink_is_refused(tmp_path, name):
     assert res.returncode == 0, res.stderr
     assert "could not shrink the job" in res.stderr
     assert verify_lines(log)[2] == "step=0"
+
+
+@pytest.mark.parametrize("name", LAUNCHERS)
+def test_launchers_export_the_jobs_end_time_as_the_verify_deadline(tmp_path, name):
+    # the stub's end time is 2027-01-15T08:00:00 (TZ=UTC)
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch")
+    assert res.returncode == 0, res.stderr
+    assert "squeue -h -j 5 -o %e" in log
+    assert verify_lines(log)[-1] == "deadline=1800000000"  # the same instant, in epoch seconds
+    if name.startswith("perlmutter"):  # podman-hpc takes only what -e names
+        assert " -e VERIFY_DEADLINE " in verify_lines(log)[0]
+
+
+@pytest.mark.parametrize("name", LAUNCHERS)
+@pytest.mark.parametrize("squeue", [
+    {"STUB_SQUEUE_RC": 1},  # squeue fails, printing a valid time
+    {"STUB_SQUEUE_END": "Unknown"}, {"STUB_SQUEUE_END": "N/A"},  # date fails
+    {"STUB_SQUEUE_END": ""}])  # an empty time would be today's midnight for date
+def test_launchers_export_no_deadline_and_still_run_when_squeue_or_date_fails(
+        tmp_path, name, squeue):
+    res, log = run_launcher(name, tmp_path, IMAGE, SCRATCH=tmp_path / "scratch/u1",
+                            SCRATCH_BASE=tmp_path / "scratch", **squeue)
+    assert res.returncode == 0, res.stderr
+    assert verify_lines(log)[-1] == "deadline=unset"
 
 
 @pytest.mark.parametrize("name", ["perlmutter-gpu.sbatch", "delta-gpu.sbatch"])

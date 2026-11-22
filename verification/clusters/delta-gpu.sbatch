@@ -57,6 +57,13 @@ export VERIFY_IMAGE_DIGEST=sha256:${VERIFY_IMAGE_DIGEST%% *}
 export VERIFY_SCRUB="$USER:$HOME:$(real "$HOME"):$SCRATCH_BASE/$USER:$(real "$SCRATCH_BASE/$USER"):${PROJECTS_BASE:-}:${SLURM_JOB_ACCOUNT:-}:$REPO:$WORK"
 
 echo "SIF=$SIF  repo=$REPO  binds=$BINDS"
+# The job's end time (epoch seconds), so verify.py stops its components in time to write the
+# record. When squeue or date fails, or the time is unknown, verify.py runs without a deadline.
+if END=$(squeue -h -j "$SLURM_JOB_ID" -o %e 2>/dev/null) && [ -n "$END" ] \
+        && DEADLINE=$(date -d "$END" +%s 2>/dev/null); then
+    export VERIFY_DEADLINE=$DEADLINE
+fi
+
 # The writable layer for the tests' installs: an overlay image (verification/README.md).
 apptainer overlay create --size 2048 "$WORK/overlay.img"
 time apptainer exec --overlay "$WORK/overlay.img" --nv --bind "$BINDS" --pwd "$REPO" "$SIF" \

@@ -84,6 +84,13 @@ else
     echo "WARNING: scontrol could not shrink the job; the second node stays allocated" >&2
 fi
 
+# The job's end time (epoch seconds), so verify.py stops its components in time to write the
+# record. When squeue or date fails, or the time is unknown, verify.py runs without a deadline.
+if END=$(squeue -h -j "$SLURM_JOB_ID" -o %e 2>/dev/null) && [ -n "$END" ] \
+        && DEADLINE=$(date -d "$END" +%s 2>/dev/null); then
+    export VERIFY_DEADLINE=$DEADLINE
+fi
+
 # The writable layer for the tests' installs: an overlay image (verification/README.md).
 apptainer overlay create --size 2048 "$WORK/overlay.img"
 time apptainer exec --overlay "$WORK/overlay.img" --bind "$BINDS" --pwd "$REPO" "$SIF" \
