@@ -171,8 +171,11 @@ a supported first-class feature rather than something to be hand-wired:
   Correct results, lower bandwidth — fine for modest rank counts.
 - For NCCL collectives across nodes (torch DDP), add `--nccl-cu12` to load
   NERSC's Slingshot-tuned plugin (`--nccl-cu13` if the image moves to CUDA 13).
-- If multi-node MPI init fails with a misleading `No space left on device`,
-  add `--network=no_vni` (already set in the multi-node templates).
+- Do not add `--network=no_vni`: podman-hpc 5.8.2 rejects it together with `--mpi`
+  ("can only set extra network names, selected mode host conflicts with bridge").
+  It was the workaround for a misleading `No space left on device` at multi-node
+  MPI init; whether that failure still occurs on 5.8.2 is untested, and no other
+  remedy is documented here.
 
 ## First-run checklist
 
