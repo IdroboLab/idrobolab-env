@@ -18,6 +18,13 @@ passing test (all skipped, or nothing reported), fails with the id `exit status 
 `no test results`; a test file that cannot be run fails with exit status 127. Nothing is
 skipped silently.
 
+VERIFY_DEADLINE (epoch seconds, the job's end time, set by the launchers) gives each component
+a timeout of the time left minus DEADLINE_MARGIN. A component runs in a process group of its own;
+a timeout kills the group (the output is collected for at most KILL_GRACE seconds more) and fails
+the component with `timeout after N s`. Every later component is `not-run`, as is one that would
+start inside the margin, and the record is incomplete. A VERIFY_DEADLINE that is unset, empty,
+not an integer or past means no timeout, with a warning.
+
 Writes <image>/releases/<version>/<cluster>-<part>.json (the record), the logs under
 <cluster>-<part>/, and the generated README.md of that release. Every VERIFY_SCRUB string is
 replaced by `<scrubbed>` in all of them. `--only` marks the record incomplete; the other

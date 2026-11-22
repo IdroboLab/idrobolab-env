@@ -83,6 +83,19 @@ satisfies the gate. The image's manifest is read from `/opt/<image>/manifest.jso
 install their dependencies into `/opt/venv`, is a 2 GB overlay image in the work directory:
 `--writable-tmpfs` gives only 64 MiB there, too little for abTEM's and GPAW's installs.
 
+Each launcher also exports `VERIFY_DEADLINE`, the job's end time in epoch seconds
+(`squeue -h -j $SLURM_JOB_ID -o %e`, converted with `date -d`; Perlmutter passes it into the
+container with `-e`). When squeue or date fails, nothing is exported. `verify.py` gives each
+component a timeout of the time left until the deadline minus 15 minutes, which it keeps for
+writing the record and the launcher's cleanup. A component runs in a process group of its own,
+and a timeout kills the whole group (mpiexec and the xdist workers are children). The component
+then fails with `unexpected: ["timeout after N s"]` and the last 60 lines of its output in its
+log (collected for at most 30 s after the kill, so a process outside the group that holds the
+pipe cannot block the record). Every later component is `not-run`, as is one that would start
+inside the 15 minutes, and the record is `"complete": false` (the gate rejects it), written
+together with the README. A `VERIFY_DEADLINE` that is unset, empty, not an
+integer or already past means no timeout, with one warning line.
+
 The CPU launchers allocate two nodes. Before `verify.py`, which runs on one node as for the
 other parts, they run the 2-node MPICH step: a ring of one rank per node over the fabric (`tests/mpich --ring --ranks 2`, in the
 container, started by the host's `srun`). On Perlmutter that is `podman-hpc run --mpi`, which
@@ -100,7 +113,8 @@ refuses the shrink ("Job is no longer pending execution") for a job submitted wi
 goes on with both nodes. The GPU launchers stay on one node.
 
 The time limit of the CPU launchers (4 h) is a guess: GPAW's full suite (`tests/gpaw`) is the
-longest component. Override it at submission: `sbatch --time=12:00:00 <launcher> <image>`.
+longest component (its np4 phase runs in concurrent groups, below). Override it at
+submission: `sbatch --time=12:00:00 <launcher> <image>`.
 
 ## Reading a record
 
@@ -109,12 +123,14 @@ the identity of the image (`version`, `build_id`, `recipe_hash`, `sources`, `lam
 `image_digest`), `tests_hash` (the recipe-hash construction applied to `tests/`), the cluster,
 part, date, job and GPUs, `complete`, and per component:
 
-- `status`: `pass`, `fail`, or `not-run` (excluded by `--only`);
+- `status`: `pass`, `fail`, or `not-run` (excluded by `--only`, or after a component
+  that timed out);
 - `passed`, `failed`, `skipped`: test counts; `failed` includes `known_failed`, the failures
   listed in `known-failures.tsv`;
 - `unexpected`: the failing ids outside the list. A test that exits non-zero without a failing
-  id, or reports nothing, is `exit status N` or `no test results`; a failed preflight is a
-  failing test. The component fails when `unexpected` is not empty;
+  id, or reports nothing, is `exit status N` or `no test results`; one that runs into the
+  job's deadline is `timeout after N s`; a failed preflight is a failing test. The component
+  fails when `unexpected` is not empty;
 - `stale_known`: listed ids that passed; the gate prints them as a request to shorten the list;
 - `seconds`.
 
@@ -159,8 +175,19 @@ Each test's docstring says what it runs; this lists what is not obvious from it.
   `run_pytest.py` disables with `-p no:cacheprovider`, so the suite uses `-o cache_dir`
   instead. Tests of an absent optional library skip, so its preflight checks the libraries
   through GPAW's own build information. `verify.py` keeps pytest's output (`-rs` skip reasons
-  included) only for a failing run that reports no failing test. A rank that hangs in an MPI
-  collective runs until the job's time limit, and a job killed there writes no record.
+  included) only for a failing run that reports no failing test. The cpu part runs three
+  phases: the precalc and serial phases with `pytest -n 32`, and np4, the whole suite under
+  `mpiexec -n 4`, split into `NP4_GROUPS` groups with pytest-test-groups (the plugin and
+  seed 42 of GPAW's own nightly CI). All groups run at once, each with a `TMPDIR` of its own
+  and one junit file per rank (`np4-g<i>-rank<r>.xml`); the merged record keeps rank 0 of each
+  group in full and only the failing cases of the other ranks (classname prefixes `np4.` and
+  `np4-rank<r>.`). A group that wrote no rank-0 file (killed by its timeout or the OOM killer)
+  is a failing case `group <i> wrote no junit (exit status N)`. The worst exit status counts,
+  a death by signal as a failure. Every pytest run has
+  `--timeout=<TEST_TIMEOUT> --timeout-method=thread` (pytest-timeout): a hung test fails with a
+  stack dump, and under MPI that rank's exit ends its group. OMP, OPENBLAS and MKL threads are
+  pinned to 1 per process, as up to 32 processes share the node. A run that still overruns the
+  job ends at `VERIFY_DEADLINE`, above.
 - `tests/gpaw-eigensolvers`: ScaLAPACK against ELPA total energies, and which solver each run
   used.
 - `tests/gpaw-weaver`: gpaw-weaver's own suite and a real GPAW run of its entry point. Its SCF

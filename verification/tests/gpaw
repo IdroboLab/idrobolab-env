@@ -13,12 +13,21 @@ cpu part, both `-m 'not gpu'` and with no GPU visible:
            ranks of the runs below do not wait on each other's locks (a fixture that waits
            60 s raises);
   serial   `pytest -n 32`: pytest-xdist, each test on one rank, to fit the allocation's time;
-  np4      `mpiexec -n 4 gpaw python -m pytest`, every rank running the whole suite.
+  np4      the whole suite under `mpiexec -n 4 gpaw python -m pytest`, split into NP4_GROUPS
+           groups with pytest-test-groups (`--test-group-count`, `--test-group`, seed 42, as in
+           GPAW's nightly CI). The groups run at once, each with a TMPDIR of its own.
 gpu part: `pytest -m gpu` on a real GPU, serial.
 
+Every pytest run has `--timeout=TEST_TIMEOUT --timeout-method=thread` (pytest-timeout): a hung
+test fails with a stack dump, and under MPI that rank's exit ends its group. A group that wrote
+no rank-0 junit file (killed by its timeout or the OOM killer) is a failing case `group <i>
+wrote no junit (exit status N)`. The worst exit status counts, a death by signal as a failure.
+BLAS threads are pinned to 1 per process (BLAS_THREADS), as up to 32 processes share the node.
+
 The cases of the runs are merged into VERIFY_JUNIT with the classname prefix `precalc.`,
-`serial.` or `np4.` (the cases of rank 0 and, under `np4-rank<k>.`, the failing cases of the
-other ranks, whose junit files MPICH's PMI_RANK keeps apart).
+`serial.` or `np4.` (the cases of rank 0 of every group and, under `np4-rank<k>.`, the failing
+cases of the other ranks, whose junit files, `np4-g<i>-rank<k>.xml`, MPICH's PMI_RANK keeps
+apart).
 
 A preflight fails (it never skips) when GPAW is not imported from /opt/src/gpaw, when a
 library of PREFLIGHT_LIBRARIES is not compiled in (GPAW skips the tests of an absent
