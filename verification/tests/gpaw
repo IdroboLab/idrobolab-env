@@ -37,9 +37,12 @@ import _common
 # The libraries the preflight checks, read by the release gate (check_release.py) to validate
 # the `covered-by:gpaw` rows of components.tsv: a name here needs a check in _common.compiled_in().
 PREFLIGHT_LIBRARIES = ("scalapack", "fftw", "elpa", "libxc", "libvdwxc")
-PYTEST_REQUIREMENTS = ["pytest>=7,<9.1", "pytest-xdist"]
+PYTEST_REQUIREMENTS = ["pytest>=7,<9.1", "pytest-xdist", "pytest-test-groups", "pytest-timeout"]
 XDIST_WORKERS = 32
 RANKS = 4
+NP4_GROUPS = 8
+TEST_TIMEOUT = 1800  # seconds per test
+BLAS_THREADS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 
 
 def preflight(part):
@@ -57,7 +60,8 @@ def preflight(part):
 
 
 def pytest_args(marker, work):
-    return ["-m", marker, "-o", f"cache_dir={work}/cache", "-q", "-rsfE", "--tb=short"]
+    return ["-m", marker, "-o", f"cache_dir={work}/cache", "-q", "-rsfE", "--tb=short",
+            f"--timeout={TEST_TIMEOUT}", "--timeout-method=thread"]
 
 
 def merge_junit(parts, out):
@@ -75,6 +79,11 @@ def merge_junit(parts, out):
     ET.ElementTree(suite).write(out)
 
 
+def worst(*statuses):
+    """The worst exit status; a death by signal (a negative status) counts as 1."""
+    return max(1 if status < 0 else status for status in statuses)
+
+
 def run(part, work, junit):
     """Run the suites of the part; return the worst exit status."""
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir",
@@ -84,31 +93,49 @@ def run(part, work, junit):
     # GPAW starts mpiexec itself (`gpaw -P1 python`, as in test_mpi_enabledness.py). Delta's
     # environment, which Apptainer passes in, sets HYDRA_BOOTSTRAP=slurm: that mpiexec would
     # launch through a host srun and never start its process.
-    env = {**os.environ, "TMPDIR": str(tmp), "HYDRA_BOOTSTRAP": "fork"}
+    env = {**os.environ, "TMPDIR": str(tmp), "HYDRA_BOOTSTRAP": "fork",
+           **dict.fromkeys(BLAS_THREADS, "1")}
     pytest = [sys.executable, "-m", "pytest"]
     if part == "gpu":
         rc = subprocess.call(pytest + pytest_args("gpu", work)
                              + [f"--junitxml={work}/serial.xml"], cwd=_common.GPAW_SRC, env=env)
         merge_junit([(work / "serial.xml", "serial.", False)], junit)
-        return rc
+        return worst(rc)
 
     xdist = ["-n", str(XDIST_WORKERS)]
     rc = subprocess.call(pytest + xdist + pytest_args("generate_gpw_files", work)
                          + [f"--junitxml={work}/precalc.xml"], cwd=_common.GPAW_SRC, env=env)
     args = pytest_args("not gpu", work)
-    rc = max(rc, subprocess.call(pytest + xdist + [f"--junitxml={work}/serial.xml"] + args,
-                                 cwd=_common.GPAW_SRC, env=env))
-    # Each rank runs pytest with a junit file of its own (Hydra sets PMI_RANK), and a failure
-    # on any rank fails mpiexec. `gpaw python` sets the MPI backend of the ranks.
-    rc = max(rc, subprocess.call(
-        _common.mpiexec(RANKS)
-        + ["sh", "-c", f'exec gpaw python -m pytest --junitxml={work}/np4-rank"$PMI_RANK".xml "$@"',
-           "sh", *args], cwd=_common.GPAW_SRC, env=env))
+    rc = worst(rc, subprocess.call(pytest + xdist + [f"--junitxml={work}/serial.xml"] + args,
+                                   cwd=_common.GPAW_SRC, env=env))
+    # np4: NP4_GROUPS groups run at once, each its own mpiexec with a TMPDIR of its own. Each
+    # rank runs pytest with a junit file of its own (Hydra sets PMI_RANK), and a failure on any
+    # rank fails its mpiexec. `gpaw python` sets the MPI backend of the ranks.
+    groups = []
+    for g in range(1, NP4_GROUPS + 1):
+        group_tmp = work / f"tmp-np4-g{g}"
+        group_tmp.mkdir(exist_ok=True)
+        groups.append(subprocess.Popen(
+            _common.mpiexec(RANKS)
+            + ["sh", "-c",
+               f'exec gpaw python -m pytest --junitxml={work}/np4-g{g}-rank"$PMI_RANK".xml "$@"',
+               "sh", *args, "--test-group-count", str(NP4_GROUPS), "--test-group", str(g),
+               "--test-group-random-seed", "42"],
+            cwd=_common.GPAW_SRC, env={**env, "TMPDIR": str(group_tmp)}))
+    statuses = [group.wait() for group in groups]
+    for g, status in enumerate(statuses, start=1):
+        rank0 = work / f"np4-g{g}-rank0.xml"
+        if not rank0.exists():  # the group was killed (a timeout, the OOM killer) before it wrote
+            case = ET.Element("testcase", name=f"group {g} wrote no junit (exit status {status})")
+            ET.SubElement(case, "failure", message="no junit file")
+            suite = ET.Element("testsuite")
+            suite.append(case)
+            ET.ElementTree(suite).write(rank0)
+    rc = worst(rc, *statuses)
     merge_junit([(work / "precalc.xml", "precalc.", False),
-                 (work / "serial.xml", "serial.", False),
-                 (work / "np4-rank0.xml", "np4.", False)]
-                + [(work / f"np4-rank{k}.xml", f"np4-rank{k}.", True) for k in range(1, RANKS)],
-                junit)
+                 (work / "serial.xml", "serial.", False)]
+                + [(work / f"np4-g{g}-rank{k}.xml", "np4." if k == 0 else f"np4-rank{k}.", k > 0)
+                   for g in range(1, NP4_GROUPS + 1) for k in range(RANKS)], junit)
     return rc
 
 

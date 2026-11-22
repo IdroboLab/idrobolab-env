@@ -1002,16 +1002,29 @@ def test_the_gpaw_preflight_names_every_library_that_covered_by_gpaw_rows_stand_
 
 
 class Calls:
-    """Stand-ins for subprocess.call and check_call that record the command and directory."""
+    """Stand-ins for subprocess.call, check_call and Popen that record the command and
+    directory; `events` lists "start" for each Popen and "wait" for each wait on one."""
 
-    def __init__(self, monkeypatch, module, failing=None):
-        """`failing`: a word of the command whose call returns exit status 1."""
-        self.calls, self.envs = [], []
+    def __init__(self, monkeypatch, module, failing=None, code=1):
+        """`failing`: a word of the command whose call returns the exit status `code`."""
+        self.calls, self.envs, self.events = [], [], []
+
+        def status(cmd):
+            return code if failing in cmd else 0
+
         monkeypatch.setattr(module.subprocess, "call",
                             lambda cmd, **kw: self.calls.append((cmd, kw.get("cwd")))
-                            or self.envs.append(kw.get("env")) or int(failing in cmd))
+                            or self.envs.append(kw.get("env")) or status(cmd))
         monkeypatch.setattr(module.subprocess, "check_call",
                             lambda cmd, **kw: self.calls.append((cmd, None)) or 0)
+
+        def popen(cmd, **kw):
+            self.calls.append((cmd, kw.get("cwd")))
+            self.envs.append(kw.get("env"))
+            self.events.append("start")
+            return types.SimpleNamespace(wait=lambda: self.events.append("wait") or status(cmd))
+
+        monkeypatch.setattr(module.subprocess, "Popen", popen)
 
 
 def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest(
@@ -1021,10 +1034,13 @@ def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest
     recorder = Calls(monkeypatch, gpaw_test)
     calls = recorder.calls
     assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 0
-    install, precalc, serial, parallel = calls
+    install, precalc, serial, *groups = calls
+    assert len(groups) == gpaw_test.NP4_GROUPS
+    parallel = groups[0]
     # the mpiexec GPAW starts itself must not look for a host srun inside a Slurm job
     assert all(env["HYDRA_BOOTSTRAP"] == "fork" for env in recorder.envs)
-    assert "pytest>=7,<9.1" in install[0] and "pytest-xdist" in install[0]
+    assert {"pytest>=7,<9.1", "pytest-xdist", "pytest-test-groups", "pytest-timeout"} \
+        <= set(install[0])
     assert precalc[0][precalc[0].index("-m", 3) + 1] == "generate_gpw_files"  # before the suite
     assert precalc[0][precalc[0].index("-n") + 1] == "32" and precalc[1] == "/opt/src/gpaw"
     assert f"cache_dir={tmp_path}/cache" in precalc[0]  # the cache the suites read the files from
@@ -1039,7 +1055,7 @@ def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest
     assert command[:5] == ["mpiexec", "-bootstrap", "fork", "-n", "4"] and parallel[1] == \
         "/opt/src/gpaw"
     assert 'exec gpaw python -m pytest --junitxml=' in command[command.index("-c") + 1]
-    assert f'{tmp_path}/np4-rank"$PMI_RANK".xml' in command[command.index("-c") + 1]
+    assert f'{tmp_path}/np4-g1-rank"$PMI_RANK".xml' in command[command.index("-c") + 1]
     assert command[command.index("-m") + 1] == "not gpu"
     assert "no:cacheprovider" not in str(calls)  # GPAW's conftest needs the cache plugin
 
@@ -1047,15 +1063,103 @@ def test_gpaw_cpu_part_runs_the_suite_serial_and_under_mpiexec_with_plain_pytest
 def test_gpaw_cpu_part_merges_the_precalc_cases_and_fails_when_the_precalc_fails(
         monkeypatch, tmp_path):
     gpaw_test = load_script("gpaw")
+    monkeypatch.setattr(gpaw_test, "NP4_GROUPS", 1)
     Calls(monkeypatch, gpaw_test, failing="generate_gpw_files")
-    for name in ("precalc", "serial", "np4-rank0"):
+    for name in ("precalc", "serial", "np4-g1-rank0"):
         (tmp_path / f"{name}.xml").write_text(
             f'<testsuites><testsuite><testcase classname="t" name="{name}"/></testsuite>'
             "</testsuites>")
     assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 1
     verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
     passed, _, _ = verify.parse_junit(tmp_path / "junit.xml")
-    assert passed == ["precalc.t::precalc", "serial.t::serial", "np4.t::np4-rank0"]
+    assert passed == ["precalc.t::precalc", "serial.t::serial", "np4.t::np4-g1-rank0"]
+
+
+def test_gpaw_np4_runs_every_group_at_once_with_its_own_tmpdir_and_junit_files(
+        monkeypatch, tmp_path):
+    gpaw_test = load_script("gpaw")
+    monkeypatch.setattr(gpaw_test, "NP4_GROUPS", 3)
+    recorder = Calls(monkeypatch, gpaw_test)
+    gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml")
+    groups = [c for c in recorder.calls if c[0][0] == "mpiexec"]
+    assert recorder.events == ["start"] * 3 + ["wait"] * 3  # none waits for an earlier group
+    for g, (command, cwd) in enumerate(groups, start=1):
+        assert command[:5] == ["mpiexec", "-bootstrap", "fork", "-n", "4"]
+        assert command[-6:] == ["--test-group-count", "3", "--test-group", str(g),
+                                "--test-group-random-seed", "42"]
+        script = command[command.index("-c") + 1]
+        assert f'--junitxml={tmp_path}/np4-g{g}-rank"$PMI_RANK".xml' in script
+    tmpdirs = [env["TMPDIR"] for env in recorder.envs[-3:]]
+    assert tmpdirs == [str(tmp_path / f"tmp-np4-g{g}") for g in (1, 2, 3)]
+    assert all(Path(d).is_dir() for d in tmpdirs)
+
+
+def test_gpaw_np4_fails_when_any_group_fails(monkeypatch, tmp_path):
+    gpaw_test = load_script("gpaw")
+    monkeypatch.setattr(gpaw_test, "NP4_GROUPS", 3)
+    Calls(monkeypatch, gpaw_test, failing="2")  # the word of group 2 only
+    assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 1
+
+
+def test_gpaw_np4_junit_files_of_every_group_and_rank_are_merged(monkeypatch, tmp_path):
+    """3 groups by 4 ranks: the group index and the rank index cannot be swapped."""
+    gpaw_test = load_script("gpaw")
+    monkeypatch.setattr(gpaw_test, "NP4_GROUPS", 3)
+    Calls(monkeypatch, gpaw_test)
+    for g in (1, 2, 3):
+        for k in range(4):
+            failure = '<failure message="x">y</failure>' if (g, k) in ((3, 2), (2, 3)) else ""
+            (tmp_path / f"np4-g{g}-rank{k}.xml").write_text(
+                f'<testsuites><testsuite><testcase classname="m" name="t_g{g}r{k}">{failure}'
+                "</testcase></testsuite></testsuites>")
+    assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 0
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    passed, failures, _ = verify.parse_junit(tmp_path / "junit.xml")
+    assert passed == [f"np4.m::t_g{g}r0" for g in (1, 2, 3)]  # rank 0 in full, ...
+    assert list(failures) == ["np4-rank3.m::t_g2r3", "np4-rank2.m::t_g3r2"]  # ... others' failures
+
+
+def test_gpaw_np4_fails_a_group_that_wrote_no_junit_beside_a_known_failure(
+        monkeypatch, tmp_path):
+    """A group killed by its timeout or the OOM killer leaves no file; another group fails."""
+    gpaw_test = load_script("gpaw")
+    monkeypatch.setattr(gpaw_test, "NP4_GROUPS", 3)
+    Calls(monkeypatch, gpaw_test, failing="2", code=-9)  # group 2 dies by SIGKILL
+    for g in (1, 3):
+        failure = '<failure message="x">y</failure>' if g == 1 else ""
+        (tmp_path / f"np4-g{g}-rank0.xml").write_text(
+            f'<testsuites><testsuite><testcase classname="m" name="t{g}">{failure}</testcase>'
+            "</testsuite></testsuites>")
+    assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 1
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    passed, failures, _ = verify.parse_junit(tmp_path / "junit.xml")
+    assert passed == ["np4.m::t3"]
+    assert list(failures) == ["np4.m::t1", "np4.::group 2 wrote no junit (exit status -9)"]
+
+
+@pytest.mark.parametrize("part, run", [("cpu", "precalc"), ("cpu", "serial"), ("cpu", "np4"),
+                                       ("gpu", "gpu")])
+def test_gpaw_counts_a_death_by_signal_as_a_failure(monkeypatch, tmp_path, part, run):
+    gpaw_test = load_script("gpaw")
+    word = {"precalc": "generate_gpw_files", "serial": f"--junitxml={tmp_path}/serial.xml",
+            "np4": "mpiexec", "gpu": "gpu"}[run]
+    Calls(monkeypatch, gpaw_test, failing=word, code=-9)
+    assert gpaw_test.run(part, tmp_path, tmp_path / "junit.xml") == 1
+
+
+@pytest.mark.parametrize("part", ["cpu", "gpu"])
+def test_gpaw_every_pytest_run_has_a_per_test_timeout_and_one_thread_per_process(
+        monkeypatch, tmp_path, part):
+    gpaw_test = load_script("gpaw")
+    recorder = Calls(monkeypatch, gpaw_test)
+    gpaw_test.run(part, tmp_path, tmp_path / "junit.xml")
+    runs = recorder.calls[1:]  # after the pip install
+    assert len(runs) == (1 if part == "gpu" else 2 + gpaw_test.NP4_GROUPS)
+    for command, _ in runs:
+        assert "--timeout=1800" in command and "--timeout-method=thread" in command
+    for env in recorder.envs:
+        assert [env[v] for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                                 "MKL_NUM_THREADS")] == ["1"] * 3
 
 
 def test_gpaw_gpu_part_runs_the_gpu_marker_once_and_serial(monkeypatch, tmp_path):
