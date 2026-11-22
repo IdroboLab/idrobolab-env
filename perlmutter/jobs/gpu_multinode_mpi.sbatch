@@ -169,7 +169,7 @@ srun --cpu-bind=cores podman-hpc run --rm $GROUP_FLAGS --gpu $MOUNTS "$IMAGE" \
     || echo "(GPU visibility probe failed — check --gpu / binding)"
 
 time srun --cpu-bind=cores \
-    podman-hpc run --rm $GROUP_FLAGS --mpi --gpu --nccl-cu12 --network=no_vni \
+    podman-hpc run --rm $GROUP_FLAGS --mpi --gpu --nccl-cu12 \
         $MOUNTS --workdir "$WORKDIR" \
         $GPAW_ENV $MPICH_ENV $RANK_ENV \
         $HDF5_ENV "$IMAGE" python "$SCRIPT" "$@"

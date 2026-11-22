@@ -131,11 +131,6 @@ GPAW_ENV="-e GPAW_MPI_BACKEND=cgpaw -e OMP_NUM_THREADS=1"
 
 MPICH_ENV="-e MPICH_SMP_SINGLE_COPY_MODE=CMA -e MPICH_OFI_STARTUP_CONNECT=1"
 
-# Multi-node podman-hpc MPI sometimes fails PMPI init with a misleading
-# "No space left on device" — NERSC's fix is to disable the VNI network
-# feature. Harmless when not needed; drop it if you prefer to test without.
-NETOPT="--network=no_vni"
-
 # HDF5 (h5py included) takes a flock on every file it opens, which CFS and
 # $HOME do not support from a compute node: the first HDF5 open there fails
 # with "OSError: [Errno 524] ... unable to lock file". With the lock off,
@@ -144,7 +139,7 @@ HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
 
 echo "IMAGE=$IMAGE  nodes=$SLURM_JOB_NUM_NODES  ranks=$SLURM_NTASKS"
 time srun --cpu-bind=cores \
-    podman-hpc run --rm $GROUP_FLAGS --mpi $NETOPT \
+    podman-hpc run --rm $GROUP_FLAGS --mpi \
         $MOUNTS --workdir "$WORKDIR" \
         $GPAW_ENV $MPICH_ENV \
         $HDF5_ENV "$IMAGE" python "$SCRIPT" "$@"
