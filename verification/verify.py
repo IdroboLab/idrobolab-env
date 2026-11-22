@@ -30,6 +30,7 @@ import datetime
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -42,6 +43,8 @@ ROOT = HERE.parent
 LAUNCHER_ENV = ("VERIFY_CLUSTER", "VERIFY_IMAGE_DIGEST", "VERIFY_JOB_ID", "VERIFY_SCRUB",
                 "VERIFY_WORK")
 MAX_FAILURE_TEXT = 2000
+DEADLINE_MARGIN = 900  # seconds kept for writing the record and the launcher's cleanup
+KILL_GRACE = 30  # seconds to collect the output of a killed component
 
 
 def read_tsv(path):
@@ -101,8 +104,43 @@ def parse_lines(output):
     return passed, failures, 0
 
 
-def run_component(row, part, cluster, known, work):
-    """Run one component test; return its record entry and its log text."""
+def read_deadline():
+    """The job's end time (epoch seconds) from VERIFY_DEADLINE, or None, with a warning, when
+    it is unset, empty, not an integer or already past."""
+    value = os.environ.get("VERIFY_DEADLINE", "")
+    try:
+        deadline = int(value)
+    except ValueError:
+        deadline = 0
+    if deadline <= time.time():
+        print(f"verify.py: VERIFY_DEADLINE={value!r} is not a future time in epoch seconds: "
+              "no component timeout", file=sys.stderr)
+        return None
+    return deadline
+
+
+def kill_group(proc):
+    """Kill the process group of `proc`; return its output. Each wait is bounded by KILL_GRACE,
+    so a process outside the group that holds the pipe, or a leader in uninterruptible sleep
+    that defers the kill, cannot block the record."""
+    os.killpg(proc.pid, signal.SIGKILL)
+    try:
+        output, _ = proc.communicate(timeout=KILL_GRACE)
+    except subprocess.TimeoutExpired as e:
+        output = e.output or ""
+        if isinstance(output, bytes):
+            output = output.decode(errors="replace")
+        proc.stdout.close()
+    try:
+        proc.wait(timeout=KILL_GRACE)
+    except subprocess.TimeoutExpired:
+        pass
+    return output
+
+
+def run_component(row, part, cluster, known, work, timeout=None):
+    """Run one component test, in a process group of its own that is killed after `timeout`
+    seconds; return its record entry, its log text and whether it timed out."""
     comp = row["component"]
     cwork = work / comp
     cwork.mkdir(parents=True, exist_ok=True)
@@ -112,21 +150,32 @@ def run_component(row, part, cluster, known, work):
            "VERIFY_JUNIT": str(junit)}
     start = time.monotonic()
     command = [HERE / "tests" / row["test"]]
+    timed_out = False
     try:
-        proc = subprocess.run(command, env=env, cwd=cwork, text=True, errors="replace",
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        proc = subprocess.Popen(command, env=env, cwd=cwork, text=True, errors="replace",
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                start_new_session=True)
     except OSError as e:  # missing or not executable
-        proc = subprocess.CompletedProcess(command, 127, f"cannot run {command[0]}: {e}\n")
+        returncode, output = 127, f"cannot run {command[0]}: {e}\n"
+    else:
+        try:
+            output, _ = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:  # mpiexec and the xdist workers are children
+            output = kill_group(proc)
+            timed_out = True
+        returncode = proc.returncode
     seconds = round(time.monotonic() - start)
     passed, failures, skipped = (parse_junit(junit) if junit.exists()
-                                 else parse_lines(proc.stdout))
+                                 else parse_lines(output))
 
     listed = {k["test id"] for k in known if k["component"] == comp
               and k["cluster"] in (cluster, "*") and k["part"] in (part, "*")}
     known_failed = [t for t in failures if t in listed]
     unexpected = [t for t in failures if t not in listed]
-    if not failures and proc.returncode != 0:
-        unexpected.append(f"exit status {proc.returncode}")
+    if timed_out:
+        unexpected.append(f"timeout after {round(timeout)} s")
+    elif not failures and returncode != 0:
+        unexpected.append(f"exit status {returncode}")
     if not passed and not unexpected:
         unexpected.append("no test results")
     entry = {"status": "fail" if unexpected else "pass", "passed": len(passed),
@@ -137,14 +186,14 @@ def run_component(row, part, cluster, known, work):
     log = [f"component {comp}, part {part}, cluster {cluster}",
            f"status {entry['status']}: {entry['passed']} passed, {entry['failed']} failed "
            f"({entry['known_failed']} known), {skipped} skipped, exit status "
-           f"{proc.returncode}, {seconds} s"]
+           f"{returncode}, {seconds} s"]
     log += [f"unexpected: {t}" for t in unexpected]
     log += [f"stale known failure: {t}" for t in entry["stale_known"]]
     for tid, text in failures.items():
         log += ["", f"--- failing: {tid}", text[:MAX_FAILURE_TEXT]]
-    if unexpected and not failures:
-        log += ["", "--- last lines of output", *proc.stdout.splitlines()[-60:]]
-    return entry, "\n".join(log) + "\n"
+    if unexpected and (timed_out or not failures):
+        log += ["", "--- last lines of output", *output.splitlines()[-60:]]
+    return entry, "\n".join(log) + "\n", timed_out
 
 
 def gpu_description():
@@ -214,16 +263,20 @@ def main(argv=None):
     release_dir = HERE / args.image / "releases" / str(manifest["version"])
     log_dir = release_dir / f"{cluster}-{part}"
     log_dir.mkdir(parents=True, exist_ok=True)
-    results = {}
+    deadline = read_deadline()
+    results, out_of_time = {}, False  # a component timed out, or the margin is reached
     for row in rows:
         comp = row["component"]
-        if args.only and comp != args.only:
+        selected = not args.only or comp == args.only
+        remaining = None if deadline is None else deadline - time.time() - DEADLINE_MARGIN
+        out_of_time = out_of_time or selected and remaining is not None and remaining <= 0
+        if not selected or out_of_time:
             results[comp] = {"status": "not-run", "passed": 0, "failed": 0, "skipped": 0,
                              "known_failed": 0, "unexpected": [], "stale_known": [],
                              "seconds": 0}
             continue
-        results[comp], log = run_component(row, part, cluster, known,
-                                           Path(os.environ["VERIFY_WORK"]))
+        results[comp], log, out_of_time = run_component(
+            row, part, cluster, known, Path(os.environ["VERIFY_WORK"]), remaining)
         (log_dir / f"{comp}.log").write_text(scrubbed(log))
 
     record = {"image": args.image, "version": manifest["version"],
@@ -234,14 +287,16 @@ def main(argv=None):
               "part": part, "date_utc": today,
               "job_id": os.environ["VERIFY_JOB_ID"],
               "gpu": gpu_description() if part == "gpu" else "none",
-              "complete": not args.only, "components": results}
+              "complete": not args.only and not out_of_time,
+              "components": results}
     (release_dir / f"{cluster}-{part}.json").write_text(
         json.dumps(scrubbed(record), indent=1) + "\n")
     write_readme(args.image, release_dir)
     bad = [c for c, r in results.items() if r["status"] == "fail"]
     print(f"{cluster}-{part}: {len(results) - len(bad)} of {len(results)} components passed"
-          + (f"; failed: {', '.join(bad)}" if bad else ""))
-    return 1 if bad else 0
+          + (f"; failed: {', '.join(bad)}" if bad else "")
+          + ("; stopped at the deadline" if out_of_time else ""))
+    return 1 if bad or out_of_time else 0
 
 
 if __name__ == "__main__":

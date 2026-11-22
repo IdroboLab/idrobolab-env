@@ -13,8 +13,10 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import time
 import types
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
@@ -815,6 +817,155 @@ def test_verify_fails_a_test_file_that_cannot_run_and_still_writes_the_record(su
     assert entry["status"] == "fail" and entry["unexpected"] == ["exit status 127"]
     assert suite.record("c1", "cpu")["components"]["beta"]["status"] == "pass"
     assert "cannot run" in (suite.idir / "releases/4/c1-cpu/alpha.log").read_text()
+
+
+# the deadline: a component that overruns the job's end time is killed, the record is written
+
+MARGIN = 900  # verify.py keeps this many seconds before the deadline for the record
+
+
+def deadline_in(seconds):
+    """A VERIFY_DEADLINE that leaves verify.py `seconds` for a component."""
+    return int(time.time()) + MARGIN + seconds
+
+
+def alive(pid):
+    """Is the process running (a zombie, not yet reaped by its new parent, is not)?"""
+    try:
+        return Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0] != "Z"
+    except FileNotFoundError:
+        return False
+
+
+def test_verify_times_out_a_component_at_the_deadline_and_still_writes_the_record(suite):
+    suite.scripts(alpha='#!/bin/sh\necho "last words"\nsleep 30 &\nwait\n')
+    start = time.monotonic()
+    res = suite.verify("c1", "cpu", VERIFY_DEADLINE=deadline_in(2))
+    assert time.monotonic() - start < 20 and res.returncode == 1, res.stderr
+    record = suite.record("c1", "cpu")
+    alpha, beta = record["components"]["alpha"], record["components"]["beta"]
+    assert alpha["status"] == "fail" and alpha["failed"] == 1
+    assert re.fullmatch(r"timeout after [12] s", alpha["unexpected"][0]) and \
+        len(alpha["unexpected"]) == 1
+    assert beta["status"] == "not-run" and beta["passed"] == 0
+    assert record["complete"] is False
+    log = (suite.idir / "releases/4/c1-cpu/alpha.log").read_text()
+    assert "--- last lines of output" in log and "last words" in log
+    assert "alpha" in (suite.idir / "releases/4/README.md").read_text()
+    assert "(incomplete)" in (suite.idir / "releases/4/README.md").read_text()
+
+
+def test_verify_kills_the_whole_process_group_of_a_component_that_times_out(suite):
+    # the child writes its pid, leaves the pipe and outlives a kill of its parent alone
+    suite.scripts(alpha='#!/bin/sh\nsleep 30 >/dev/null 2>&1 &\necho $! > "$VERIFY_WORK/child"\n'
+                        'wait $!\n')
+    start = time.monotonic()
+    res = suite.verify("c1", "cpu", VERIFY_DEADLINE=deadline_in(2))
+    elapsed = time.monotonic() - start
+    child = int((suite.tmp / "work/alpha/child").read_text())
+    try:
+        assert res.returncode == 1 and elapsed < 20 and not alive(child)
+    finally:
+        if alive(child):
+            os.kill(child, 9)
+
+
+def test_verify_does_not_start_a_component_inside_the_margin_before_the_deadline(suite):
+    suite.scripts(alpha='#!/bin/sh\necho "PASS one"\n')
+    res = suite.verify("c1", "cpu", VERIFY_DEADLINE=deadline_in(-5))
+    assert res.returncode == 1 and "stopped at the deadline" in res.stdout
+    record = suite.record("c1", "cpu")
+    assert [record["components"][c]["status"] for c in ("alpha", "beta")] == ["not-run"] * 2
+    assert record["complete"] is False
+    assert not (suite.idir / "releases/4/c1-cpu/alpha.log").exists()
+
+
+def test_verify_does_not_wait_for_a_leader_that_survives_the_kill(suite, monkeypatch):
+    """A leader in uninterruptible sleep defers SIGKILL: wait() must be bounded."""
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    monkeypatch.setattr(verify, "HERE", suite.vdir)
+
+    class Stuck:
+        pid, returncode = 1, None
+        stdout = None
+
+        def communicate(self, timeout=None):
+            if timeout == 1:  # the component's own timeout
+                raise subprocess.TimeoutExpired("alpha", timeout)
+            return "last words\n", None
+
+        def wait(self, timeout=None):
+            assert timeout is not None, "wait() without a limit blocks forever"
+            raise subprocess.TimeoutExpired("alpha", timeout)
+
+    killed = []
+    monkeypatch.setattr(verify.subprocess, "Popen", lambda *a, **kw: Stuck())
+    monkeypatch.setattr(verify.os, "killpg", lambda pid, sig: killed.append((pid, sig)))
+    entry, log, timed_out = verify.run_component(
+        {"component": "alpha", "test": "alpha"}, "cpu", "c1", [], suite.tmp / "work", 1)
+    assert killed == [(1, signal.SIGKILL)]
+    assert timed_out and entry["unexpected"] == ["timeout after 1 s"] and "last words" in log
+
+
+def test_verify_with_only_does_not_stop_at_the_deadline_for_a_skipped_row(suite, monkeypatch,
+                                                                         capsys):
+    """The run of the selected component ends inside the margin; the rows after it, which
+    --only skips, must not make the run look stopped."""
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    for name, value in {"HERE": suite.vdir, "ROOT": suite.repo}.items():
+        monkeypatch.setattr(verify, name, value)
+    clock = [1_000_000.0]
+    monkeypatch.setattr(verify, "time", types.SimpleNamespace(
+        time=lambda: clock[0], monotonic=time.monotonic))
+    passing = {"status": "pass", "passed": 1, "failed": 0, "skipped": 0, "known_failed": 0,
+               "unexpected": [], "stale_known": [], "seconds": 0}
+
+    def run_component(*args):
+        clock[0] += 100  # the component takes the time that was left
+        return passing, "log\n", False
+
+    monkeypatch.setattr(verify, "run_component", run_component)
+    for name, value in {"VERIFY_CLUSTER": "c1", "VERIFY_JOB_ID": "7", "VERIFY_SCRUB": "x",
+                        "VERIFY_IMAGE_DIGEST": "sha256:cc", "VERIFY_WORK": suite.tmp / "work",
+                        "VERIFY_MANIFEST": suite.manifest(),
+                        "VERIFY_DEADLINE": int(clock[0]) + MARGIN + 50}.items():
+        monkeypatch.setenv(name, str(value))
+    assert verify.main([IMAGE, "--part", "cpu", "--only", "alpha"]) == 0
+    assert "stopped at the deadline" not in capsys.readouterr().out
+    record = suite.record("c1", "cpu")
+    assert [record["components"][c]["status"] for c in ("alpha", "beta")] == ["pass", "not-run"]
+    assert record["complete"] is False  # --only
+
+
+def test_verify_does_not_wait_for_a_process_outside_the_group_that_holds_the_pipe(
+        suite, monkeypatch):
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    monkeypatch.setattr(verify, "HERE", suite.vdir)
+    monkeypatch.setattr(verify, "KILL_GRACE", 1)
+    # setsid: a session of its own, so the kill of the group misses it; it keeps the pipe open
+    suite.scripts(alpha='#!/bin/sh\necho "last words"\nsetsid sleep 20 &\n'
+                        'echo $! > "$VERIFY_WORK/child"\nsleep 20\n')
+    start = time.monotonic()
+    entry, log, timed_out = verify.run_component(
+        {"component": "alpha", "test": "alpha"}, "cpu", "c1", [], suite.tmp / "work", 1)
+    elapsed = time.monotonic() - start
+    child = int((suite.tmp / "work/alpha/child").read_text())
+    if alive(child):
+        os.kill(child, 9)
+    assert timed_out and entry["unexpected"] == ["timeout after 1 s"] and elapsed < 10
+    assert "last words" in log
+
+
+@pytest.mark.parametrize("value", [None, "", "soon", "12.5", "-1", "1000"])
+def test_verify_runs_without_a_timeout_and_warns_for_a_missing_or_invalid_deadline(
+        suite, value):
+    """None: unset; "1000": long past."""
+    suite.scripts(alpha='#!/bin/sh\nsleep 1\necho "PASS one"\n')
+    res = suite.verify("c1", "cpu", **({} if value is None else {"VERIFY_DEADLINE": value}))
+    assert res.returncode == 0, res.stderr
+    assert res.stderr.count("VERIFY_DEADLINE") == 1 and "no component timeout" in res.stderr
+    assert "Traceback" not in res.stderr
+    assert suite.record("c1", "cpu")["complete"] is True
 
 
 def test_verify_scrubs_the_values_of_the_record_not_its_keys(suite):
