@@ -300,8 +300,11 @@ def main(argv=None):
         json.dumps(scrubbed(record), indent=1) + "\n")
     write_readme(args.image, release_dir)
     bad = [c for c, r in results.items() if r["status"] == "fail"]
-    print(f"{cluster}-{part}: {len(results) - len(bad)} of {len(results)} components passed"
+    not_run = sum(r["status"] == "not-run" for r in results.values())
+    passed = sum(r["status"] == "pass" for r in results.values())
+    print(f"{cluster}-{part}: {passed} of {len(results)} components passed"
           + (f"; failed: {', '.join(bad)}" if bad else "")
+          + (f"; {not_run} not run" if not_run else "")
           + ("; stopped at the deadline" if out_of_time else ""))
     return 1 if bad or out_of_time else 0
 

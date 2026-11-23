@@ -931,7 +931,9 @@ def test_verify_with_only_does_not_stop_at_the_deadline_for_a_skipped_row(suite,
                         "VERIFY_DEADLINE": int(clock[0]) + MARGIN + 50}.items():
         monkeypatch.setenv(name, str(value))
     assert verify.main([IMAGE, "--part", "cpu", "--only", "alpha"]) == 0
-    assert "stopped at the deadline" not in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "stopped at the deadline" not in out
+    assert "c1-cpu: 1 of 2 components passed; 1 not run" in out
     record = suite.record("c1", "cpu")
     assert [record["components"][c]["status"] for c in ("alpha", "beta")] == ["pass", "not-run"]
     assert record["complete"] is False  # --only
