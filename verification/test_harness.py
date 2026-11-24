@@ -4,7 +4,8 @@ scripts with temporary source repositories (a bare origin and a clone each) and 
 container engine that only logs its calls, so nothing touches the network, a registry or a
 credential, and nothing depends on a local checkout of the sources; and of the harness
 verify.py and the gate check_release.py, run in a temporary git repository with fake
-components, a fake manifest and hand-written records.
+components, a fake manifest and hand-written records; and of check-no-avx512.sh, run on objects
+assembled from single instructions.
 Run: pytest verification/test_harness.py"""
 import copy
 import importlib.util
@@ -1000,3 +1001,58 @@ def test_delta_launcher_uses_the_personal_scratch_area_and_no_scratch_variable(t
     text = (VERIFICATION / "clusters" / f"delta-{part}.sbatch").read_text()
     code = re.sub(r"(?m)^(?!#SBATCH).*?#.*$", lambda m: m.group().split("#")[0], text)
     assert not re.search(r"\$\{?SCRATCH(?![_A-Za-z])", code)
+
+
+AVX512_CHECK = ROOT / RECIPE_REL / "check-no-avx512.sh"
+
+
+def avx512_check(tmp_path, insn, name="x.o", sdk=(), archive=False, env=None):
+    """Run check-no-avx512.sh on a directory holding one object (or a static archive of it)
+    assembled from one instruction, with `sdk` listed in NVIDIA-REDIST-FILES.txt."""
+    dist = tmp_path / "dist"
+    (dist / "lib").mkdir(parents=True)
+    (tmp_path / "x.s").write_text(f".text\n{insn}\n")
+    obj = tmp_path / "x.o"
+    subprocess.run(["as", tmp_path / "x.s", "-o", obj], check=True)
+    if archive:
+        subprocess.run(["ar", "rcs", dist / "lib" / name, obj], check=True)
+    else:
+        shutil.copy(obj, dist / "lib" / name)
+    (dist / "lib" / "README").write_text("not an object\n")
+    (dist / "NVIDIA-REDIST-FILES.txt").write_text("".join(f"{n}  some/path\n" for n in sdk))
+    return subprocess.run(["bash", AVX512_CHECK, dist], capture_output=True, text=True, env=env)
+
+
+@pytest.mark.parametrize("insn", [
+    "vpxord %zmm0, %zmm0, %zmm0",
+    "vpaddd %ymm17, %ymm17, %ymm17",  # EVEX-only register, no zmm
+    "kmovw %k1, %eax",
+])
+@pytest.mark.parametrize("archive", [False, True])
+def test_avx512_check_fails_on_an_avx512_instruction(tmp_path, insn, archive):
+    res = avx512_check(tmp_path, insn, name="x.a" if archive else "x.o", archive=archive)
+    assert res.returncode == 1
+    assert "AVX-512: lib/x." in res.stdout and "1 file(s)" in res.stderr
+
+
+def test_avx512_check_passes_avx2_code(tmp_path):
+    res = avx512_check(tmp_path, "vpaddd %ymm15, %ymm1, %ymm1")
+    assert res.returncode == 0, res.stdout + res.stderr
+    assert "1 files checked" in res.stdout
+
+
+def test_avx512_check_reports_but_does_not_check_an_sdk_file(tmp_path):
+    res = avx512_check(tmp_path, "vpxord %zmm0, %zmm0, %zmm0", name="libnvf.so", sdk=["libnvf.so"])
+    assert res.returncode == 1  # the SDK file was the only object: nothing checked
+    assert "SDK file, not checked: lib/libnvf.so: 1 AVX-512 instructions" in res.stdout
+    assert "no ELF file or archive" in res.stderr
+
+
+def test_avx512_check_fails_when_objdump_fails(tmp_path):
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    (stub / "objdump").write_text("#!/bin/sh\necho 'objdump: file format not recognized' >&2\nexit 1\n")
+    (stub / "objdump").chmod(0o755)
+    env = {**os.environ, "PATH": f"{stub}:{os.environ['PATH']}"}
+    res = avx512_check(tmp_path, "vpaddd %ymm1, %ymm1, %ymm1", env=env)
+    assert res.returncode == 1 and "files checked" not in res.stdout
