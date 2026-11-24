@@ -1,13 +1,13 @@
 #!/bin/bash
 # Multi-node GPU MPI: 4 ranks per node, 1 A100 per rank. The pattern for
 # GPU-parallel GPAW (GPAW_NEW=1 GPAW_USE_GPUS=1, parallel={'gpu': True}) and
-# for distributed torch/jax work across nodes.
+# for other MPI codes across nodes.
 #
-# Two things are stacked here that the single-node GPU scripts do not need:
-#   --mpi        swaps the host Cray MPICH into the container (Slingshot)
-#   --nccl-cu12  installs NERSC's Slingshot-tuned NCCL plugin (CUDA 12 image);
-#                only matters for NCCL collectives (torch DDP), harmless
-#                otherwise. Use --nccl-cu13 if the image ever moves to CUDA 13.
+# The single-node GPU scripts do not need --mpi, which swaps the host Cray MPICH
+# into the container (Slingshot). This script does not add --nccl-cu12: on
+# podman-hpc 5.8.2 that module's LD_LIBRARY_PATH replaces the one --mpi sets, the
+# ranks load the image's own MPICH, and each runs as a separate 1-rank job. Torch
+# DDP over NCCL across nodes is not covered by this script (untested here).
 #
 # Charging: walltime x nodes x 1.0. GPU jobs of 128+ nodes in the regular QOS
 # get a 25% big-job discount (QOS factor 0.75).
@@ -139,10 +139,11 @@ WORKDIR=$(pwd -P)
 # Run a cluster checkout instead of the baked-in code:
 # MOUNTS="$MOUNTS -v $SCRATCH/code/gpaw:/opt/src/gpaw"
 
-# Required for GPAW 26.7.0+ under an MPI launcher with plain `python`.
-GPAW_ENV="-e GPAW_MPI_BACKEND=cgpaw -e OMP_NUM_THREADS=8"
+# GPAW_MPI_BACKEND=cgpaw: required for GPAW 26.7.0+ under an MPI launcher with
+# plain `python`. GPAW_NO_GPU_MPI=1: see "GPU-aware MPI" at the end.
+GPAW_ENV="-e GPAW_MPI_BACKEND=cgpaw -e GPAW_NO_GPU_MPI=1 -e OMP_NUM_THREADS=8"
 
-MPICH_ENV="-e MPICH_SMP_SINGLE_COPY_MODE=CMA -e MPICH_GPU_SUPPORT_ENABLED=1"
+MPICH_ENV="-e MPICH_SMP_SINGLE_COPY_MODE=CMA"
 
 # --- GPU binding ----------------------------------------------------------
 # All 4 GPUs are left visible to every rank (--gpu-bind=none) and the rank
@@ -164,18 +165,25 @@ RANK_ENV="-e SLURM_LOCALID -e SLURM_PROCID -e SLURM_NTASKS"
 HDF5_ENV="-e HDF5_USE_FILE_LOCKING=FALSE"
 
 echo "IMAGE=$IMAGE  nodes=$SLURM_JOB_NUM_NODES  ranks=$SLURM_NTASKS"
-srun --cpu-bind=cores podman-hpc run --rm $GROUP_FLAGS --gpu $MOUNTS "$IMAGE" \
+srun --cpu-bind=cores podman-hpc run --rm $GROUP_FLAGS --gpu $RANK_ENV $MOUNTS "$IMAGE" \
     bash -c 'echo "rank $SLURM_PROCID localid $SLURM_LOCALID sees $(nvidia-smi -L | wc -l) GPUs"' \
     || echo "(GPU visibility probe failed — check --gpu / binding)"
 
 time srun --cpu-bind=cores \
-    podman-hpc run --rm $GROUP_FLAGS --mpi --gpu --nccl-cu12 \
+    podman-hpc run --rm $GROUP_FLAGS --mpi --gpu \
         $MOUNTS --workdir "$WORKDIR" \
         $GPAW_ENV $MPICH_ENV $RANK_ENV \
         $HDF5_ENV "$IMAGE" python "$SCRIPT" "$@"
 
 # --- GPU-aware MPI --------------------------------------------------------
-# MPICH_GPU_SUPPORT_ENABLED=1 lets Cray MPICH send device pointers directly.
-# It requires the GTL library on the container's link path; if you get
-# "GPU_SUPPORT_ENABLED requires GTL" or crashes in device-pointer sends,
-# set it to 0 and let the code stage through host memory.
+# The image's GPAW is built GPU-aware (`gpaw info`: "GPU-aware MPI yes") and by
+# default passes device pointers to MPI, which the host Cray MPICH that --mpi
+# loads cannot read: a CuPy allreduce dies with "process_vm_readv: Bad address",
+# and a GPU GPAW calculation on 8 ranks ended with exit status 139 (most likely
+# the same cause). GPAW_NO_GPU_MPI=1 wraps GPAW's own communicators in
+# gpaw.gpu.mpi.CuPyMPI, which copies device arrays through host memory for sums,
+# gathers and scatters; with it the calculation completes across nodes.
+# A script's own gpaw.mpi.world.sum() on a CuPy array is not covered: wrap the
+# communicator in CuPyMPI, or pass host arrays. podman-hpc's --cuda-mpi (Cray
+# MPICH with its GTL library) would take device pointers directly, but it does
+# not start a container here (exit status 125, cause not yet known).
