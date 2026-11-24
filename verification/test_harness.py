@@ -1006,7 +1006,7 @@ def test_delta_launcher_uses_the_personal_scratch_area_and_no_scratch_variable(t
 AVX512_CHECK = ROOT / RECIPE_REL / "check-no-avx512.sh"
 
 
-def avx512_check(tmp_path, insn, name="x.o", sdk=(), archive=False):
+def avx512_check(tmp_path, insn, name="x.o", sdk=(), archive=False, env=None):
     """Run check-no-avx512.sh on a directory holding one object (or a static archive of it)
     assembled from one instruction, with `sdk` listed in NVIDIA-REDIST-FILES.txt."""
     dist = tmp_path / "dist"
@@ -1020,7 +1020,7 @@ def avx512_check(tmp_path, insn, name="x.o", sdk=(), archive=False):
         shutil.copy(obj, dist / "lib" / name)
     (dist / "lib" / "README").write_text("not an object\n")
     (dist / "NVIDIA-REDIST-FILES.txt").write_text("".join(f"{n}  some/path\n" for n in sdk))
-    return subprocess.run(["bash", AVX512_CHECK, dist], capture_output=True, text=True)
+    return subprocess.run(["bash", AVX512_CHECK, dist], capture_output=True, text=True, env=env)
 
 
 @pytest.mark.parametrize("insn", [
@@ -1046,3 +1046,13 @@ def test_avx512_check_reports_but_does_not_check_an_sdk_file(tmp_path):
     assert res.returncode == 1  # the SDK file was the only object: nothing checked
     assert "SDK file, not checked: lib/libnvf.so: 1 AVX-512 instructions" in res.stdout
     assert "no ELF file or archive" in res.stderr
+
+
+def test_avx512_check_fails_when_objdump_fails(tmp_path):
+    stub = tmp_path / "bin"
+    stub.mkdir()
+    (stub / "objdump").write_text("#!/bin/sh\necho 'objdump: file format not recognized' >&2\nexit 1\n")
+    (stub / "objdump").chmod(0o755)
+    env = {**os.environ, "PATH": f"{stub}:{os.environ['PATH']}"}
+    res = avx512_check(tmp_path, "vpaddd %ymm1, %ymm1, %ymm1", env=env)
+    assert res.returncode == 1 and "files checked" not in res.stdout

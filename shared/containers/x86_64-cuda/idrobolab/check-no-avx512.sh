@@ -5,6 +5,8 @@
 #
 # An AVX-512 instruction is one that names a zmm register, an opmask register (k0-k7) or
 # one of the registers xmm16-31/ymm16-31 that only the EVEX encoding reaches.
+# shortcut: EVEX code that names only xmm0-15/ymm0-15 (AVX-512VL) is not detected; a build
+# for an AVX-512 host emits zmm throughout, which is what this check is for.
 # The NVIDIA HPC SDK files that stage-qe-libs.sh lists in DIR/NVIDIA-REDIST-FILES.txt
 # (first column: the file name in DIR/lib) are counted and reported, not checked: they are
 # NVIDIA's prebuilt runtime libraries, not built here.
@@ -15,6 +17,8 @@ DIR="$1"
 sdk=" "
 [ -f "${DIR}/NVIDIA-REDIST-FILES.txt" ] && sdk+="$(awk '{printf "%s ", $1}' "${DIR}/NVIDIA-REDIST-FILES.txt")"
 
+dis="$(mktemp)"
+trap 'rm -f "$dis"' EXIT
 bad=0
 checked=0
 while IFS= read -r -d '' f; do
@@ -22,7 +26,8 @@ while IFS= read -r -d '' f; do
         177ELF*|'!<arch>') ;;
         *) continue ;;
     esac
-    n="$(objdump -d "$f" | grep -c -E '%(zmm[0-9]|k[0-7]\b|[xy]mm(1[6-9]|2[0-9]|3[01])\b)' || true)"
+    objdump -d "$f" > "$dis"   # a failing objdump stops the script (set -e)
+    n="$(grep -c -E '%(zmm[0-9]|k[0-7]\b|[xy]mm(1[6-9]|2[0-9]|3[01])\b)' "$dis" || [ $? -eq 1 ])"
     case "$sdk" in
         *" $(basename "$f") "*) echo "SDK file, not checked: ${f#"$DIR"/}: $n AVX-512 instructions"; continue ;;
     esac
