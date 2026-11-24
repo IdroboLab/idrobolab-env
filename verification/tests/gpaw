@@ -23,6 +23,7 @@ test fails with a stack dump, and under MPI that rank's exit ends its group. A g
 no rank-0 junit file (killed by its timeout or the OOM killer) is a failing case `group <i>
 wrote no junit (exit status N)`. The worst exit status counts, a death by signal as a failure.
 BLAS threads are pinned to 1 per process (BLAS_THREADS), as up to 32 processes share the node.
+Every run leaves out the directories of IGNORED.
 
 The cases of the runs are merged into VERIFY_JUNIT with the classname prefix `precalc.`,
 `serial.` or `np4.` (the cases of rank 0 of every group and, under `np4-rank<k>.`, the failing
@@ -51,6 +52,10 @@ XDIST_WORKERS = 32
 RANKS = 4
 NP4_GROUPS = 8
 TEST_TIMEOUT = 1800  # seconds per test
+# Left out of every run: the image's QE-built wannier90.x carries AVX-512 code and dies with
+# SIGILL on the AMD Milan nodes of both clusters, until the image is rebuilt with QE pinned to
+# x86-64-v3.
+IGNORED = ("gpaw/test/wannier",)
 BLAS_THREADS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 
 
@@ -70,7 +75,8 @@ def preflight(part):
 
 def pytest_args(marker, work):
     return ["-m", marker, "-o", f"cache_dir={work}/cache", "-q", "-rsfE", "--tb=short",
-            f"--timeout={TEST_TIMEOUT}", "--timeout-method=thread"]
+            f"--timeout={TEST_TIMEOUT}", "--timeout-method=thread",
+            *(f"--ignore={path}" for path in IGNORED)]
 
 
 def merge_junit(parts, out):
