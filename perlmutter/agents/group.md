@@ -24,6 +24,9 @@ group's Perlmutter pages, `~/idrobolab-env/docs/perlmutter/` (clone path may dif
   or run `uv self update`: the maintainer does that.
 - Python scripts carry their dependencies in a PEP 723 header and run with
   `uv run --script`.
+- Change or test anything in the user's idrobolab-env clone only in a git worktree, with
+  the clone itself kept on `main`: `env.sh` and every job read the clone.
+  `~/idrobolab-env/core/AGENTS-common.md` has the commands (clone path may differ).
 
 ## Data
 
