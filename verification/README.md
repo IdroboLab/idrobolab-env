@@ -183,16 +183,17 @@ Each test's docstring says what it runs; this lists what is not obvious from it.
   group in full and only the failing cases of the other ranks (classname prefixes `np4.` and
   `np4-rank<r>.`). A group that wrote no rank-0 file (killed by its timeout or the OOM killer)
   is a failing case `group <i> wrote no junit (exit status N)`, carrying the last lines of the
-  group's output (`np4-g<i>.log`); a group still running `NP4_GROUP_TIMEOUT` seconds after the
+  group's output (`np4-g<i>.log`), which a failing group also prints; a group still running `NP4_GROUP_TIMEOUT` seconds after the
   start is ended that way, since a test failing on some ranks leaves the others blocked in a
   collective, out of pytest-timeout's reach. The worst exit status counts,
   a death by signal as a failure. Every pytest run has
   `--timeout=<TEST_TIMEOUT> --timeout-method=thread` (pytest-timeout): a hung test fails with a
   stack dump, and under MPI that rank's exit ends its group. OMP, OPENBLAS and MKL threads are
   pinned to 1 per process, as up to 32 processes share the node. A run that still overruns the
-  job ends at `VERIFY_DEADLINE`, above. Every run leaves out the directories of `IGNORED`
-  in `tests/gpaw` (`gpaw/test/wannier`, `gpaw/test/elph`; the comment there says why). The cpu
-  part sets `GPAW_CPUPY=1`, so GPAW's `gpu=True` cases run on its CuPy emulation.
+  job ends at `VERIFY_DEADLINE`, above. Every run leaves out the paths of `IGNORED`
+  in `tests/gpaw` (`gpaw/test/wannier` and five `gpaw/test/elph` files; the comment there says
+  why). The cpu part sets `GPAW_CPUPY=1`, GPAW's CuPy emulation for `gpu=True` calculations
+  outside pytest (GPAW's conftest already allows them in its sessions).
 - `tests/gpaw-eigensolvers`: ScaLAPACK against ELPA total energies, and which solver each run
   used.
 - `tests/gpaw-weaver`: gpaw-weaver's own suite and a real GPAW run of its entry point. Its SCF
