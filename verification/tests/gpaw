@@ -23,7 +23,11 @@ test fails with a stack dump, and under MPI that rank's exit ends its group. A g
 no rank-0 junit file (killed by its timeout or the OOM killer) is a failing case `group <i>
 wrote no junit (exit status N)`. The worst exit status counts, a death by signal as a failure.
 BLAS threads are pinned to 1 per process (BLAS_THREADS), as up to 32 processes share the node.
-Every run leaves out the directories of IGNORED.
+Every run leaves out the directories of IGNORED. The cpu part sets GPAW_CPUPY=1, so the
+gpu=True cases run on GPAW's CuPy emulation. Each np4 group's output goes to
+np4-g<i>.log; a group still running NP4_GROUP_TIMEOUT seconds after the start is killed, and a
+group that wrote no rank-0 junit file keeps the last GROUP_LOG_LINES lines of that log in its
+failing case.
 
 The cases of the runs are merged into VERIFY_JUNIT with the classname prefix `precalc.`,
 `serial.` or `np4.` (the cases of rank 0 of every group and, under `np4-rank<k>.`, the failing
@@ -39,6 +43,7 @@ VERIFY_PART, VERIFY_WORK, VERIFY_JUNIT.
 import os
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -52,10 +57,18 @@ XDIST_WORKERS = 32
 RANKS = 4
 NP4_GROUPS = 8
 TEST_TIMEOUT = 1800  # seconds per test
-# Left out of every run: the image's QE-built wannier90.x carries AVX-512 code and dies with
-# SIGILL on the AMD Milan nodes of both clusters, until the image is rebuilt with QE pinned to
-# x86-64-v3.
-IGNORED = ("gpaw/test/wannier",)
+# A test failing on some ranks only leaves the others blocked in a collective, where
+# pytest-timeout does not reach them: the group is killed after this many seconds.
+NP4_GROUP_TIMEOUT = 7200
+GROUP_LOG_LINES = 100  # lines of a killed group's output kept in its failing case
+# Left out of every run:
+# - gpaw/test/wannier: the image's QE-built wannier90.x carries AVX-512 code and dies with
+#   SIGILL on the AMD Milan nodes of both clusters, until the image is rebuilt with QE pinned
+#   to x86-64-v3;
+# - gpaw/test/elph: gpaw.elph passes select_atoms and use_mean_minimum_images to
+#   ase.phonons.Displacement, which the image's ASE 3.29.0 does not accept (TypeError),
+#   until GPAW and the image agree on an ASE that has them.
+IGNORED = ("gpaw/test/wannier", "gpaw/test/elph")
 BLAS_THREADS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 
 
@@ -110,6 +123,10 @@ def run(part, work, junit):
     # launch through a host srun and never start its process.
     env = {**os.environ, "TMPDIR": str(tmp), "HYDRA_BOOTSTRAP": "fork",
            **dict.fromkeys(BLAS_THREADS, "1")}
+    if part == "cpu":
+        # With no GPU visible, GPAW's gpu=True test cases run on its CuPy emulation
+        # (gpaw.gpu.cpupy).
+        env["GPAW_CPUPY"] = "1"
     pytest = [sys.executable, "-m", "pytest"]
     if part == "gpu":
         rc = subprocess.call(pytest + pytest_args("gpu", work)
@@ -130,19 +147,35 @@ def run(part, work, junit):
     for g in range(1, NP4_GROUPS + 1):
         group_tmp = work / f"tmp-np4-g{g}"
         group_tmp.mkdir(exist_ok=True)
+        log = open(work / f"np4-g{g}.log", "w")
         groups.append(subprocess.Popen(
             _common.mpiexec(RANKS)
             + ["sh", "-c",
                f'exec gpaw python -m pytest --junitxml={work}/np4-g{g}-rank"$PMI_RANK".xml "$@"',
                "sh", *args, "--test-group-count", str(NP4_GROUPS), "--test-group", str(g),
                "--test-group-random-seed", "42"],
-            cwd=_common.GPAW_SRC, env={**env, "TMPDIR": str(group_tmp)}))
-    statuses = [group.wait() for group in groups]
+            cwd=_common.GPAW_SRC, env={**env, "TMPDIR": str(group_tmp)},
+            stdout=log, stderr=subprocess.STDOUT))
+        log.close()
+    end = time.monotonic() + NP4_GROUP_TIMEOUT
+    statuses = []
+    for group in groups:
+        try:
+            statuses.append(group.wait(timeout=max(0, end - time.monotonic())))
+        except subprocess.TimeoutExpired:
+            group.terminate()  # Hydra's mpiexec ends its ranks on SIGTERM
+            try:
+                statuses.append(group.wait(timeout=60))
+            except subprocess.TimeoutExpired:
+                group.kill()
+                statuses.append(group.wait())
     for g, status in enumerate(statuses, start=1):
         rank0 = work / f"np4-g{g}-rank0.xml"
         if not rank0.exists():  # the group was killed (a timeout, the OOM killer) before it wrote
             case = ET.Element("testcase", name=f"group {g} wrote no junit (exit status {status})")
-            ET.SubElement(case, "failure", message="no junit file")
+            tail = (work / f"np4-g{g}.log").read_text(errors="replace").splitlines()
+            ET.SubElement(case, "failure", message="no junit file").text = \
+                "\n".join(tail[-GROUP_LOG_LINES:])
             suite = ET.Element("testsuite")
             suite.append(case)
             ET.ElementTree(suite).write(rank0)
