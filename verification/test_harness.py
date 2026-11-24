@@ -1182,18 +1182,18 @@ class Calls:
             hangs = hanging is not None and hanging in str(cmd)
             if hangs:
                 kw["stdout"].write(output)
-            proc = types.SimpleNamespace(running=hangs, signal=None)
+            proc = types.SimpleNamespace(running=hangs, exit_status=None)
 
             def wait(timeout=None):
                 self.events.append("wait")
                 if proc.running:
                     raise module.subprocess.TimeoutExpired(cmd, timeout)
-                return proc.signal or status(cmd)
+                return proc.exit_status or status(cmd)
 
-            def stop(event, signal):
+            def stop(event, exit_status):
                 self.events.append(event)
                 if event == "kill" or not ignores_sigterm:
-                    proc.running, proc.signal = False, signal
+                    proc.running, proc.exit_status = False, exit_status
 
             proc.wait = wait
             proc.terminate = lambda: stop("terminate", -15)
@@ -1364,8 +1364,10 @@ def test_gpaw_every_pytest_run_has_a_per_test_timeout_and_one_thread_per_process
         # gpu=True cases on GPAW's CuPy emulation in the cpu part only
         assert env.get("GPAW_CPUPY") == ("1" if part == "cpu" else None)
     for command, _ in runs:
-        assert all(f"--ignore={d}" in command
-                   for d in ("gpaw/test/wannier", "gpaw/test/elph/test_gmatrix.py"))
+        assert [a for a in command if a.startswith("--ignore=")] == [
+            "--ignore=gpaw/test/wannier", "--ignore=gpaw/test/elph/test_displacements.py",
+            "--ignore=gpaw/test/elph/test_gmatrix.py", "--ignore=gpaw/test/elph/test_gradient.py",
+            "--ignore=gpaw/test/elph/test_indices.py", "--ignore=gpaw/test/elph/test_supercell.py"]
 
 
 def test_gpaw_gpu_part_runs_the_gpu_marker_once_and_serial(monkeypatch, tmp_path):

@@ -61,7 +61,7 @@ TEST_TIMEOUT = 1800  # seconds per test
 # A test failing on some ranks only leaves the others blocked in a collective, where
 # pytest-timeout does not reach them: the group is ended after this many seconds.
 NP4_GROUP_TIMEOUT = 7200
-GROUP_LOG_LINES = 100  # lines of a killed group's output kept in its failing case
+GROUP_LOG_LINES = 100  # lines of a failing group's output, printed and kept in its case
 # Left out of every run:
 # - gpaw/test/wannier: the image's QE-built wannier90.x carries AVX-512 code and dies with
 #   SIGILL on the AMD Milan nodes of both clusters, until the image is rebuilt with QE pinned
@@ -70,8 +70,9 @@ GROUP_LOG_LINES = 100  # lines of a killed group's output kept in its failing ca
 #   use_mean_minimum_images to ase.phonons.Displacement, which the image's ASE 3.29.0 does not
 #   accept (TypeError), until GPAW and the image agree on an ASE that has them.
 IGNORED = ("gpaw/test/wannier",
-           *(f"gpaw/test/elph/test_{name}.py"
-             for name in ("displacements", "gmatrix", "gradient", "indices", "supercell")))
+           "gpaw/test/elph/test_displacements.py", "gpaw/test/elph/test_gmatrix.py",
+           "gpaw/test/elph/test_gradient.py", "gpaw/test/elph/test_indices.py",
+           "gpaw/test/elph/test_supercell.py")
 BLAS_THREADS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 
 
