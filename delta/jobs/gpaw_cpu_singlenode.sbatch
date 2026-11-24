@@ -35,7 +35,7 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="${BINDS:+$BINDS,}$p"
 
 export OMP_NUM_THREADS=1                # pure MPI; the image defaults to 1 anyway
 
-# REQUIRED for the GPAW in this image (26.7.1b1). Since 26.7.0 GPAW refuses to
+# REQUIRED for the GPAW in this image (26.7.0). Since 26.7.0 GPAW refuses to
 # import when it detects an MPI launcher (mpiexec/Hydra exports PMI_SIZE) but
 # the MPI backend is still the default 'serial', aborting with
 #   RuntimeError: GPAW appears to be running inside MPI launcher,

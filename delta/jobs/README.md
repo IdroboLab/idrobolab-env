@@ -114,7 +114,7 @@ LAMMPS GPU builds are sm_80, see [The images](../../docs/delta/README.md#the-ima
 ## Gotchas
 
 - **`GPAW_MPI_BACKEND=cgpaw` is mandatory under any MPI launcher.** The image
-  ships GPAW 26.7.1b1, and since 26.7.0 GPAW raises at import — *"GPAW appears
+  ships GPAW 26.7.0, and since 26.7.0 GPAW raises at import — *"GPAW appears
   to be running inside MPI launcher, but MPI parallelism is disabled"* —
   whenever it sees launcher environment (`PMI_SIZE`, `PMIX_RANK`,
   `OMPI_COMM_WORLD_SIZE`, `I_MPI_MPIRUN`) with the default `serial` backend.

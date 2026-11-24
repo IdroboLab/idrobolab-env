@@ -252,7 +252,7 @@ docs/perlmutter/reference/podman-hpc.md, "Networking".
   want a template.
 
 - **`GPAW_MPI_BACKEND=cgpaw` is mandatory under `srun`.** The image ships
-  GPAW 26.7.1b1, and since 26.7.0 GPAW aborts at import with *"GPAW appears
+  GPAW 26.7.0, and since 26.7.0 GPAW aborts at import with *"GPAW appears
   to be running inside MPI launcher, but MPI parallelism is disabled"* when
   an MPI launcher starts plain `python`. Every MPI template here exports it;
   add it to any new one. (`gpaw python` avoids the flag but swallows script
