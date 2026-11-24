@@ -187,7 +187,8 @@ Each test's docstring says what it runs; this lists what is not obvious from it.
   `--timeout=<TEST_TIMEOUT> --timeout-method=thread` (pytest-timeout): a hung test fails with a
   stack dump, and under MPI that rank's exit ends its group. OMP, OPENBLAS and MKL threads are
   pinned to 1 per process, as up to 32 processes share the node. A run that still overruns the
-  job ends at `VERIFY_DEADLINE`, above.
+  job ends at `VERIFY_DEADLINE`, above. Every run leaves out the directories of `IGNORED`
+  in `tests/gpaw` (`gpaw/test/wannier`; the comment there says why).
 - `tests/gpaw-eigensolvers`: ScaLAPACK against ELPA total energies, and which solver each run
   used.
 - `tests/gpaw-weaver`: gpaw-weaver's own suite and a real GPAW run of its entry point. Its SCF
