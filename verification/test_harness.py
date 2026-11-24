@@ -1156,11 +1156,14 @@ def test_the_gpaw_preflight_names_every_library_that_covered_by_gpaw_rows_stand_
 
 class Calls:
     """Stand-ins for subprocess.call, check_call and Popen that record the command and
-    directory; `events` lists "start" for each Popen and "wait" for each wait on one."""
+    directory; `events` lists "start" for each Popen, "wait" for each wait on one (also one
+    that times out), and "terminate" and "kill"."""
 
-    def __init__(self, monkeypatch, module, failing=None, code=1, hanging=None):
+    def __init__(self, monkeypatch, module, failing=None, code=1, hanging=None, output="",
+                 ignores_sigterm=False):
         """`failing`: a word of the command whose call returns the exit status `code`;
-        `hanging`: a word of a Popen command that runs until it is terminated (status -15)."""
+        `hanging`: a word of a Popen command that writes `output` to its stdout and runs until
+        it is terminated (status -15) or, with `ignores_sigterm`, killed (status -9)."""
         self.calls, self.envs, self.events = [], [], []
 
         def status(cmd):
@@ -1176,19 +1179,25 @@ class Calls:
             self.calls.append((cmd, kw.get("cwd")))
             self.envs.append(kw.get("env"))
             self.events.append("start")
-            proc = types.SimpleNamespace(running=hanging is not None and hanging in str(cmd))
+            hangs = hanging is not None and hanging in str(cmd)
+            if hangs:
+                kw["stdout"].write(output)
+            proc = types.SimpleNamespace(running=hangs, signal=None)
 
             def wait(timeout=None):
                 self.events.append("wait")
                 if proc.running:
                     raise module.subprocess.TimeoutExpired(cmd, timeout)
-                return -15 if hanging is not None and hanging in str(cmd) else status(cmd)
+                return proc.signal or status(cmd)
 
-            def terminate():
-                self.events.append("terminate")
-                proc.running = False
+            def stop(event, signal):
+                self.events.append(event)
+                if event == "kill" or not ignores_sigterm:
+                    proc.running, proc.signal = False, signal
 
-            proc.wait, proc.terminate, proc.kill = wait, terminate, terminate
+            proc.wait = wait
+            proc.terminate = lambda: stop("terminate", -15)
+            proc.kill = lambda: stop("kill", -9)
             return proc
 
         monkeypatch.setattr(module.subprocess, "Popen", popen)
@@ -1304,32 +1313,29 @@ def test_gpaw_np4_fails_a_group_that_wrote_no_junit_beside_a_known_failure(
     assert list(failures) == ["np4.m::t1", "np4.::group 2 wrote no junit (exit status -9)"]
 
 
-def test_gpaw_np4_terminates_a_group_past_its_timeout_and_keeps_its_log_tail(
-        monkeypatch, tmp_path):
-    """A group blocked in a collective is ended; its failing case carries its output."""
+@pytest.mark.parametrize("ignores_sigterm, stops, status", [
+    (False, ["terminate"], -15), (True, ["terminate", "kill"], -9)])
+def test_gpaw_np4_ends_a_group_past_its_timeout_and_keeps_its_log_tail(
+        monkeypatch, tmp_path, capsys, ignores_sigterm, stops, status):
+    """A group blocked in a collective gets SIGTERM, then SIGKILL if it outlives that; its
+    failing case carries the end of its output."""
     gpaw_test = load_script("gpaw")
     monkeypatch.setattr(gpaw_test, "NP4_GROUPS", 2)
     monkeypatch.setattr(gpaw_test, "NP4_GROUP_TIMEOUT", 0)
     monkeypatch.setattr(gpaw_test, "GROUP_LOG_LINES", 2)
-    recorder = Calls(monkeypatch, gpaw_test, hanging="np4-g2-rank")
-    real_open = open
-
-    def fake_open(path, mode="r", *a, **kw):  # the group's output, as mpiexec would write it
-        f = real_open(path, mode, *a, **kw)
-        if "w" in mode and str(path).endswith("np4-g2.log"):
-            f.write("line 1\nline 2\nblocked in MPI_Allreduce\n")
-        return f
-
-    monkeypatch.setattr(gpaw_test, "open", fake_open, raising=False)
+    recorder = Calls(monkeypatch, gpaw_test, hanging="np4-g2-rank", ignores_sigterm=ignores_sigterm,
+                     output="line 1\nline 2\nblocked in MPI_Allreduce\n")
     (tmp_path / "np4-g1-rank0.xml").write_text(
         '<testsuites><testsuite><testcase classname="m" name="t1"/></testsuite></testsuites>')
     assert gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml") == 1
-    assert recorder.events.count("terminate") == 1
+    assert [e for e in recorder.events if e in ("terminate", "kill")] == stops
     verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
     _, failures, _ = verify.parse_junit(tmp_path / "junit.xml")
-    assert list(failures) == ["np4.::group 2 wrote no junit (exit status -15)"]
-    assert failures["np4.::group 2 wrote no junit (exit status -15)"].endswith(
-        "line 2\nblocked in MPI_Allreduce")
+    case = f"np4.::group 2 wrote no junit (exit status {status})"
+    assert list(failures) == [case]
+    assert failures[case].endswith("line 2\nblocked in MPI_Allreduce")
+    printed = capsys.readouterr().out
+    assert f"np4 group 2, exit status {status}, last lines:\nline 2\nblocked" in printed
 
 
 @pytest.mark.parametrize("part, run", [("cpu", "precalc"), ("cpu", "serial"), ("cpu", "np4"),
@@ -1358,7 +1364,8 @@ def test_gpaw_every_pytest_run_has_a_per_test_timeout_and_one_thread_per_process
         # gpu=True cases on GPAW's CuPy emulation in the cpu part only
         assert env.get("GPAW_CPUPY") == ("1" if part == "cpu" else None)
     for command, _ in runs:
-        assert all(f"--ignore={d}" in command for d in ("gpaw/test/wannier", "gpaw/test/elph"))
+        assert all(f"--ignore={d}" in command
+                   for d in ("gpaw/test/wannier", "gpaw/test/elph/test_gmatrix.py"))
 
 
 def test_gpaw_gpu_part_runs_the_gpu_marker_once_and_serial(monkeypatch, tmp_path):

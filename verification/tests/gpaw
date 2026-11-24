@@ -23,9 +23,10 @@ test fails with a stack dump, and under MPI that rank's exit ends its group. A g
 no rank-0 junit file (killed by its timeout or the OOM killer) is a failing case `group <i>
 wrote no junit (exit status N)`. The worst exit status counts, a death by signal as a failure.
 BLAS threads are pinned to 1 per process (BLAS_THREADS), as up to 32 processes share the node.
-Every run leaves out the directories of IGNORED. The cpu part sets GPAW_CPUPY=1, so the
-gpu=True cases run on GPAW's CuPy emulation. Each np4 group's output goes to
-np4-g<i>.log; a group still running NP4_GROUP_TIMEOUT seconds after the start is killed, and a
+Every run leaves out the paths of IGNORED. The cpu part sets GPAW_CPUPY=1 (GPAW's CuPy
+emulation for gpu=True calculations outside pytest). Each np4 group's output goes to
+np4-g<i>.log; a group still running NP4_GROUP_TIMEOUT seconds after the start gets SIGTERM, then
+SIGKILL after 60 s; a group that fails prints the last GROUP_LOG_LINES lines of its log; a
 group that wrote no rank-0 junit file keeps the last GROUP_LOG_LINES lines of that log in its
 failing case.
 
@@ -58,17 +59,19 @@ RANKS = 4
 NP4_GROUPS = 8
 TEST_TIMEOUT = 1800  # seconds per test
 # A test failing on some ranks only leaves the others blocked in a collective, where
-# pytest-timeout does not reach them: the group is killed after this many seconds.
+# pytest-timeout does not reach them: the group is ended after this many seconds.
 NP4_GROUP_TIMEOUT = 7200
 GROUP_LOG_LINES = 100  # lines of a killed group's output kept in its failing case
 # Left out of every run:
 # - gpaw/test/wannier: the image's QE-built wannier90.x carries AVX-512 code and dies with
 #   SIGILL on the AMD Milan nodes of both clusters, until the image is rebuilt with QE pinned
 #   to x86-64-v3;
-# - gpaw/test/elph: gpaw.elph passes select_atoms and use_mean_minimum_images to
-#   ase.phonons.Displacement, which the image's ASE 3.29.0 does not accept (TypeError),
-#   until GPAW and the image agree on an ASE that has them.
-IGNORED = ("gpaw/test/wannier", "gpaw/test/elph")
+# - the gpaw/test/elph files that fail: gpaw.elph passes select_atoms and
+#   use_mean_minimum_images to ase.phonons.Displacement, which the image's ASE 3.29.0 does not
+#   accept (TypeError), until GPAW and the image agree on an ASE that has them.
+IGNORED = ("gpaw/test/wannier",
+           *(f"gpaw/test/elph/test_{name}.py"
+             for name in ("displacements", "gmatrix", "gradient", "indices", "supercell")))
 BLAS_THREADS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 
 
@@ -124,8 +127,8 @@ def run(part, work, junit):
     env = {**os.environ, "TMPDIR": str(tmp), "HYDRA_BOOTSTRAP": "fork",
            **dict.fromkeys(BLAS_THREADS, "1")}
     if part == "cpu":
-        # With no GPU visible, GPAW's gpu=True test cases run on its CuPy emulation
-        # (gpaw.gpu.cpupy).
+        # GPAW's CuPy emulation (gpaw.gpu.cpupy) for gpu=True calculations outside pytest;
+        # GPAW's conftest (monkeypatch_allow_cpupy) already allows them in its sessions.
         env["GPAW_CPUPY"] = "1"
     pytest = [sys.executable, "-m", "pytest"]
     if part == "gpu":
@@ -170,12 +173,14 @@ def run(part, work, junit):
                 group.kill()
                 statuses.append(group.wait())
     for g, status in enumerate(statuses, start=1):
+        tail = "\n".join((work / f"np4-g{g}.log").read_text(errors="replace")
+                         .splitlines()[-GROUP_LOG_LINES:])
+        if status:
+            print(f"--- np4 group {g}, exit status {status}, last lines:\n{tail}", flush=True)
         rank0 = work / f"np4-g{g}-rank0.xml"
         if not rank0.exists():  # the group was killed (a timeout, the OOM killer) before it wrote
             case = ET.Element("testcase", name=f"group {g} wrote no junit (exit status {status})")
-            tail = (work / f"np4-g{g}.log").read_text(errors="replace").splitlines()
-            ET.SubElement(case, "failure", message="no junit file").text = \
-                "\n".join(tail[-GROUP_LOG_LINES:])
+            ET.SubElement(case, "failure", message="no junit file").text = tail
             suite = ET.Element("testsuite")
             suite.append(case)
             ET.ElementTree(suite).write(rank0)
