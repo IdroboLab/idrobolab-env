@@ -9,6 +9,8 @@ one cluster are scoped to it below; `delta/AGENTS.md` holds the Delta convention
 
 This file is read by every coding agent (Codex reads `AGENTS.md` directly; Claude Code
 through `CLAUDE.md`, which imports it). Keep agent instructions here, not in `CLAUDE.md`.
+Read `core/AGENTS-common.md` too: the rules every hpcenv repository shares, among them
+working in git worktrees (`CLAUDE.md` imports it).
 
 ## Git workflow
 
