@@ -116,9 +116,10 @@ if os.getenv('GPAW_BUILD_GPU', '0') == '1':
     if cuda_lib not in runtime_library_dirs:
         runtime_library_dirs += [cuda_lib]
 
-    # c/gpu/bc.cpp includes bc.h, which pulls in <mpi.h> under -DPARALLEL
-    # (always set here, since mpi=True). nvcc is invoked directly rather
-    # than through the mpicc wrapper that supplies that include path for
+    # GPAW after 26.7.0 compiles c/gpu/bc.cpp (c/gpu/bc.c, built by mpicc, in
+    # 26.7.0) with nvcc; it includes bc.h, which pulls in <mpi.h> under
+    # -DPARALLEL (always set here, since mpi=True). nvcc is invoked directly
+    # rather than through the mpicc wrapper that supplies that include path for
     # the general C sources, so it must be added explicitly here.
     _mpich_inc = '/opt/software/mpich/include'
     if os.path.isdir(_mpich_inc) and _mpich_inc not in gpu_include_dirs:
