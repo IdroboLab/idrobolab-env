@@ -183,10 +183,10 @@ Each test's docstring says what it runs; this lists what is not obvious from it.
   group in full and only the failing cases of the other ranks (classname prefixes `np4.` and
   `np4-rank<r>.`). A group that wrote no rank-0 file (killed by its timeout or the OOM killer)
   is a failing case `group <i> wrote no junit (exit status N)`, carrying the last lines of the
-  group's output (`np4-g<i>.log`), which a failing group also prints; a group still running `NP4_GROUP_TIMEOUT` seconds after the
-  start is ended that way, since a test failing on some ranks leaves the others blocked in a
-  collective, out of pytest-timeout's reach. The worst exit status counts,
-  a death by signal as a failure. Every pytest run has
+  group's output (`np4-g<i>.log`), which a failing group also prints; a group still running
+  `NP4_GROUP_TIMEOUT` seconds after the start is ended that way, since a test failing on some
+  ranks leaves the others blocked in a collective, out of pytest-timeout's reach. The worst
+  exit status counts, a death by signal as a failure. Every pytest run has
   `--timeout=<TEST_TIMEOUT> --timeout-method=thread` (pytest-timeout): a hung test fails with a
   stack dump, and under MPI that rank's exit ends its group. OMP, OPENBLAS and MKL threads are
   pinned to 1 per process, as up to 32 processes share the node. A run that still overruns the
