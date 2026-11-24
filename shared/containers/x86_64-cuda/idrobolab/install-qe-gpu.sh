@@ -43,6 +43,12 @@ apt-get update
 apt-get install -y --no-install-recommends git cmake ca-certificates patchelf wget make python3 gcc g++
 rm -rf /var/lib/apt/lists/*
 
+# --- CPU target of the NVHPC compiles -----------------------------------------
+# NVHPC compilers target the build host's CPU when no -tp is given, and the build host has
+# AVX-512, which the Milan nodes of Delta and Perlmutter lack. -tp=x86-64-v3 is the
+# baseline (AVX2) of the builder stage's -march=x86-64-v3; check-no-avx512.sh checks the result.
+CPU_TARGET=-tp=x86-64-v3
+
 # --- MPICH, Fortran bindings built with nvfortran ----------------------------
 # The Dockerfile's MPICH (same version, device and netmod) with nvfortran as its Fortran
 # compiler, so that libmpifort matches the nvfortran that compiles QE. Only its
@@ -68,7 +74,7 @@ wget -q "https://github.com/pmodels/mpich/releases/download/v${MPICH_VERSION}/mp
 tar xzf "mpich-${MPICH_VERSION}.tar.gz"
 cd "mpich-${MPICH_VERSION}"
 run_logged /tmp/mpich-configure.log ./configure --prefix="${MPICH_PREFIX}" \
-    CC=gcc CXX=g++ F77=nvfortran FC=nvfortran \
+    CC=gcc CXX=g++ F77=nvfortran FC=nvfortran FFLAGS="${CPU_TARGET}" FCFLAGS="${CPU_TARGET}" \
     --with-device=ch4:ofi --with-libfabric=embedded \
     --enable-shared --disable-static --disable-f08
 grep -E 'values of Fortran logicals' /tmp/mpich-configure.log || true   # informational
@@ -146,7 +152,9 @@ else
     exit 1
 fi
 
-CMAKE_EXTRA=()
+# QE's cmake appends its own flags to CMAKE_<LANG>_FLAGS, which reach every compile and link
+# of QE and its submodules (wannier90 included).
+CMAKE_EXTRA=( -D "CMAKE_Fortran_FLAGS=${CPU_TARGET}" -D "CMAKE_C_FLAGS=${CPU_TARGET}" )
 if [ -n "${CUDA_PIN}" ]; then
     CMAKE_EXTRA+=( -D "NVFORTRAN_CUDA_VERSION=${CUDA_PIN}" )
 fi
