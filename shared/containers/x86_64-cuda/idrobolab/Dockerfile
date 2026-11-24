@@ -38,9 +38,11 @@ ARG QE_VERSION
 ARG QE_GPU_ARCHS
 ARG MPICH_VERSION
 ENV SOURCES_DIR=/opt/sources
-COPY install-qe-gpu.sh stage-qe-libs.sh keep-git-source.sh /tmp/
+COPY install-qe-gpu.sh stage-qe-libs.sh keep-git-source.sh check-no-avx512.sh /tmp/
 RUN QE_VERSION="${QE_VERSION}" QE_GPU_ARCHS="${QE_GPU_ARCHS}" MPICH_VERSION="${MPICH_VERSION}" \
     bash /tmp/install-qe-gpu.sh
+# What the final image copies from this stage must run without AVX-512 (Milan nodes).
+RUN bash /tmp/check-no-avx512.sh /opt/qe-dist
 
 # ===== builder stage (full -devel toolchain; discarded after the split) ======
 # Compiles the whole stack; nothing here ships — the slim -runtime final stage

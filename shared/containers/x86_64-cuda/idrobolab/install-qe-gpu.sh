@@ -146,7 +146,13 @@ else
     exit 1
 fi
 
-CMAKE_EXTRA=()
+# NVHPC compilers target the build host's CPU when no -tp is given, and the build host has
+# AVX-512, which the Milan nodes of Delta and Perlmutter lack. -tp=x86-64-v3 is the
+# baseline (AVX2) of the builder stage's -march=x86-64-v3. QE's cmake appends its own flags
+# to CMAKE_<LANG>_FLAGS, which reach every compile and link of QE and its submodules
+# (wannier90 included); check-no-avx512.sh checks the result.
+CPU_TARGET=-tp=x86-64-v3
+CMAKE_EXTRA=( -D "CMAKE_Fortran_FLAGS=${CPU_TARGET}" -D "CMAKE_C_FLAGS=${CPU_TARGET}" )
 if [ -n "${CUDA_PIN}" ]; then
     CMAKE_EXTRA+=( -D "NVFORTRAN_CUDA_VERSION=${CUDA_PIN}" )
 fi
