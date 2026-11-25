@@ -1363,11 +1363,6 @@ def test_gpaw_every_pytest_run_has_a_per_test_timeout_and_one_thread_per_process
                                  "MKL_NUM_THREADS")] == ["1"] * 3
         # gpu=True cases on GPAW's CuPy emulation in the cpu part only
         assert env.get("GPAW_CPUPY") == ("1" if part == "cpu" else None)
-    for command, _ in runs:
-        assert [a for a in command if a.startswith("--ignore=")] == [
-            "--ignore=gpaw/test/wannier", "--ignore=gpaw/test/elph/test_displacements.py",
-            "--ignore=gpaw/test/elph/test_gmatrix.py", "--ignore=gpaw/test/elph/test_gradient.py",
-            "--ignore=gpaw/test/elph/test_indices.py", "--ignore=gpaw/test/elph/test_supercell.py"]
 
 
 def test_gpaw_gpu_part_runs_the_gpu_marker_once_and_serial(monkeypatch, tmp_path):

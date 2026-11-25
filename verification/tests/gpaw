@@ -23,12 +23,11 @@ test fails with a stack dump, and under MPI that rank's exit ends its group. A g
 no rank-0 junit file (killed by its timeout or the OOM killer) is a failing case `group <i>
 wrote no junit (exit status N)`. The worst exit status counts, a death by signal as a failure.
 BLAS threads are pinned to 1 per process (BLAS_THREADS), as up to 32 processes share the node.
-Every run leaves out the paths of IGNORED. The cpu part sets GPAW_CPUPY=1 (GPAW's CuPy
-emulation for gpu=True calculations outside pytest). Each np4 group's output goes to
-np4-g<i>.log; a group still running NP4_GROUP_TIMEOUT seconds after the start gets SIGTERM, then
-SIGKILL after 60 s; a group that fails prints the last GROUP_LOG_LINES lines of its log; a
-group that wrote no rank-0 junit file keeps the last GROUP_LOG_LINES lines of that log in its
-failing case.
+The cpu part sets GPAW_CPUPY=1 (GPAW's CuPy emulation for gpu=True calculations outside
+pytest). Each np4 group's output goes to np4-g<i>.log; a group still running NP4_GROUP_TIMEOUT
+seconds after the start gets SIGTERM, then SIGKILL after 60 s; a group that fails prints the
+last GROUP_LOG_LINES lines of its log; a group that wrote no rank-0 junit file keeps the last
+GROUP_LOG_LINES lines of that log in its failing case.
 
 The cases of the runs are merged into VERIFY_JUNIT with the classname prefix `precalc.`,
 `serial.` or `np4.` (the cases of rank 0 of every group and, under `np4-rank<k>.`, the failing
@@ -62,17 +61,6 @@ TEST_TIMEOUT = 1800  # seconds per test
 # pytest-timeout does not reach them: the group is ended after this many seconds.
 NP4_GROUP_TIMEOUT = 7200
 GROUP_LOG_LINES = 100  # lines of a failing group's output, printed and kept in its case
-# Left out of every run:
-# - gpaw/test/wannier: the image's QE-built wannier90.x carries AVX-512 code and dies with
-#   SIGILL on the AMD Milan nodes of both clusters, until the image is rebuilt with QE pinned
-#   to x86-64-v3;
-# - the gpaw/test/elph files that fail: gpaw.elph passes select_atoms and
-#   use_mean_minimum_images to ase.phonons.Displacement, which the image's ASE 3.29.0 does not
-#   accept (TypeError), until GPAW and the image agree on an ASE that has them.
-IGNORED = ("gpaw/test/wannier",
-           "gpaw/test/elph/test_displacements.py", "gpaw/test/elph/test_gmatrix.py",
-           "gpaw/test/elph/test_gradient.py", "gpaw/test/elph/test_indices.py",
-           "gpaw/test/elph/test_supercell.py")
 BLAS_THREADS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 
 
@@ -92,8 +80,7 @@ def preflight(part):
 
 def pytest_args(marker, work):
     return ["-m", marker, "-o", f"cache_dir={work}/cache", "-q", "-rsfE", "--tb=short",
-            f"--timeout={TEST_TIMEOUT}", "--timeout-method=thread",
-            *(f"--ignore={path}" for path in IGNORED)]
+            f"--timeout={TEST_TIMEOUT}", "--timeout-method=thread"]
 
 
 def merge_junit(parts, out):

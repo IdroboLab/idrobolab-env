@@ -121,7 +121,7 @@ if END=$(squeue -h -j "$SLURM_JOB_ID" -o %e 2>/dev/null) && [ -n "$END" ] \
 fi
 
 # OMP_NUM_THREADS and OPENBLAS_NUM_THREADS stay at the image's 1: with more, GPAW warns in
-# PW mode and abTEM's suite turns the warning into an error. HDF5 file locking fails on CFS
+# PW mode ("Using OMP_NUM_THREADS>1 in PW-mode is not useful!"). HDF5 file locking fails on CFS
 # and $HOME from a compute node (errno 524).
 time srun --nodes=1 --ntasks=1 --cpu-bind=none \
     podman-hpc run --rm $GROUP_FLAGS -v "$REPO:$REPO" -v "$GIT_COMMON:$GIT_COMMON" \
