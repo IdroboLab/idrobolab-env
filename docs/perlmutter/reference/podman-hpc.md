@@ -72,16 +72,31 @@ image ID):
 podman-hpc --squash-dir "$SCRATCH/storage" rmsqi ghcr.io/idrobolab/idrobolab:dev
 ```
 
-To find which store holds a copy, do not trust a listing with `--squash-dir`:
-`podman-hpc --squash-dir <dir> images` also lists every store in
-`PODMANHPC_ADDITIONAL_STORES`, so a copy in the shared store appears under
-`$SCRATCH/storage` too, and listing the shared store itself shows each of its
-images twice. `rmsqi` acts on the `--squash-dir` store only, and reports
-`ERROR:root:Image <ref> not found` where that store has no copy. Emptying the
-variable does not narrow the listing: `PODMANHPC_ADDITIONAL_STORES=` (empty)
-makes `images` fail with `Error: configure storage: overlay: image path "." is
-not absolute`. `podman-hpc rmi` and `inspect` see only the local store, and
-answer `image not known` for an image that exists only squashed.
+A listing made with `--squash-dir` does not show which store holds a copy. With
+`env.sh` sourced, `podman-hpc --squash-dir <dir> images` also lists the store in
+`PODMANHPC_ADDITIONAL_STORES` (the `/dvs_ro` mirror of `$PODMAN_STORE`): an image
+the shared store holds shows up in a listing made with `--squash-dir
+"$SCRATCH/storage"` too, and a listing made with `--squash-dir "$PODMAN_STORE"`
+shows each image the shared store holds twice, once per path to the same
+directory. Emptying the variable does not narrow the listing; `images` then fails
+with
+
+```
+Error: configure storage: overlay: image path "." is not absolute.  Can not be relative
+```
+
+To remove a squashed copy without knowing its store, run `rmsqi` in each:
+
+```bash
+for s in "$SCRATCH/storage" "$PODMAN_STORE"; do
+    podman-hpc --squash-dir "$s" rmsqi <image>:<tag>
+done
+```
+
+`rmsqi` acts on the `--squash-dir` store only. It prints nothing when it removes
+the copy and `ERROR:root:Image <image>:<tag> not found` when that store has none.
+`podman-hpc rmi` needs a local-store copy: given an image ID that exists only
+squashed, it answers `image not known`.
 
 Upstream defaults are `graph_root=/tmp/{uid}_hpc/storage` and
 `run_root=/tmp/{uid}_hpc`; NERSC overrides them site-wide — a Perlmutter login
@@ -188,7 +203,8 @@ re-applied after whatever wrote the store:
 correct on its own. Run it by hand after a direct `podman-hpc pull --squash-dir`,
 or when a collaborator has pulled into the shared store themselves.
 
-Cleanup: `podman-hpc rmi <image>` drops both copies of one image; deleting
+Cleanup: `podman-hpc rmi <image>` drops both copies of an image that has a local copy
+(one held only squashed needs `rmsqi`, above); deleting
 `$SCRATCH/storage` and `~/.local/share/containers` is NERSC's reset for a
 wedged store.
 
