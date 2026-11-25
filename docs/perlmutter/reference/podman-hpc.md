@@ -72,6 +72,35 @@ image ID):
 podman-hpc --squash-dir "$SCRATCH/storage" rmsqi ghcr.io/idrobolab/idrobolab:dev
 ```
 
+A listing made with `--squash-dir "$SCRATCH/storage"` does not show which store holds a copy. With
+`env.sh` sourced, `podman-hpc --squash-dir <dir> images` also lists the store in
+`PODMANHPC_ADDITIONAL_STORES` (the `/dvs_ro` mirror of `$PODMAN_STORE`): an image
+the shared store holds shows up in a listing made with `--squash-dir
+"$SCRATCH/storage"` too, and a listing made with `--squash-dir "$PODMAN_STORE"`
+shows each image the shared store holds twice, once per path to the same
+directory. So a digest that `podman-hpc --squash-dir "$PODMAN_STORE" images --digests`
+lists twice is in the shared store. Emptying the variable does not narrow the listing; `images` then fails
+with
+
+```text
+Error: configure storage: overlay: image path "." is not absolute.  Can not be relative
+```
+
+To remove every squashed copy of a tag, whichever store holds it, run `rmsqi` in each:
+
+```bash
+for s in "$SCRATCH/storage" "$PODMAN_STORE"; do
+    podman-hpc --squash-dir "$s" rmsqi <image>:<tag>
+done
+```
+
+Do not use this loop when the tag names two images and only one should go: it removes
+the wanted copy too. Remove the stale one in its own store, as above.
+`rmsqi` acts on the `--squash-dir` store only. It prints nothing when it removes
+the copy and `ERROR:root:Image <image>:<tag> not found` when that store has none.
+`podman-hpc rmi` needs a local-store copy: given an image ID that exists only
+squashed, it answers `image not known`.
+
 Upstream defaults are `graph_root=/tmp/{uid}_hpc/storage` and
 `run_root=/tmp/{uid}_hpc`; NERSC overrides them site-wide — a Perlmutter login
 node was observed using `/images/<uid>_hpc/storage`, node-local space that NERSC
@@ -177,7 +206,9 @@ re-applied after whatever wrote the store:
 correct on its own. Run it by hand after a direct `podman-hpc pull --squash-dir`,
 or when a collaborator has pulled into the shared store themselves.
 
-Cleanup: `podman-hpc rmi <image>` drops both copies of one image; deleting
+Cleanup: `podman-hpc rmi <image>` drops the local copy; it does not reach a squashed
+copy in the shared store, which needs `rmsqi` with `--squash-dir "$PODMAN_STORE"` (above);
+deleting
 `$SCRATCH/storage` and `~/.local/share/containers` is NERSC's reset for a
 wedged store.
 
