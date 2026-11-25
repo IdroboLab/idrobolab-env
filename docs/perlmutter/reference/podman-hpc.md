@@ -206,8 +206,9 @@ re-applied after whatever wrote the store:
 correct on its own. Run it by hand after a direct `podman-hpc pull --squash-dir`,
 or when a collaborator has pulled into the shared store themselves.
 
-Cleanup: `podman-hpc rmi <image>` drops both copies of an image that has a local copy
-(one held only squashed needs `rmsqi`, above); deleting
+Cleanup: `podman-hpc rmi <image>` drops the local copy; it does not reach a squashed
+copy in the shared store, which needs `rmsqi` with `--squash-dir "$PODMAN_STORE"` (above);
+deleting
 `$SCRATCH/storage` and `~/.local/share/containers` is NERSC's reset for a
 wedged store.
 
