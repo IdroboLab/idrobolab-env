@@ -72,6 +72,17 @@ image ID):
 podman-hpc --squash-dir "$SCRATCH/storage" rmsqi ghcr.io/idrobolab/idrobolab:dev
 ```
 
+To find which store holds a copy, do not trust a listing with `--squash-dir`:
+`podman-hpc --squash-dir <dir> images` also lists every store in
+`PODMANHPC_ADDITIONAL_STORES`, so a copy in the shared store appears under
+`$SCRATCH/storage` too, and listing the shared store itself shows each of its
+images twice. `rmsqi` acts on the `--squash-dir` store only, and reports
+`ERROR:root:Image <ref> not found` where that store has no copy. Emptying the
+variable does not narrow the listing: `PODMANHPC_ADDITIONAL_STORES=` (empty)
+makes `images` fail with `Error: configure storage: overlay: image path "." is
+not absolute`. `podman-hpc rmi` and `inspect` see only the local store, and
+answer `image not known` for an image that exists only squashed.
+
 Upstream defaults are `graph_root=/tmp/{uid}_hpc/storage` and
 `run_root=/tmp/{uid}_hpc`; NERSC overrides them site-wide — a Perlmutter login
 node was observed using `/images/<uid>_hpc/storage`, node-local space that NERSC
