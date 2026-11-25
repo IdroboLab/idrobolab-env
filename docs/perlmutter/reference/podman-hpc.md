@@ -72,20 +72,21 @@ image ID):
 podman-hpc --squash-dir "$SCRATCH/storage" rmsqi ghcr.io/idrobolab/idrobolab:dev
 ```
 
-A listing made with `--squash-dir` does not show which store holds a copy. With
+A listing made with `--squash-dir "$SCRATCH/storage"` does not show which store holds a copy. With
 `env.sh` sourced, `podman-hpc --squash-dir <dir> images` also lists the store in
 `PODMANHPC_ADDITIONAL_STORES` (the `/dvs_ro` mirror of `$PODMAN_STORE`): an image
 the shared store holds shows up in a listing made with `--squash-dir
 "$SCRATCH/storage"` too, and a listing made with `--squash-dir "$PODMAN_STORE"`
 shows each image the shared store holds twice, once per path to the same
-directory. Emptying the variable does not narrow the listing; `images` then fails
+directory. So a digest that `podman-hpc --squash-dir "$PODMAN_STORE" images --digests`
+lists twice is in the shared store. Emptying the variable does not narrow the listing; `images` then fails
 with
 
-```
+```text
 Error: configure storage: overlay: image path "." is not absolute.  Can not be relative
 ```
 
-To remove a squashed copy without knowing its store, run `rmsqi` in each:
+To remove every squashed copy of a tag, whichever store holds it, run `rmsqi` in each:
 
 ```bash
 for s in "$SCRATCH/storage" "$PODMAN_STORE"; do
@@ -93,6 +94,8 @@ for s in "$SCRATCH/storage" "$PODMAN_STORE"; do
 done
 ```
 
+Do not use this loop when the tag names two images and only one should go: it removes
+the wanted copy too. Remove the stale one in its own store, as above.
 `rmsqi` acts on the `--squash-dir` store only. It prints nothing when it removes
 the copy and `ERROR:root:Image <image>:<tag> not found` when that store has none.
 `podman-hpc rmi` needs a local-store copy: given an image ID that exists only
