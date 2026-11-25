@@ -82,7 +82,7 @@ for p in /projects /scratch /work; do [ -d "$p" ] && BINDS="$BINDS,$p"; done
 
 export OMP_NUM_THREADS=1                # pure MPI
 
-# REQUIRED for the GPAW in this image (26.7.1b1) — see the single-node script
+# REQUIRED for the GPAW in this image (26.7.0) — see the single-node script
 # for the full explanation. `srun --mpi=pmi2` exports PMI_SIZE, which GPAW
 # 26.7.0+ reads as "inside an MPI launcher"; without this it raises
 # RuntimeError at import instead of running.

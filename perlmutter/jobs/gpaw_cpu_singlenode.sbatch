@@ -135,7 +135,7 @@ WORKDIR=$(pwd -P)
 
 # GPAW 26.7.0+ aborts at import ("running inside MPI launcher, but MPI
 # parallelism is disabled") when started by an MPI launcher with plain
-# `python` unless this is set. The image ships 26.7.1b1, so it is required.
+# `python` unless this is set. The image ships 26.7.0, so it is required.
 GPAW_ENV="-e GPAW_MPI_BACKEND=cgpaw -e OMP_NUM_THREADS=1"
 
 # Cray MPICH inside a container has no /dev/xpmem, so use CMA for intra-node
