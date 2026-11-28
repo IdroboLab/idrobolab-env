@@ -1,0 +1,4 @@
+component	test id	cluster	part	reason	reference
+gpaw	gpaw/test/sjm/test_cavitylike.py::test_cavitylike	*	cpu	np4: SJM divides by zero at an exactly zero dipole; one rank raises, the others hang in a broadcast	https://gitlab.com/gpaw/gpaw/-/merge_requests/3624
+gpaw	gpaw/test/sjm/test_gpw.py::test_gpw	*	cpu	np4: SJM divides by zero at an exactly zero dipole; one rank raises, the others hang in a broadcast	https://gitlab.com/gpaw/gpaw/-/merge_requests/3624
+gpaw	gpaw/test/lrtddft/test_placzek_profeta_albrecht.py::test_lrtddft_placzek_profeta_albrecht	*	cpu	np4: ASE Vibrations saves its cache on rank 0 with no barrier; the other ranks raise, rank 0 hangs in comm.sum	https://gitlab.com/ase/ase/-/merge_requests/4367

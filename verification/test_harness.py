@@ -412,11 +412,12 @@ class Suite:
     def commit(self, msg="change"):
         commit_all(self.repo, msg)
 
-    def components(self, *rows, known=()):
+    def components(self, *rows, known=(), deselected=()):
         (self.idir / "components.tsv").write_text(
             COMPONENTS_HEADER + "".join(f"{c}\tsource\t{t}\t{p}\t{cl}\n" for c, t, p, cl in rows))
-        (self.idir / "known-failures.tsv").write_text(
-            KNOWN_HEADER + "".join("\t".join(k) + "\n" for k in known))
+        for name, listed in (("known-failures.tsv", known), ("deselected.tsv", deselected)):
+            (self.idir / name).write_text(
+                KNOWN_HEADER + "".join("\t".join(k) + "\n" for k in listed))
 
     def scripts(self, **bodies):
         for name, body in bodies.items():
@@ -1249,6 +1250,56 @@ def test_gpaw_cpu_part_merges_the_precalc_cases_and_fails_when_the_precalc_fails
     verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
     passed, _, _ = verify.parse_junit(tmp_path / "junit.xml")
     assert passed == ["precalc.t::precalc", "serial.t::serial", "np4.t::np4-g1-rank0"]
+
+
+def test_gpaw_np4_deselects_verify_deselect_and_the_serial_run_keeps_it(monkeypatch, tmp_path):
+    gpaw_test = load_script("gpaw")
+    tests = ["gpaw/test/a.py::test_a", "gpaw/test/b.py::test_b"]
+    monkeypatch.setenv("VERIFY_DESELECT", "\n".join(tests))
+    recorder = Calls(monkeypatch, gpaw_test)
+    gpaw_test.run("cpu", tmp_path, tmp_path / "junit.xml")
+    serial = next(c[0] for c in recorder.calls if "serial.xml" in str(c[0]))
+    groups = [c[0] for c in recorder.calls if c[0][0] == "mpiexec"]
+    assert len(groups) == gpaw_test.NP4_GROUPS and "--deselect" not in serial
+    for command in groups:
+        assert [command[i + 1] for i, a in enumerate(command) if a == "--deselect"] == tests
+
+
+def test_verify_passes_the_matching_deselected_rows_to_the_test_and_records_them(
+        suite, monkeypatch):
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    monkeypatch.setattr(verify, "HERE", suite.vdir)
+    suite.scripts(alpha='#!/bin/sh\nprintf "%s\\n" "$VERIFY_DESELECT" > "$VERIFY_WORK/got"\n'
+                        'echo "PASS a"\n')
+    rows = [{"component": c, "test id": t, "cluster": cl, "part": p}
+            for c, t, cl, p in (("alpha", "t1", "*", "cpu"), ("alpha", "t2", "c1", "*"),
+                                ("alpha", "t3", "c2", "cpu"), ("alpha", "t4", "*", "gpu"),
+                                ("beta", "t5", "*", "*"))]
+    entry, log, _ = verify.run_component({"component": "alpha", "test": "alpha"}, "cpu", "c1",
+                                         [], suite.tmp / "work", None, rows)
+    assert (suite.tmp / "work/alpha/got").read_text() == "t1\nt2\n"
+    assert entry["status"] == "pass" and entry["deselected"] == ["t1", "t2"]
+    assert "deselected: t1\ndeselected: t2\n" in log
+
+
+def test_verify_records_the_deselected_rows_and_an_empty_list_for_a_component_not_run(suite):
+    suite.components(ALPHA, BETA, deselected=[("alpha", "t1", "*", "*", "hangs", "https://x")])
+    suite.scripts(alpha='#!/bin/sh\necho "$VERIFY_DESELECT" > "$VERIFY_WORK/got"\n'
+                        'echo "PASS one"\n')
+    suite.commit()
+    res = suite.verify("c1", "cpu", "--only", "alpha")
+    assert res.returncode == 0, res.stderr
+    components = suite.record("c1", "cpu")["components"]
+    assert components["alpha"]["deselected"] == ["t1"]
+    assert components["beta"]["status"] == "not-run" and components["beta"]["deselected"] == []
+    assert (suite.tmp / "work/alpha/got").read_text() == "t1\n"
+
+
+def test_idrobolab_deselected_rows_name_an_upstream_reference():
+    verify = SourceFileLoader("verify_module", str(VERIFICATION / "verify.py")).load_module()
+    rows = verify.read_tsv(VERIFICATION / "idrobolab" / "deselected.tsv")
+    assert rows and all(r["reference"].startswith("https://gitlab.com/") and r["reason"]
+                        for r in rows)
 
 
 def test_gpaw_np4_runs_every_group_at_once_with_its_own_tmpdir_and_junit_files(

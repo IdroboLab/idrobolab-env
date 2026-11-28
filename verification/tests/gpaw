@@ -15,7 +15,10 @@ cpu part, both `-m 'not gpu'` and with no GPU visible:
   serial   `pytest -n 32`: pytest-xdist, each test on one rank, to fit the allocation's time;
   np4      the whole suite under `mpiexec -n 4 gpaw python -m pytest`, split into NP4_GROUPS
            groups with pytest-test-groups (`--test-group-count`, `--test-group`, seed 42, as in
-           GPAW's nightly CI). The groups run at once, each with a TMPDIR of its own.
+           GPAW's nightly CI). The groups run at once, each with a TMPDIR of its own. The
+           pytest node ids in VERIFY_DESELECT (verify.py, from deselected.tsv) are
+           deselected here only: at 4 ranks such a test fails on some ranks, and the others
+           stay blocked in a collective until NP4_GROUP_TIMEOUT ends the group.
 gpu part: `pytest -m gpu` on a real GPU, serial.
 
 Every pytest run has `--timeout=TEST_TIMEOUT --timeout-method=thread` (pytest-timeout): a hung
@@ -38,7 +41,7 @@ A preflight fails (it never skips) when GPAW is not imported from /opt/src/gpaw,
 library of PREFLIGHT_LIBRARIES is not compiled in (GPAW skips the tests of an absent
 library), or when GPAW's CuPy is fake in the gpu part (its `-m gpu` tests then pass on a CPU
 emulation) or real in the cpu part. Environment:
-VERIFY_PART, VERIFY_WORK, VERIFY_JUNIT.
+VERIFY_PART, VERIFY_WORK, VERIFY_JUNIT, VERIFY_DESELECT.
 """
 import os
 import subprocess
@@ -134,6 +137,8 @@ def run(part, work, junit):
     # np4: NP4_GROUPS groups run at once, each its own mpiexec with a TMPDIR of its own. Each
     # rank runs pytest with a junit file of its own (Hydra sets PMI_RANK), and a failure on any
     # rank fails its mpiexec. `gpaw python` sets the MPI backend of the ranks.
+    deselect = [a for test in os.environ.get("VERIFY_DESELECT", "").splitlines()
+                for a in ("--deselect", test)]
     groups = []
     for g in range(1, NP4_GROUPS + 1):
         group_tmp = work / f"tmp-np4-g{g}"
@@ -143,7 +148,8 @@ def run(part, work, junit):
             _common.mpiexec(RANKS)
             + ["sh", "-c",
                f'exec gpaw python -m pytest --junitxml={work}/np4-g{g}-rank"$PMI_RANK".xml "$@"',
-               "sh", *args, "--test-group-count", str(NP4_GROUPS), "--test-group", str(g),
+               "sh", *args, *deselect,
+               "--test-group-count", str(NP4_GROUPS), "--test-group", str(g),
                "--test-group-random-seed", "42"],
             cwd=_common.GPAW_SRC, env={**env, "TMPDIR": str(group_tmp)},
             stdout=log, stderr=subprocess.STDOUT))

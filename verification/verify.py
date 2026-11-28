@@ -13,10 +13,12 @@ tests/<test> with VERIFY_PART, VERIFY_WORK (a directory of its own) and VERIFY_J
 reports through the junit file it writes, else through the `PASS <id>` and `FAIL <id>` lines
 it prints. A junit test id is `<classname>::<name>`. A failing id that is not in
 known-failures.tsv (for this component, cluster and part, `*` matching any) is unexpected; a
-listed id that passed is stale. A test that exits non-zero for no failing id, or has no
-passing test (all skipped, or nothing reported), fails with the id `exit status N` or
-`no test results`; a test file that cannot be run fails with exit status 127. Nothing is
-skipped silently.
+listed id that passed is stale. The `test id`s of the rows of deselected.tsv that match the
+component, cluster and part in the same way go to the test as VERIFY_DESELECT, one per line,
+for it to leave out (each test says how), and into the record's `deselected`. A test that
+exits non-zero for no failing id, or has no passing test (all skipped, or nothing reported),
+fails with the id `exit status N` or `no test results`; a test file that cannot be run fails
+with exit status 127. Nothing is skipped silently.
 
 VERIFY_DEADLINE (epoch seconds, the job's end time, set by the launchers) gives each component
 a timeout of the time left minus DEADLINE_MARGIN. A component runs in a process group of its own;
@@ -145,16 +147,25 @@ def kill_group(proc):
     return output
 
 
-def run_component(row, part, cluster, known, work, timeout=None):
+def matching(rows, comp, cluster, part):
+    """The `test id`s of the rows of a known-failures.tsv or deselected.tsv that apply to the
+    component in this part on this cluster (`*` matches any)."""
+    return [k["test id"] for k in rows if k["component"] == comp
+            and k["cluster"] in (cluster, "*") and k["part"] in (part, "*")]
+
+
+def run_component(row, part, cluster, known, work, timeout=None, deselected=()):
     """Run one component test, in a process group of its own that is killed after `timeout`
-    seconds; return its record entry, its log text and whether it timed out."""
+    seconds, with the matching rows of `deselected` in VERIFY_DESELECT; return its record
+    entry, its log text and whether it timed out."""
     comp = row["component"]
+    deselect = matching(deselected, comp, cluster, part)
     cwork = work / comp
     cwork.mkdir(parents=True, exist_ok=True)
     junit = cwork / "junit.xml"
     junit.unlink(missing_ok=True)
     env = {**os.environ, "VERIFY_PART": part, "VERIFY_WORK": str(cwork),
-           "VERIFY_JUNIT": str(junit)}
+           "VERIFY_JUNIT": str(junit), "VERIFY_DESELECT": "\n".join(deselect)}
     start = time.monotonic()
     command = [HERE / "tests" / row["test"]]
     timed_out = False
@@ -175,8 +186,7 @@ def run_component(row, part, cluster, known, work, timeout=None):
     passed, failures, skipped = (parse_junit(junit) if junit.exists()
                                  else parse_lines(output))
 
-    listed = {k["test id"] for k in known if k["component"] == comp
-              and k["cluster"] in (cluster, "*") and k["part"] in (part, "*")}
+    listed = set(matching(known, comp, cluster, part))
     known_failed = [t for t in failures if t in listed]
     unexpected = [t for t in failures if t not in listed]
     if timed_out:
@@ -188,7 +198,8 @@ def run_component(row, part, cluster, known, work, timeout=None):
     entry = {"status": "fail" if unexpected else "pass", "passed": len(passed),
              "failed": len(known_failed) + len(unexpected), "skipped": skipped,
              "known_failed": len(known_failed), "unexpected": unexpected,
-             "stale_known": [t for t in passed if t in listed], "seconds": seconds}
+             "stale_known": [t for t in passed if t in listed], "deselected": deselect,
+             "seconds": seconds}
 
     log = [f"component {comp}, part {part}, cluster {cluster}",
            f"status {entry['status']}: {entry['passed']} passed, {entry['failed']} failed "
@@ -196,6 +207,7 @@ def run_component(row, part, cluster, known, work, timeout=None):
            f"{returncode}, {seconds} s"]
     log += [f"unexpected: {t}" for t in unexpected]
     log += [f"stale known failure: {t}" for t in entry["stale_known"]]
+    log += [f"deselected: {t}" for t in deselect]
     for tid, text in failures.items():
         log += ["", f"--- failing: {tid}", text[:MAX_FAILURE_TEXT]]
     if unexpected and (timed_out or not failures):
@@ -265,6 +277,7 @@ def main(argv=None):
     if args.only and args.only not in [r["component"] for r in rows]:
         sys.exit(f"verify.py: no component {args.only} in the {cluster} {part} part")
     known = read_tsv(HERE / args.image / "known-failures.tsv")
+    deselected = read_tsv(HERE / args.image / "deselected.tsv")
     tests_hash = recipe_hash(args.image, HERE / "tests")  # before the tests: it needs git
 
     release_dir = HERE / args.image / "releases" / str(manifest["version"])
@@ -280,10 +293,10 @@ def main(argv=None):
         if not selected or out_of_time:
             results[comp] = {"status": "not-run", "passed": 0, "failed": 0, "skipped": 0,
                              "known_failed": 0, "unexpected": [], "stale_known": [],
-                             "seconds": 0}
+                             "deselected": [], "seconds": 0}
             continue
         results[comp], log, out_of_time = run_component(
-            row, part, cluster, known, Path(os.environ["VERIFY_WORK"]), remaining)
+            row, part, cluster, known, Path(os.environ["VERIFY_WORK"]), remaining, deselected)
         (log_dir / f"{comp}.log").write_text(scrubbed(log))
 
     record = {"image": args.image, "version": manifest["version"],
