@@ -10,7 +10,7 @@ check_release.py        the gate (CI: .github/workflows/verification.yml)
 test_harness.py         unit tests of both, with fake components
 tests/<component>       one executable per component
 clusters/<cluster>-<part>.sbatch   launchers: Perlmutter and Delta, cpu and gpu
-<image>/components.tsv, known-failures.tsv
+<image>/components.tsv, known-failures.tsv, deselected.tsv
 <image>/releases/<N>/   the records, logs and results table of release N
 ```
 
@@ -132,6 +132,8 @@ part, date, job and GPUs, `complete`, and per component:
   job's deadline is `timeout after N s`; a failed preflight is a failing test. The component
   fails when `unexpected` is not empty;
 - `stale_known`: listed ids that passed; the gate prints them as a request to shorten the list;
+- `deselected`: the `test id`s of the matching rows of `deselected.tsv`, which `verify.py`
+  passed to the test as `VERIFY_DESELECT` and which therefore did not run;
 - `seconds`.
 
 `releases/<N>/<cluster>-<part>/<component>.log` holds the summary and the output of the
@@ -144,15 +146,22 @@ cluster and part, each cell the status and the passed / failed / skipped / known
    `test` (a file in `tests/`, or `covered-by:<component>`), `parts` (`cpu`, `gpu`, `cpu,gpu`),
    `clusters` (comma list). A `covered-by` row is valid only when the covering test's
    preflight names the library (*Naming a covered library*).
-2. An executable `tests/<test>` that gets `VERIFY_PART`, `VERIFY_WORK` and `VERIFY_JUNIT`
-   (see `tests/abtem`). It exits 0 on success and reports either with `--junitxml=$VERIFY_JUNIT`
-   or with one `PASS <id>` or `FAIL <id>` line per check. It starts with a preflight that
-   prints `FAIL preflight: <what>` and exits 1 instead of skipping: the library is compiled
-   in, the GPU is real (or, in the cpu part, absent), the import comes from `/opt/src` or
-   `/opt/venv`.
+2. An executable `tests/<test>` that gets `VERIFY_PART`, `VERIFY_WORK`, `VERIFY_JUNIT` and
+   `VERIFY_DESELECT` (see `tests/abtem`; only a test that says it reads `VERIFY_DESELECT`,
+   today `tests/gpaw`, leaves its ids out). It exits 0 on success and reports either with
+   `--junitxml=$VERIFY_JUNIT` or with one `PASS <id>` or `FAIL <id>` line per check. It
+   starts with a preflight that prints `FAIL preflight: <what>` and exits 1 instead of
+   skipping: the library is compiled in, the GPU is real (or, in the cpu part, absent), the
+   import comes from `/opt/src` or `/opt/venv`.
 3. A known failure goes into `<image>/known-failures.tsv` (`component`, `test id`, `cluster`
-   or `*`, `part` or `*`, `reason`, `reference`: an upstream issue URL, never a private
-   tracker). A junit test id is `<classname>::<name>`; copy it from a record's `unexpected`.
+   or `*`, `part` or `*`, `reason`, `reference`: an upstream issue or merge-request URL,
+   never a private tracker). A junit test id is `<classname>::<name>`; copy it from a record's
+   `unexpected`. A test that cannot run at all, because it hangs the run instead of failing,
+   goes into `<image>/deselected.tsv` (same columns; every image has the file, with at least
+   its header line). Its `test id` is what the component test deselects (for `tests/gpaw`, a
+   pytest node id deselected in the np4 phase), one per line in `VERIFY_DESELECT`. A row for
+   a component whose test does not read `VERIFY_DESELECT` would be recorded as deselected
+   although the test ran.
 
 The unit tests: `pytest verification/test_harness.py`.
 
@@ -185,7 +194,9 @@ Each test's docstring says what it runs; this lists what is not obvious from it.
   is a failing case `group <i> wrote no junit (exit status N)`, carrying the last lines of the
   group's output (`np4-g<i>.log`), which a failing group also prints; a group still running
   `NP4_GROUP_TIMEOUT` seconds after the start is ended that way, since a test failing on some
-  ranks leaves the others blocked in a collective, out of pytest-timeout's reach. The worst
+  ranks leaves the others blocked in a collective, out of pytest-timeout's reach. The node ids
+  in `VERIFY_DESELECT` (from `deselected.tsv`) are deselected in the np4 phase only; the serial
+  phase still runs them. The worst
   exit status counts, a death by signal as a failure. Every pytest run has
   `--timeout=<TEST_TIMEOUT> --timeout-method=thread` (pytest-timeout): a hung test fails with a
   stack dump, and under MPI that rank's exit ends its group. OMP, OPENBLAS and MKL threads are
