@@ -154,7 +154,7 @@ cluster and part, each cell the status and the passed / failed / skipped / known
    skipping: the library is compiled in, the GPU is real (or, in the cpu part, absent), the
    import comes from `/opt/src` or `/opt/venv`.
 3. A known failure goes into `<image>/known-failures.tsv` (`component`, `test id`, `cluster`
-   or `*`, `part` or `*`, `reason`, `reference`: an upstream issue or merge-request URL,
+   or `*`, `part` or `*`, `reason`, `reference`: an upstream issue, MR or commit URL,
    never a private tracker). A junit test id is `<classname>::<name>`; copy it from a record's
    `unexpected`. A test that cannot run at all, because it hangs the run instead of failing,
    goes into `<image>/deselected.tsv` (same columns; every image has the file, with at least
