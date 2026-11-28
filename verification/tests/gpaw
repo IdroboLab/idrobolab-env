@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""Release test of GPAW: its own full suite, run with plain pytest.
+
+GPAW's conftest needs pytest's cache plugin, which shared/testing/run_pytest.py disables
+(`-p no:cacheprovider`), so pytest is installed here with GPAW's pin (`pytest>=7,<9.1`) and run
+as `python -m pytest -o cache_dir=$VERIFY_WORK/cache` from /opt/src/gpaw, where pytest.ini sets
+--doctest-modules and testpaths. Everything it writes goes under VERIFY_WORK; TMPDIR points
+there too, as the small writable layer of a read-only image would fill.
+
+cpu part, both `-m 'not gpu'` and with no GPU visible:
+  precalc  `pytest -n 32 -m generate_gpw_files` (GPAW's CI runs it with -n 16): the session fixtures
+           that write the shared gpw files are filled once, so the xdist workers and the MPI
+           ranks of the runs below do not wait on each other's locks (a fixture that waits
+           60 s raises);
+  serial   `pytest -n 32`: pytest-xdist, each test on one rank, to fit the allocation's time;
+  np4      the whole suite under `mpiexec -n 4 gpaw python -m pytest`, split into NP4_GROUPS
+           groups with pytest-test-groups (`--test-group-count`, `--test-group`, seed 42, as in
+           GPAW's nightly CI). The groups run at once, each with a TMPDIR of its own. The
+           pytest node ids in VERIFY_DESELECT (verify.py, from deselected.tsv) are
+           deselected here only: at 4 ranks such a test fails on some ranks, and the others
+           stay blocked in a collective until NP4_GROUP_TIMEOUT ends the group.
+gpu part: `pytest -m gpu` on a real GPU, serial.
+
+Every pytest run has `--timeout=TEST_TIMEOUT --timeout-method=thread` (pytest-timeout): a hung
+test fails with a stack dump, and under MPI that rank's exit ends its group. A group that wrote
+no rank-0 junit file (killed by its timeout or the OOM killer) is a failing case `group <i>
+wrote no junit (exit status N)`. The worst exit status counts, a death by signal as a failure.
+BLAS threads are pinned to 1 per process (BLAS_THREADS), as up to 32 processes share the node.
+The cpu part sets GPAW_CPUPY=1 (GPAW's CuPy emulation for gpu=True calculations outside
+pytest). Each np4 group's output goes to np4-g<i>.log; a group still running NP4_GROUP_TIMEOUT
+seconds after the start gets SIGTERM, then SIGKILL after 60 s; a group that fails prints the
+last GROUP_LOG_LINES lines of its log; a group that wrote no rank-0 junit file keeps the last
+GROUP_LOG_LINES lines of that log in its failing case.
+
+The cases of the runs are merged into VERIFY_JUNIT with the classname prefix `precalc.`,
+`serial.` or `np4.` (the cases of rank 0 of every group and, under `np4-rank<k>.`, the failing
+cases of the other ranks, whose junit files, `np4-g<i>-rank<k>.xml`, MPICH's PMI_RANK keeps
+apart).
+
+A preflight fails (it never skips) when GPAW is not imported from /opt/src/gpaw, when a
+library of PREFLIGHT_LIBRARIES is not compiled in (GPAW skips the tests of an absent
+library), or when GPAW's CuPy is fake in the gpu part (its `-m gpu` tests then pass on a CPU
+emulation) or real in the cpu part. Environment:
+VERIFY_PART, VERIFY_WORK, VERIFY_JUNIT, VERIFY_DESELECT.
+"""
+import os
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+import _common
+
+# The libraries the preflight checks, read by the release gate (check_release.py) to validate
+# the `covered-by:gpaw` rows of components.tsv: a name here needs a check in _common.compiled_in().
+PREFLIGHT_LIBRARIES = ("scalapack", "fftw", "elpa", "libxc", "libvdwxc")
+PYTEST_REQUIREMENTS = ["pytest>=7,<9.1", "pytest-xdist", "pytest-test-groups", "pytest-timeout"]
+XDIST_WORKERS = 32
+RANKS = 4
+NP4_GROUPS = 8
+TEST_TIMEOUT = 1800  # seconds per test
+# A test failing on some ranks only leaves the others blocked in a collective, where
+# pytest-timeout does not reach them: the group is ended after this many seconds.
+NP4_GROUP_TIMEOUT = 7200
+GROUP_LOG_LINES = 100  # lines of a failing group's output, printed and kept in its case
+BLAS_THREADS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
+
+
+def preflight(part):
+    """The failed checks, as messages."""
+    from gpaw.gpu import cupy_is_fake
+    failed = _common.imported_from("gpaw", _common.GPAW_SRC)
+    failed += _common.missing_libraries(PREFLIGHT_LIBRARIES)
+    # cupy_is_fake is GPAW's own verdict: CuPy imports, GPAW's GPU kernels are built and a
+    # device is visible.
+    if part == "gpu" and cupy_is_fake:
+        failed.append("GPAW has no real GPU in the gpu part (gpaw.gpu.cupy_is_fake is True)")
+    if part == "cpu" and not cupy_is_fake:
+        failed.append("a GPU is visible to GPAW in the cpu part")
+    return failed
+
+
+def pytest_args(marker, work):
+    return ["-m", marker, "-o", f"cache_dir={work}/cache", "-q", "-rsfE", "--tb=short",
+            f"--timeout={TEST_TIMEOUT}", "--timeout-method=thread"]
+
+
+def merge_junit(parts, out):
+    """Write the cases of the junit files in `parts` ((path, classname prefix, failures only))
+    to one junit file; a file that was not written is skipped."""
+    suite = ET.Element("testsuite")
+    for path, prefix, failures_only in parts:
+        if not Path(path).exists():
+            continue
+        for case in ET.parse(path).iter("testcase"):
+            if failures_only and not any(e.tag in ("failure", "error") for e in case):
+                continue
+            case.set("classname", prefix + (case.get("classname") or ""))
+            suite.append(case)
+    ET.ElementTree(suite).write(out)
+
+
+def worst(*statuses):
+    """The worst exit status; a death by signal (a negative status) counts as 1."""
+    return max(1 if status < 0 else status for status in statuses)
+
+
+def run(part, work, junit):
+    """Run the suites of the part; return the worst exit status."""
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "--no-cache-dir",
+                           "--disable-pip-version-check", *PYTEST_REQUIREMENTS])
+    tmp = work / "tmp"
+    tmp.mkdir(exist_ok=True)
+    # GPAW starts mpiexec itself (`gpaw -P1 python`, as in test_mpi_enabledness.py). Delta's
+    # environment, which Apptainer passes in, sets HYDRA_BOOTSTRAP=slurm: that mpiexec would
+    # launch through a host srun and never start its process.
+    env = {**os.environ, "TMPDIR": str(tmp), "HYDRA_BOOTSTRAP": "fork",
+           **dict.fromkeys(BLAS_THREADS, "1")}
+    if part == "cpu":
+        # GPAW's CuPy emulation (gpaw.gpu.cpupy) for gpu=True calculations outside pytest;
+        # GPAW's conftest (monkeypatch_allow_cpupy) already allows them in its sessions.
+        env["GPAW_CPUPY"] = "1"
+    pytest = [sys.executable, "-m", "pytest"]
+    if part == "gpu":
+        rc = subprocess.call(pytest + pytest_args("gpu", work)
+                             + [f"--junitxml={work}/serial.xml"], cwd=_common.GPAW_SRC, env=env)
+        merge_junit([(work / "serial.xml", "serial.", False)], junit)
+        return worst(rc)
+
+    xdist = ["-n", str(XDIST_WORKERS)]
+    rc = subprocess.call(pytest + xdist + pytest_args("generate_gpw_files", work)
+                         + [f"--junitxml={work}/precalc.xml"], cwd=_common.GPAW_SRC, env=env)
+    args = pytest_args("not gpu", work)
+    rc = worst(rc, subprocess.call(pytest + xdist + [f"--junitxml={work}/serial.xml"] + args,
+                                   cwd=_common.GPAW_SRC, env=env))
+    # np4: NP4_GROUPS groups run at once, each its own mpiexec with a TMPDIR of its own. Each
+    # rank runs pytest with a junit file of its own (Hydra sets PMI_RANK), and a failure on any
+    # rank fails its mpiexec. `gpaw python` sets the MPI backend of the ranks.
+    deselect = [a for test in os.environ.get("VERIFY_DESELECT", "").splitlines()
+                for a in ("--deselect", test)]
+    groups = []
+    for g in range(1, NP4_GROUPS + 1):
+        group_tmp = work / f"tmp-np4-g{g}"
+        group_tmp.mkdir(exist_ok=True)
+        log = open(work / f"np4-g{g}.log", "w")
+        groups.append(subprocess.Popen(
+            _common.mpiexec(RANKS)
+            + ["sh", "-c",
+               f'exec gpaw python -m pytest --junitxml={work}/np4-g{g}-rank"$PMI_RANK".xml "$@"',
+               "sh", *args, *deselect,
+               "--test-group-count", str(NP4_GROUPS), "--test-group", str(g),
+               "--test-group-random-seed", "42"],
+            cwd=_common.GPAW_SRC, env={**env, "TMPDIR": str(group_tmp)},
+            stdout=log, stderr=subprocess.STDOUT))
+        log.close()
+    end = time.monotonic() + NP4_GROUP_TIMEOUT
+    statuses = []
+    for group in groups:
+        try:
+            statuses.append(group.wait(timeout=max(0, end - time.monotonic())))
+        except subprocess.TimeoutExpired:
+            group.terminate()  # Hydra's mpiexec ends its ranks on SIGTERM
+            try:
+                statuses.append(group.wait(timeout=60))
+            except subprocess.TimeoutExpired:
+                group.kill()
+                statuses.append(group.wait())
+    for g, status in enumerate(statuses, start=1):
+        tail = "\n".join((work / f"np4-g{g}.log").read_text(errors="replace")
+                         .splitlines()[-GROUP_LOG_LINES:])
+        if status:
+            print(f"--- np4 group {g}, exit status {status}, last lines:\n{tail}", flush=True)
+        rank0 = work / f"np4-g{g}-rank0.xml"
+        if not rank0.exists():  # the group was killed (a timeout, the OOM killer) before it wrote
+            case = ET.Element("testcase", name=f"group {g} wrote no junit (exit status {status})")
+            ET.SubElement(case, "failure", message="no junit file").text = tail
+            suite = ET.Element("testsuite")
+            suite.append(case)
+            ET.ElementTree(suite).write(rank0)
+    rc = worst(rc, *statuses)
+    merge_junit([(work / "precalc.xml", "precalc.", False),
+                 (work / "serial.xml", "serial.", False)]
+                + [(work / f"np4-g{g}-rank{k}.xml", "np4." if k == 0 else f"np4-rank{k}.", k > 0)
+                   for g in range(1, NP4_GROUPS + 1) for k in range(RANKS)], junit)
+    return rc
+
+
+if __name__ == "__main__":
+    part = os.environ["VERIFY_PART"]
+    _common.finish(preflight(part), lambda: run(part, Path(os.environ["VERIFY_WORK"]),
+                                                os.environ["VERIFY_JUNIT"]))

@@ -10,30 +10,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+import _common
+
 SRC = "/opt/src/abTEM"
 RUN_PYTEST = Path(__file__).resolve().parents[2] / "shared" / "testing" / "run_pytest.py"
 
 
-def gpu_count():
-    try:
-        import cupy
-        return cupy.cuda.runtime.getDeviceCount()
-    except Exception:  # no CUDA runtime or no device: nothing is visible
-        return 0
-
-
 def preflight(part):
     """The failed checks, as messages."""
-    failed = []
-    try:
-        import abtem
-        if not os.path.realpath(abtem.__file__).startswith(SRC + "/"):
-            failed.append(f"abtem is imported from {abtem.__file__}, not from {SRC}")
-    except ImportError as e:
-        failed.append(f"abtem does not import: {e}")
-    if part == "gpu" and gpu_count() == 0:
+    failed = _common.imported_from("abtem", SRC)
+    if part == "gpu" and _common.gpu_count() == 0:
         failed.append("no GPU is visible in the gpu part")
-    if part == "cpu" and gpu_count() > 0:
+    if part == "cpu" and _common.gpu_count() > 0:
         failed.append("a GPU is visible in the cpu part")
     return failed
 
@@ -46,7 +34,5 @@ def pytest_command(part, junit):
 
 if __name__ == "__main__":
     part = os.environ["VERIFY_PART"]
-    failed = preflight(part)
-    for message in failed:
-        print(f"FAIL preflight: {message}")
-    sys.exit(1 if failed else subprocess.call(pytest_command(part, os.environ["VERIFY_JUNIT"])))
+    _common.finish(preflight(part),
+                   lambda: subprocess.call(pytest_command(part, os.environ["VERIFY_JUNIT"])))

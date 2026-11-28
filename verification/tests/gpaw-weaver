@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Release test of gpaw-weaver: its own suite, and one run against the real GPAW.
+
+1. The upstream suite through shared/testing/run_pytest.py. It mocks GPAW, so it checks
+   gpaw-weaver, not the GPAW install.
+2. H2 in a box with plane waves through run_and_store_gpaw_calculation, with both
+   legacy_gpaw values, then reloaded with load_gpaw_calculation. Per value, four checks: the
+   energy of the converged database row equals the energy of the returned atoms, the row
+   carries the legacy_gpaw value, the row carries the SCF history, and the reloaded
+   calculation gives the same energy.
+
+The cases of both are written to VERIFY_JUNIT (the second under the classname `real_gpaw`).
+A preflight fails (it never skips) when gpaw_weaver is not imported from /opt/src/gpaw-weaver.
+Environment: VERIFY_WORK, VERIFY_JUNIT.
+"""
+import os
+import subprocess
+import sys
+import traceback
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+import _common
+
+SRC = "/opt/src/gpaw-weaver"
+RUN_PYTEST = Path(__file__).resolve().parents[2] / "shared" / "testing" / "run_pytest.py"
+
+
+def preflight():
+    """The failed checks, as messages."""
+    return _common.imported_from("gpaw_weaver", SRC)
+
+
+def real_checks(legacy_gpaw, work):
+    """One real run; return its checks as {name: failure message or None}."""
+    from ase import Atoms
+    from ase.db import connect
+
+    from gpaw_weaver import (load_gpaw_calculation, make_pw_params,
+                             run_and_store_gpaw_calculation)
+
+    atoms = Atoms("H2", positions=[(0, 0, 0), (0, 0, 0.74)], cell=[4, 4, 4], pbc=True)
+    params = make_pw_params(300, {"size": (1, 1, 1), "gamma": True})
+    db = connect(str(work / f"legacy_{legacy_gpaw}.db"))
+    run, _, converged_id = run_and_store_gpaw_calculation(
+        atoms, params, db=db, legacy_gpaw=legacy_gpaw, save_gpw=True,
+        gpw_dir=work / "gpw_files", gpw_logs=work / "gpw_logs")
+    energy = run.get_potential_energy()
+    row = db.get(converged_id)
+
+    def reloaded():
+        _, calc = load_gpaw_calculation(atoms, params, db=db, legacy_gpaw=legacy_gpaw)
+        return abs(calc.get_potential_energy() - energy) < 1e-8
+
+    checks = {"row_energy": lambda: row.energy == energy,
+              "row_legacy_gpaw": lambda: row.legacy_gpaw == legacy_gpaw,
+              "scf_history": lambda: len(row.data["scf_energies"]) > 0,
+              "reload_energy": reloaded}
+    results = {}
+    for name, check in checks.items():
+        try:
+            results[name] = None if check() else "check is false"
+        except Exception:
+            results[name] = traceback.format_exc()
+    return results
+
+
+def run(work, junit):
+    """Run both; return the exit status."""
+    rc = subprocess.call(
+        [sys.executable, str(RUN_PYTEST), "--project", SRC, f"--junitxml={work}/upstream.xml",
+         "-q", "-rfE", "--tb=short", f"{SRC}/tests"])
+    suite = ET.parse(work / "upstream.xml").getroot() if (work / "upstream.xml").exists() \
+        else ET.Element("testsuites")
+    for legacy_gpaw in (True, False):
+        try:
+            results = real_checks(legacy_gpaw, work)
+        except Exception:
+            results = {"run": traceback.format_exc()}
+        for name, failure in results.items():
+            case = ET.SubElement(suite, "testcase", classname="real_gpaw",
+                                 name=f"h2_pw_legacy_gpaw_{legacy_gpaw}_{name}")
+            if failure:
+                ET.SubElement(case, "failure", message=name).text = failure
+                rc = 1
+    ET.ElementTree(suite).write(junit)
+    return rc
+
+
+if __name__ == "__main__":
+    _common.finish(preflight(), lambda: run(Path(os.environ["VERIFY_WORK"]),
+                                            os.environ["VERIFY_JUNIT"]))
