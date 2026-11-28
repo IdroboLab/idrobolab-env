@@ -1,1 +1,4 @@
 component	test id	cluster	part	reason	reference
+gpaw	serial.gpaw.test.new.test_cell_change::test_new_cell[True]	*	cpu	gpu=True case on a GPU build with no device: gpaw/new/c.py picks the *_gpu kernels from the build flag alone and real CuPy raises cudaErrorInsufficientDriver	https://gitlab.com/gpaw/gpaw/-/merge_requests/3621
+gpaw	serial.gpaw.test.new.test_cell_change::test_new_cell_1d[True]	*	cpu	gpu=True case on a GPU build with no device: gpaw/new/c.py picks the *_gpu kernels from the build flag alone and real CuPy raises cudaErrorInsufficientDriver	https://gitlab.com/gpaw/gpaw/-/merge_requests/3621
+gpaw	serial.gpaw.test.generic.test_move_across_cell::test_generic_move_across_cell[params1]	*	cpu	gpu=True case on a GPU build with no device: gpaw/new/c.py picks the *_gpu kernels from the build flag alone and real CuPy raises cudaErrorInsufficientDriver	https://gitlab.com/gpaw/gpaw/-/merge_requests/3621

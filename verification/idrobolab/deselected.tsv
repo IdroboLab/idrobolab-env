@@ -2,3 +2,6 @@ component	test id	cluster	part	reason	reference
 gpaw	gpaw/test/sjm/test_cavitylike.py::test_cavitylike	*	cpu	np4: SJM divides by zero at an exactly zero dipole; one rank raises, the others hang in a broadcast	https://gitlab.com/gpaw/gpaw/-/merge_requests/3624
 gpaw	gpaw/test/sjm/test_gpw.py::test_gpw	*	cpu	np4: SJM divides by zero at an exactly zero dipole; one rank raises, the others hang in a broadcast	https://gitlab.com/gpaw/gpaw/-/merge_requests/3624
 gpaw	gpaw/test/lrtddft/test_placzek_profeta_albrecht.py::test_lrtddft_placzek_profeta_albrecht	*	cpu	np4: ASE Vibrations saves its cache on rank 0 with no barrier; the other ranks raise, rank 0 hangs in comm.sum	https://gitlab.com/ase/ase/-/merge_requests/4367
+gpaw	gpaw/test/new/test_cell_change.py::test_new_cell[True]	*	cpu	np4: the c.py gpu=True defect raises on some ranks only; the others hang in a receive	https://gitlab.com/gpaw/gpaw/-/merge_requests/3621
+gpaw	gpaw/test/new/test_cell_change.py::test_new_cell_1d[True]	*	cpu	np4: the c.py gpu=True defect raises on some ranks only; the others hang in a receive	https://gitlab.com/gpaw/gpaw/-/merge_requests/3621
+gpaw	gpaw/test/generic/test_move_across_cell.py::test_generic_move_across_cell[params1]	*	cpu	np4: the c.py gpu=True defect raises on some ranks only; the others hang in a receive	https://gitlab.com/gpaw/gpaw/-/merge_requests/3621
